@@ -14,11 +14,20 @@ import { CUSTOMER_SESSION_COOKIE } from "@/lib/customer/constants";
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // If env vars are missing (common in new Vercel deploys), don't crash middleware.
+  // Auth/session refresh won't run until these are configured.
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return supabaseResponse;
+  }
+
   const sessionToken = request.cookies.get(CUSTOMER_SESSION_COOKIE)?.value;
 
   const supabase = createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       global: {
         headers: sessionToken ? { "x-session-token": sessionToken } : {},
