@@ -1,7 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+
+async function getRequestOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  if (host) return `${proto}://${host}`;
+  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+}
 
 // ── Types ───────────────────────────────────────────────────
 
@@ -26,6 +35,8 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 
   const supabase = await createClient();
 
+  const emailRedirectTo = new URL("/auth/callback", await getRequestOrigin()).toString();
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -33,6 +44,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
       data: {
         merchant_name: merchantName,
       },
+      emailRedirectTo,
     },
   });
 
