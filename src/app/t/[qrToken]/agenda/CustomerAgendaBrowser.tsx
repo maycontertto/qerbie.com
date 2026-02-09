@@ -1,0 +1,297 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+type Slot = {
+  id: string;
+  queue_id: string | null;
+  starts_at: string;
+  ends_at: string;
+};
+
+type RequestStatus = "pending" | "confirmed" | "declined" | "cancelled";
+
+type RequestState = {
+  requestId: string;
+  status: RequestStatus;
+  slotStartsAt: string;
+  slotEndsAt: string;
+  queueId: string | null;
+};
+
+type Queue = { id: string; name: string };
+
+type RefreshResult =
+  | { ok: true; data: RequestState }
+  | { ok: false; error: string };
+
+function storageKey(qrToken: string): string {
+  return `qerbie_agenda_request:${qrToken}`;
+}
+
+function asObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null;
+  return value as Record<string, unknown>;
+}
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(d);
+}
+
+export function CustomerAgendaBrowser({
+  qrToken,
+  slots,
+  queues,
+  hasSession,
+}: {
+  qrToken: string;
+  slots: Slot[];
+  queues: Queue[];
+  hasSession: boolean;
+}) {
+  const [contact, setContact] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [request, setRequest] = useState<RequestState | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const queueNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const q of queues) m.set(q.id, q.name);
+    return m;
+  }, [queues]);
+
+  const refreshRequest = useCallback(
+    async (requestId: string): Promise<RefreshResult> => {
+      const res = await fetch(
+        `/api/t/${encodeURIComponent(qrToken)}/agenda/requests/${encodeURIComponent(requestId)}`,
+        { cache: "no-store" },
+      );
+
+      const jsonUnknown: unknown = await res.json().catch(() => null);
+      const json = asObject(jsonUnknown) ?? {};
+
+      if (!res.ok) {
+        return { ok: false, error: typeof json.error === "string" ? json.error : "unknown" };
+      }
+
+      const status = String(json.status ?? "pending") as RequestStatus;
+      return {
+        ok: true,
+        data: {
+          requestId: String(json.id ?? requestId),
+          status,
+          slotStartsAt: String(json.slotStartsAt ?? ""),
+          slotEndsAt: String(json.slotEndsAt ?? ""),
+          queueId: typeof json.queueId === "string" ? json.queueId : null,
+        },
+      };
+    },
+    [qrToken],
+  );
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey(qrToken));
+      if (!raw) return;
+      const parsed = asObject(JSON.parse(raw)) ?? {};
+      const requestId = typeof parsed.requestId === "string" ? parsed.requestId : "";
+      if (!requestId) return;
+      setRequest({
+        requestId,
+        status: "pending",
+        slotStartsAt: "",
+        slotEndsAt: "",
+        queueId: null,
+      });
+    } catch {
+      // ignore
+    }
+  }, [qrToken]);
+
+  useEffect(() => {
+    if (!request) return;
+
+    let cancelled = false;
+    const run = async () => {
+      const out = await refreshRequest(request.requestId);
+      if (cancelled) return;
+      if (out.ok) {
+        setRequest(out.data);
+        if (["confirmed", "declined", "cancelled"].includes(out.data.status)) {
+          try {
+            localStorage.removeItem(storageKey(qrToken));
+          } catch {
+            // ignore
+          }
+        }
+      }
+    };
+
+    run();
+    const id = window.setInterval(run, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [qrToken, refreshRequest, request]);
+
+  async function requestSlot(slotId: string) {
+    if (!hasSession) {
+      window.location.href = `/t/${encodeURIComponent(qrToken)}`;
+      return;
+    }
+
+    setError(null);
+    setBusy(true);
+
+    try {
+      const res = await fetch(`/api/t/${encodeURIComponent(qrToken)}/agenda/requests`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          slotId,
+          customerName: null,
+          contact: contact.trim() || null,
+          notes: notes.trim() || null,
+        }),
+      });
+
+      const jsonUnknown: unknown = await res.json().catch(() => null);
+      const json = asObject(jsonUnknown) ?? {};
+
+      if (!res.ok) {
+        setError("Não foi possível solicitar este horário agora.");
+        return;
+      }
+
+      const requestId = typeof json.requestId === "string" ? json.requestId : "";
+      if (!requestId) {
+        setError("Não foi possível solicitar este horário agora.");
+        return;
+      }
+
+      try {
+        localStorage.setItem(storageKey(qrToken), JSON.stringify({ requestId }));
+      } catch {
+        // ignore
+      }
+
+      setRequest({
+        requestId,
+        status: "pending",
+        slotStartsAt: "",
+        slotEndsAt: "",
+        queueId: null,
+      });
+    } catch {
+      setError("Não foi possível solicitar este horário agora.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const requestStatusText =
+    request?.status === "pending"
+      ? "Aguardando confirmação da clínica"
+      : request?.status === "confirmed"
+        ? "Agendamento confirmado"
+        : request?.status === "declined"
+          ? "Agendamento recusado"
+          : request?.status === "cancelled"
+            ? "Agendamento cancelado"
+            : null;
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Agendamento</p>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+          Escolha um horário disponível e envie sua solicitação. A clínica confirma em seguida.
+        </p>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Contato (opcional)</label>
+            <input
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="WhatsApp, telefone ou e-mail"
+              className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Observações (opcional)</label>
+            <input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Ex.: primeira consulta"
+              className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+            />
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+            {error}
+          </div>
+        )}
+
+        {requestStatusText ? (
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
+            <div className="font-semibold">{requestStatusText}</div>
+            {request?.slotStartsAt && request?.slotEndsAt ? (
+              <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                {formatDateTime(request.slotStartsAt)} – {formatDateTime(request.slotEndsAt)}
+                {request.queueId ? ` • ${queueNameById.get(request.queueId) ?? ""}` : ""}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Horários disponíveis</p>
+
+        {slots.length === 0 ? (
+          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">Nenhum horário disponível no momento.</p>
+        ) : (
+          <div className="mt-4 space-y-2">
+            {slots.map((s) => {
+              const label = `${formatDateTime(s.starts_at)} – ${formatDateTime(s.ends_at)}`;
+              const prof = s.queue_id ? (queueNameById.get(s.queue_id) ?? "") : "";
+
+              return (
+                <div
+                  key={s.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{label}</div>
+                    {prof ? (
+                      <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{prof}</div>
+                    ) : null}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => requestSlot(s.id)}
+                    className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    Solicitar
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

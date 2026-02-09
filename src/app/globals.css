@@ -24,3 +24,12 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Fallback de CTA primário (garante visibilidade mesmo se algum CSS sobrescrever utilitários) */
+.cta-primary {
+  background-color: #22C55E;
+}
+
+.cta-primary:hover {
+  background-color: #16A34A;
+}

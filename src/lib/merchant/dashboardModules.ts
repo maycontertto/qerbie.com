@@ -1,0 +1,676 @@
+import type { BusinessCategoryKey } from "@/lib/merchant/businessCategories";
+
+export type DashboardSectionKey =
+  | "catalogo"
+  | "atendimento"
+  | "vendas"
+  | "historico";
+
+export interface DashboardCardModel {
+  title: string;
+  description: string;
+  hint: string;
+  href?: string;
+  ctaLabel?: string;
+}
+
+export interface DashboardModules {
+  headerNudge: string;
+  sections: Record<Exclude<DashboardSectionKey, "historico">, DashboardCardModel[]>;
+}
+
+const GENERIC: DashboardModules = {
+  headerNudge: "Módulos iniciais para seu negócio.",
+  sections: {
+    catalogo: [
+      {
+        title: "Itens",
+        description: "Produtos/serviços, variações e preços",
+        hint: "Pronto pra evoluir",
+        href: "/dashboard/modulos/itens",
+        ctaLabel: "Configurar agora",
+      },
+      {
+        title: "Categorias",
+        description: "Organize itens por grupos",
+        hint: "Em breve",
+        href: "/dashboard/modulos/categorias",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Estoque",
+        description: "Controle simples (opcional)",
+        hint: "Em breve",
+        href: "/dashboard/modulos/estoque",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Operação",
+        description: "Fluxos de atendimento do seu dia a dia",
+        hint: "Em breve",
+        href: "/dashboard/modulos/operacao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "QR Code",
+        description: "Fluxo do cliente via QR",
+        hint: "Já começou",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Configurações",
+        description: "Regras e preferências",
+        hint: "Em breve",
+        href: "/dashboard/modulos/configuracoes",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Cupons & Promoções",
+        description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/cupons",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
+const RESTAURANTE_BASE: DashboardModules = {
+  headerNudge: "Cardápio, pedidos e atendimento por mesa.",
+  sections: {
+    catalogo: [
+      {
+        title: "Cardápios (Menus)",
+        description: "Estruture seus menus e categorias",
+        hint: "Próximo",
+        href: "/dashboard/modulos/menus",
+        ctaLabel: "Configurar agora",
+      },
+      {
+        title: "Produtos",
+        description: "Pratos, bebidas e adicionais",
+        hint: "Próximo",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Configurar agora",
+      },
+      {
+        title: "Opcionais",
+        description: "Borda, tamanho, adicionais",
+        hint: "Em breve",
+        href: "/dashboard/modulos/opcionais",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Mesas",
+        description: "QR por mesa + status",
+        hint: "Agora",
+        href: "/dashboard/modulos/mesas",
+        ctaLabel: "Configurar agora",
+      },
+      {
+        title: "Pedidos (Tempo Real)",
+        description: "Fila da cozinha e status",
+        hint: "Agora",
+        href: "/dashboard/modulos/pedidos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Retirada/Entrega",
+        description: "Takeaway e delivery (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/entrega",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Cupons & Promoções",
+        description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/cupons",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
+const MERCADO_BASE: DashboardModules = {
+  headerNudge: "Catálogo, pedidos, retirada e entrega.",
+  sections: {
+    catalogo: [
+      {
+        title: "Produtos",
+        description: "Nome, descrição, preço e foto",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Categorias",
+        description: "Organize por seções (ex: Bebidas, Higiene)",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Estoque",
+        description: "Visão rápida do que está disponível",
+        hint: "Agora",
+        href: "/dashboard/modulos/estoque",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Cadastre atendentes/funcionários e controle acessos",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Pedidos",
+        description: "Recebido → Em separação → Pronto → Finalizado",
+        hint: "Agora",
+        href: "/dashboard/modulos/pedidos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Retirada",
+        description: "Pedidos para retirada (clique e retire)",
+        hint: "Agora",
+        href: "/dashboard/modulos/retirada",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Entrega",
+        description: "Pedidos para entrega e status",
+        hint: "Agora",
+        href: "/dashboard/modulos/entregas",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Cupons & Promoções",
+        description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/cupons",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
+const FARMACIA_BASE: DashboardModules = {
+  headerNudge: "Catálogo, pedidos e atendimento rápido.",
+  sections: {
+    catalogo: [
+      {
+        title: "Produtos",
+        description: "Medicamentos, higiene, perfumaria",
+        hint: "Próximo",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Configurar agora",
+      },
+      {
+        title: "Categorias",
+        description: "Organize por linha/necessidade",
+        hint: "Em breve",
+      },
+      {
+        title: "Restrições",
+        description: "Regras por item (opcional)",
+        hint: "Em breve",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Pedidos",
+        description: "Separação, status e retirada",
+        hint: "Em breve",
+        href: "/dashboard/modulos/pedidos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Entrega",
+        description: "Endereços e taxa (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/entrega",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Suporte & Contato",
+        description: "WhatsApp e canais (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/suporte",
+        ctaLabel: "Configurar agora",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Cupons & Promoções",
+        description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/cupons",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
+const CLINICA_BASE: DashboardModules = {
+  headerNudge: "Serviços, profissionais e fluxo de recepção.",
+  sections: {
+    catalogo: [
+      {
+        title: "Serviços",
+        description: "Procedimentos, especialidades e valores",
+        hint: "Próximo",
+        href: "/dashboard/modulos/servicos",
+        ctaLabel: "Configurar agora",
+      },
+      {
+        title: "Profissionais",
+        description: "Equipe e disponibilidade",
+        hint: "Em breve",
+        href: "/dashboard/modulos/profissionais",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Convênios",
+        description: "Tabelas e regras (opcional)",
+        hint: "Em breve",
+        href: "/dashboard/modulos/convenios",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Agenda",
+        description: "Horários e marcações",
+        hint: "Agora",
+        href: "/dashboard/modulos/agenda",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Recepção",
+        description: "Fila de atendimento",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Prontuário",
+        description: "Registro por paciente (opcional)",
+        hint: "Em breve",
+        href: "/dashboard/modulos/prontuario",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Cupons & Promoções",
+        description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/cupons",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
+const HOTEIS_BASE: DashboardModules = {
+  headerNudge: "Reservas, ocupação e operação do hotel.",
+  sections: {
+    catalogo: [
+      {
+        title: "Quartos",
+        description: "Tipos, preços e capacidade",
+        hint: "Agora",
+        href: "/dashboard/modulos/quartos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Planos",
+        description: "Diária, café incluso, etc.",
+        hint: "Agora",
+        href: "/dashboard/modulos/planos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Restaurante",
+        description: "Pratos, bebidas e categorias (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Serviços",
+        description: "Room service, lavanderia e extras (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/hotel_servicos",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Reservas",
+        description: "Check-in/out e status",
+        hint: "Agora",
+        href: "/dashboard/modulos/reservas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Hóspedes",
+        description: "Cadastros e preferências",
+        hint: "Agora",
+        href: "/dashboard/modulos/hospedes",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Housekeeping",
+        description: "Limpeza, manutenção e equipe (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/housekeeping",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Cadastre gerente/funcionários e controle acessos",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Cupons & Promoções",
+        description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/cupons",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
+const LOJA_BASE: DashboardModules = {
+  headerNudge: "Catálogo de produtos e vendas.",
+  sections: {
+    catalogo: [
+      {
+        title: "Produtos",
+        description: "Tamanhos, cores e preços",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Variações",
+        description: "Grade e estoque (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/variacoes",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Categorias",
+        description: "Coleções e vitrine",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Pedidos",
+        description: "Separação e status",
+        hint: "Agora",
+        href: "/dashboard/modulos/pedidos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Trocas",
+        description: "Fluxo de devolução (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/trocas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Entrega",
+        description: "Frete e prazos (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/entrega",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Cadastre gerente/funcionários e controle acessos",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Cupons & Promoções",
+        description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
+        hint: "Em breve",
+        href: "/dashboard/modulos/cupons",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
+export function getDashboardModules(
+  categoryKey: BusinessCategoryKey | string | null | undefined,
+): DashboardModules {
+  switch (categoryKey) {
+    case "restaurante":
+      return RESTAURANTE_BASE;
+    case "pizzaria":
+      return {
+        ...RESTAURANTE_BASE,
+        headerNudge: "Cardápio, pedidos e produção de pizzaria.",
+        sections: {
+          ...RESTAURANTE_BASE.sections,
+          catalogo: [
+            {
+              title: "Pizzas",
+              description: "Tamanhos, sabores e bordas",
+              hint: "Agora",
+              href: "/dashboard/modulos/produtos?preset=pizzas",
+              ctaLabel: "Cadastrar",
+            },
+            {
+              title: "Combos",
+              description: "Promoções e combos",
+              hint: "Agora",
+              href: "/dashboard/modulos/produtos?preset=combos",
+              ctaLabel: "Cadastrar",
+            },
+            {
+              title: "Adicionais",
+              description: "Bebidas e extras",
+              hint: "Agora",
+              href: "/dashboard/modulos/produtos?preset=adicionais",
+              ctaLabel: "Cadastrar",
+            },
+          ],
+          atendimento: [
+            ...RESTAURANTE_BASE.sections.atendimento,
+            {
+              title: "Equipe",
+              description: "Cadastre atendentes/gerentes e controle acessos",
+              hint: "Agora",
+              href: "/dashboard/modulos/administracao",
+              ctaLabel: "Abrir",
+            },
+          ],
+        },
+      };
+    case "bares":
+      return {
+        ...RESTAURANTE_BASE,
+        headerNudge: "Bebidas, comandas e pedidos rápidos.",
+        sections: {
+          ...RESTAURANTE_BASE.sections,
+          catalogo: [
+            {
+              title: "Bebidas",
+              description: "Drinks, cervejas e doses",
+              hint: "Agora",
+              href: "/dashboard/modulos/produtos?preset=bebidas",
+              ctaLabel: "Cadastrar",
+            },
+            {
+              title: "Petiscos",
+              description: "Cozinha e porções",
+              hint: "Agora",
+              href: "/dashboard/modulos/produtos?preset=petiscos",
+              ctaLabel: "Cadastrar",
+            },
+            {
+              title: "Combos",
+              description: "Promoções e combos",
+              hint: "Agora",
+              href: "/dashboard/modulos/produtos?preset=combos",
+              ctaLabel: "Cadastrar",
+            },
+          ],
+        },
+      };
+    case "mercado":
+      return MERCADO_BASE;
+    case "conveniencia":
+      return {
+        ...MERCADO_BASE,
+        headerNudge: "Operação rápida (24h), catálogo e pedidos.",
+      };
+    case "farmacia":
+      return FARMACIA_BASE;
+    case "clinica":
+    case "consultorio":
+      return CLINICA_BASE;
+    case "hoteis":
+      return HOTEIS_BASE;
+    case "loja_roupas":
+    case "loja_calcados":
+      return LOJA_BASE;
+    default:
+      return GENERIC;
+  }
+}
