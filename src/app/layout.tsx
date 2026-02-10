@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   title: "Qerbie — Cardápio e pedidos digitais via QR Code",
   description:
     "Plataforma digital para restaurantes e comércios locais. Cardápio, pedidos e filas via QR Code.",
+  verification: {
+    google: "x-lzVtrLnP9adgFUUThENzUtroY1TF7rT-hChmUWnxA",
+  },
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
