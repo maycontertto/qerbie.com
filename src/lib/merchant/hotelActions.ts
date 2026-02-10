@@ -35,7 +35,7 @@ async function requireHotelCatalogPermission() {
       ? hasMemberPermission(membership.role, membership.permissions, "dashboard_products")
       : false);
   if (!canCatalog) redirect("/dashboard");
-  return { supabase, merchant };
+  return { supabase, merchant, user, isOwner };
 }
 
 async function requireHotelOpsPermission() {
@@ -184,21 +184,39 @@ export async function updateHotelRatePlan(formData: FormData): Promise<void> {
 // ── Serviços ────────────────────────────────────────────────
 
 export async function createHotelService(formData: FormData): Promise<void> {
-  const { supabase, merchant } = await requireHotelCatalogPermission();
+  const { supabase, merchant, isOwner } = await requireHotelCatalogPermission();
   const name = String(formData.get("name") ?? "").trim();
   const descriptionRaw = String(formData.get("description") ?? "").trim();
   const description = descriptionRaw ? descriptionRaw.slice(0, 500) : null;
   const price = moneyToNumber(formData.get("price"));
 
+  const trackStockRaw = formData.get("track_stock") === "on";
+  const stockQuantity = clampInt(formData.get("stock_quantity"), 0, 1_000_000) ?? 0;
+
   if (!name || name.length < 2) redirect("/dashboard/modulos/hotel_servicos?error=invalid");
 
-  const { error } = await supabase.from("merchant_hotel_services").insert({
+  const insertRow: {
+    merchant_id: string;
+    name: string;
+    description: string | null;
+    price: number | null;
+    is_active: boolean;
+    track_stock?: boolean;
+    stock_quantity?: number;
+  } = {
     merchant_id: merchant.id,
     name: name.slice(0, 120),
     description,
     price,
     is_active: true,
-  });
+  };
+
+  if (isOwner) {
+    insertRow.track_stock = trackStockRaw;
+    insertRow.stock_quantity = stockQuantity;
+  }
+
+  const { error } = await supabase.from("merchant_hotel_services").insert(insertRow);
 
   if (error) {
     console.error("createHotelService failed", { code: error.code, message: error.message });
@@ -208,7 +226,7 @@ export async function createHotelService(formData: FormData): Promise<void> {
 }
 
 export async function updateHotelService(formData: FormData): Promise<void> {
-  const { supabase, merchant } = await requireHotelCatalogPermission();
+  const { supabase, merchant, isOwner } = await requireHotelCatalogPermission();
   const id = String(formData.get("id") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const descriptionRaw = String(formData.get("description") ?? "").trim();
@@ -216,14 +234,34 @@ export async function updateHotelService(formData: FormData): Promise<void> {
   const price = moneyToNumber(formData.get("price"));
   const isActive = formData.get("is_active") === "on";
 
+  const trackStockRaw = formData.get("track_stock") === "on";
+  const stockQuantity = clampInt(formData.get("stock_quantity"), 0, 1_000_000) ?? 0;
+
   if (!id) redirect("/dashboard/modulos/hotel_servicos?error=invalid");
 
-  const update: { name?: string; description?: string | null; price?: number | null; is_active?: boolean } = {
+  const update: {
+    name?: string;
+    description?: string | null;
+    price?: number | null;
+    is_active?: boolean;
+    track_stock?: boolean;
+    stock_quantity?: number;
+  } = {
     is_active: isActive,
   };
   if (name) update.name = name.slice(0, 120);
   update.description = description;
   if (price != null) update.price = price;
+
+  if (isOwner) {
+    if (!isActive) {
+      update.track_stock = false;
+      update.stock_quantity = 0;
+    } else {
+      update.track_stock = trackStockRaw;
+      update.stock_quantity = stockQuantity;
+    }
+  }
 
   const { error } = await supabase
     .from("merchant_hotel_services")

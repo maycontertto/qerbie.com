@@ -1119,6 +1119,8 @@ export interface Database {
           description: string | null;
           price: number | null;
           is_active: boolean;
+          track_stock: boolean;
+          stock_quantity: number;
           created_at: string;
           updated_at: string;
         };
@@ -1129,6 +1131,8 @@ export interface Database {
           description?: string | null;
           price?: number | null;
           is_active?: boolean;
+          track_stock?: boolean;
+          stock_quantity?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -1139,6 +1143,8 @@ export interface Database {
           description?: string | null;
           price?: number | null;
           is_active?: boolean;
+          track_stock?: boolean;
+          stock_quantity?: number;
           created_at?: string;
           updated_at?: string;
         };

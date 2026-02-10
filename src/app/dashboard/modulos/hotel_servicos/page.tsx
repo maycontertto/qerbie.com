@@ -45,7 +45,7 @@ export default async function HotelServicosModulePage({
   const supabase = await createClient();
   const { data: services } = await supabase
     .from("merchant_hotel_services")
-    .select("id, name, description, price, is_active, updated_at")
+    .select("id, name, description, price, is_active, updated_at, track_stock, stock_quantity")
     .eq("merchant_id", merchant.id)
     .order("is_active", { ascending: false })
     .order("updated_at", { ascending: false });
@@ -117,6 +117,36 @@ export default async function HotelServicosModulePage({
                 placeholder="Descrição (opcional)"
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
+
+              {isOwner ? (
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    Estoque (opcional)
+                  </p>
+                  <div className="mt-2 grid gap-3">
+                    <label className="flex items-center justify-between gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                      <span>Controlar estoque deste serviço</span>
+                      <input name="track_stock" type="checkbox" className="h-4 w-4" />
+                    </label>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                        Quantidade
+                      </label>
+                      <input
+                        name="stock_quantity"
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        placeholder="Ex: 20"
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </div>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Apenas controle interno do dono. Não impede vendas se estiver desatualizado.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
               <button
                 type="submit"
                 className="w-full rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -135,7 +165,14 @@ export default async function HotelServicosModulePage({
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{s.name}</h3>
+                      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                        {s.name}
+                        {Boolean((s as { track_stock?: boolean }).track_stock) ? (
+                          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                            {` • Qtd: ${Number((s as { stock_quantity?: number }).stock_quantity ?? 0)}`}
+                          </span>
+                        ) : null}
+                      </h3>
                       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                         {s.price != null ? formatBrl(Number(s.price)) : "Sem preço"}
                       </p>
@@ -183,6 +220,43 @@ export default async function HotelServicosModulePage({
                       placeholder="Descrição (opcional)"
                       className="sm:col-span-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
+
+                    {isOwner ? (
+                      <div className="sm:col-span-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                          Estoque (opcional)
+                        </p>
+                        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                          <label className="flex items-center justify-between gap-3 text-sm text-zinc-700 dark:text-zinc-300">
+                            <span>Controlar estoque</span>
+                            <input
+                              name="track_stock"
+                              type="checkbox"
+                              defaultChecked={Boolean((s as { track_stock?: boolean }).track_stock)}
+                              className="h-4 w-4"
+                            />
+                          </label>
+                          <div>
+                            <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                              Quantidade
+                            </label>
+                            <input
+                              name="stock_quantity"
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              defaultValue={String(
+                                Number((s as { stock_quantity?: number }).stock_quantity ?? 0),
+                              )}
+                              className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                            />
+                          </div>
+                        </div>
+                        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                          Se desativar o serviço, ele é removido do controle de estoque.
+                        </p>
+                      </div>
+                    ) : null}
                     <div className="sm:col-span-2 flex justify-end">
                       <button
                         type="submit"

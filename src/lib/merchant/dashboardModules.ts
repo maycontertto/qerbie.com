@@ -19,6 +19,31 @@ export interface DashboardModules {
   sections: Record<Exclude<DashboardSectionKey, "historico">, DashboardCardModel[]>;
 }
 
+const STOCK_CARD: DashboardCardModel = {
+  title: "Estoque",
+  description: "Controle simples (opcional)",
+  hint: "Agora",
+  href: "/dashboard/modulos/estoque",
+  ctaLabel: "Abrir",
+};
+
+function withStockInCatalog(modules: DashboardModules): DashboardModules {
+  const catalog = modules.sections.catalogo ?? [];
+  const alreadyHasStock = catalog.some(
+    (card) => card.href === STOCK_CARD.href || card.title.toLowerCase() === "estoque",
+  );
+
+  if (alreadyHasStock) return modules;
+
+  return {
+    ...modules,
+    sections: {
+      ...modules.sections,
+      catalogo: [...catalog, STOCK_CARD],
+    },
+  };
+}
+
 const GENERIC: DashboardModules = {
   headerNudge: "Módulos iniciais para seu negócio.",
   sections: {
@@ -638,11 +663,14 @@ const LOJA_BASE: DashboardModules = {
 export function getDashboardModules(
   categoryKey: BusinessCategoryKey | string | null | undefined,
 ): DashboardModules {
+  let modules: DashboardModules;
+
   switch (categoryKey) {
     case "restaurante":
-      return RESTAURANTE_BASE;
+      modules = RESTAURANTE_BASE;
+      break;
     case "pizzaria":
-      return {
+      modules = {
         ...RESTAURANTE_BASE,
         headerNudge: "Cardápio, pedidos e produção de pizzaria.",
         sections: {
@@ -682,8 +710,9 @@ export function getDashboardModules(
           ],
         },
       };
+      break;
     case "bares":
-      return {
+      modules = {
         ...RESTAURANTE_BASE,
         headerNudge: "Bebidas, comandas e pedidos rápidos.",
         sections: {
@@ -713,24 +742,34 @@ export function getDashboardModules(
           ],
         },
       };
+      break;
     case "mercado":
-      return MERCADO_BASE;
+      modules = MERCADO_BASE;
+      break;
     case "conveniencia":
-      return {
+      modules = {
         ...MERCADO_BASE,
         headerNudge: "Operação rápida (24h), catálogo e pedidos.",
       };
+      break;
     case "farmacia":
-      return FARMACIA_BASE;
+      modules = FARMACIA_BASE;
+      break;
     case "clinica":
     case "consultorio":
-      return CLINICA_BASE;
+      modules = CLINICA_BASE;
+      break;
     case "hoteis":
-      return HOTEIS_BASE;
+      modules = HOTEIS_BASE;
+      break;
     case "loja_roupas":
     case "loja_calcados":
-      return LOJA_BASE;
+      modules = LOJA_BASE;
+      break;
     default:
-      return GENERIC;
+      modules = GENERIC;
+      break;
   }
+
+  return withStockInCatalog(modules);
 }
