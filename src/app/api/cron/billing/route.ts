@@ -12,7 +12,14 @@ export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   const auth = request.headers.get("authorization") ?? "";
   const secretFromQuery = url.searchParams.get("secret") ?? "";
-  const ok = Boolean(secret) && (auth === `Bearer ${secret}` || secretFromQuery === secret);
+  const isVercelCron = process.env.VERCEL === "1" && request.headers.get("x-vercel-cron") === "1";
+
+  // Security model:
+  // - If CRON_SECRET is set: require it (manual/external cron).
+  // - If CRON_SECRET is NOT set: allow Vercel Cron Jobs (scheduled invocation).
+  const ok = secret
+    ? auth === `Bearer ${secret}` || secretFromQuery === secret
+    : isVercelCron;
 
   if (!ok) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -90,7 +97,7 @@ export async function GET(request: Request) {
         s.merchant_id,
         "due_in_3",
         "Qerbie: vencimento em 3 dias",
-        "Sua assinatura do Qerbie vence em 3 dias. Acesse o painel e clique em Pagamento para gerar o Pix.",
+        "Sua assinatura do Qerbie vence em 3 dias. Acesse o painel e clique em Pagamento para gerar o link de pagamento.",
       );
     }
 
@@ -99,7 +106,7 @@ export async function GET(request: Request) {
         s.merchant_id,
         "due_in_1",
         "Qerbie: vencimento amanhã",
-        "Sua assinatura do Qerbie vence amanhã. Acesse o painel e clique em Pagamento para gerar o Pix.",
+        "Sua assinatura do Qerbie vence amanhã. Acesse o painel e clique em Pagamento para gerar o link de pagamento.",
       );
     }
 
@@ -108,7 +115,7 @@ export async function GET(request: Request) {
         s.merchant_id,
         "due_today",
         "Qerbie: assinatura vence hoje",
-        "Sua assinatura do Qerbie vence hoje. Acesse o painel e clique em Pagamento para gerar o Pix.",
+        "Sua assinatura do Qerbie vence hoje. Acesse o painel e clique em Pagamento para gerar o link de pagamento.",
       );
     }
 

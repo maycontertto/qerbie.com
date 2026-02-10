@@ -14,10 +14,10 @@ function formatDatePtBr(date: Date): string {
 export default async function PagamentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pay?: string; error?: string; status?: string }>;
+  searchParams: Promise<{ pay?: string; mode?: string; error?: string; status?: string }>;
 }) {
   const { supabase, user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
-  const { pay, error, status } = await searchParams;
+  const { pay, mode, error, status } = await searchParams;
 
   const isOwner = user.id === merchant.owner_user_id;
 
@@ -91,6 +91,15 @@ export default async function PagamentoPage({
             </div>
           )}
 
+          {mode === "fallback" ? (
+            <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
+              Você está usando um link fixo do Mercado Pago. Ele funciona para o cliente escolher Pix/cartão/boleto,
+              mas não libera automaticamente no sistema. Para liberar automático, configure
+              <span className="font-semibold"> APP_URL</span> e
+              <span className="font-semibold"> MERCADOPAGO_ACCESS_TOKEN</span>.
+            </div>
+          ) : null}
+
           <div className="mt-6 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between gap-3">
               <span className="text-zinc-600 dark:text-zinc-300">Status</span>
@@ -141,7 +150,7 @@ export default async function PagamentoPage({
                   type="submit"
                   className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
                 >
-                  Gerar cobrança Pix
+                  Gerar link de pagamento
                 </button>
               </form>
             ) : (

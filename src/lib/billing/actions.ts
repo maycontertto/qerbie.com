@@ -45,7 +45,8 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
     .maybeSingle();
 
   if (existing?.payment_url) {
-    redirect(`/dashboard/pagamento?pay=${encodeURIComponent(existing.payment_url)}`);
+    const mode = existing.provider_preference_id ? "mercadopago" : "fallback";
+    redirect(`/dashboard/pagamento?pay=${encodeURIComponent(existing.payment_url)}&mode=${mode}`);
   }
 
   const trialEndsAt = sub?.trial_ends_at ? new Date(sub.trial_ends_at) : addDays(new Date(merchant.created_at), BILLING_PLAN.trialDays);
@@ -80,7 +81,7 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
         console.error("create invoice failed", invErr);
         redirect("/dashboard/pagamento?error=invoice_create_failed");
       }
-      redirect(`/dashboard/pagamento?pay=${encodeURIComponent(fallbackPaymentUrl)}`);
+      redirect(`/dashboard/pagamento?pay=${encodeURIComponent(fallbackPaymentUrl)}&mode=fallback`);
     }
 
     redirect("/dashboard/pagamento?error=missing_billing_env");
@@ -119,7 +120,7 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
       redirect("/dashboard/pagamento?error=invoice_create_failed");
     }
 
-    redirect(`/dashboard/pagamento?pay=${encodeURIComponent(paymentUrl)}`);
+    redirect(`/dashboard/pagamento?pay=${encodeURIComponent(paymentUrl)}&mode=mercadopago`);
   } catch (e) {
     console.error("mercadopago preference error", e);
 
@@ -141,7 +142,7 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
         redirect("/dashboard/pagamento?error=invoice_create_failed");
       }
 
-      redirect(`/dashboard/pagamento?pay=${encodeURIComponent(fallbackPaymentUrl)}`);
+      redirect(`/dashboard/pagamento?pay=${encodeURIComponent(fallbackPaymentUrl)}&mode=fallback`);
     }
 
     redirect("/dashboard/pagamento?error=payment_provider_failed");
