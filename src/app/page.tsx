@@ -33,15 +33,16 @@ export default async function HomePage() {
           </div>
 
           <h1 className="mt-5 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-            Cardápio e pedidos via QR Code.
+            Plataforma de atendimento com QR Code.
             <span className="block text-zinc-600 dark:text-zinc-300">
-              Mais rápido para o cliente, mais controle para o seu negócio.
+              Cardápio digital, pedidos e filas — tudo em um painel simples.
             </span>
           </h1>
 
           <p className="mt-5 text-lg text-zinc-600 dark:text-zinc-400">
-            Com o Qerbie você organiza o catálogo, atende por mesa/atendimento rápido,
-            recebe pedidos em tempo real e acompanha filas — tudo em um painel simples.
+            O Qerbie é uma plataforma de atendimento para restaurantes e comércios locais.
+            Você organiza o catálogo, atende por mesa/atendimento rápido, recebe pedidos em tempo real
+            e acompanha filas.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">

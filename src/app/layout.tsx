@@ -14,9 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Qerbie — Cardápio e pedidos digitais via QR Code",
+  metadataBase: new URL(process.env.APP_URL ?? "https://www.qerbie.com"),
+  alternates: {
+    canonical: "/",
+  },
+  title: "Qerbie — Plataforma de atendimento com QR Code",
   description:
-    "Plataforma digital para restaurantes e comércios locais. Cardápio, pedidos e filas via QR Code.",
+    "Qerbie é uma plataforma de atendimento para restaurantes e comércios locais: cardápio digital, pedidos e filas via QR Code.",
   verification: {
     google: "x-lzVtrLnP9adgFUUThENzUtroY1TF7rT-hChmUWnxA",
   },
@@ -40,6 +44,14 @@ export const metadata: Metadata = {
     capable: true,
     title: "Qerbie",
     statusBarStyle: "black-translucent",
+  },
+  openGraph: {
+    type: "website",
+    title: "Qerbie — Plataforma de atendimento com QR Code",
+    description:
+      "Plataforma de atendimento para restaurantes e comércios locais: cardápio digital, pedidos e filas via QR Code.",
+    url: "/",
+    siteName: "Qerbie",
   },
 };
 
