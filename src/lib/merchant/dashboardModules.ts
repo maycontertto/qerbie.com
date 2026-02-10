@@ -123,6 +123,13 @@ const RESTAURANTE_BASE: DashboardModules = {
     ],
     atendimento: [
       {
+        title: "QR Code",
+        description: "Mostre um QR para o cliente escanear",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
+      {
         title: "Mesas",
         description: "QR por mesa + status",
         hint: "Agora",
@@ -206,6 +213,13 @@ const MERCADO_BASE: DashboardModules = {
     ],
     atendimento: [
       {
+        title: "QR Code",
+        description: "Mostre um QR para o cliente escanear",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
+      {
         title: "Pedidos",
         description: "Recebido → Em separação → Pronto → Finalizado",
         hint: "Agora",
@@ -277,6 +291,13 @@ const FARMACIA_BASE: DashboardModules = {
       },
     ],
     atendimento: [
+      {
+        title: "QR Code",
+        description: "Mostre um QR para o cliente escanear",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
       {
         title: "Pedidos",
         description: "Separação, status e retirada",
@@ -353,6 +374,13 @@ const CLINICA_BASE: DashboardModules = {
       },
     ],
     atendimento: [
+      {
+        title: "QR Code",
+        description: "Mostre um QR para o cliente escanear",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
       {
         title: "Agenda",
         description: "Horários e marcações",
@@ -437,6 +465,13 @@ const HOTEIS_BASE: DashboardModules = {
     ],
     atendimento: [
       {
+        title: "QR Code",
+        description: "Mostre um QR para o cliente escanear",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
+      {
         title: "Reservas",
         description: "Check-in/out e status",
         hint: "Agora",
@@ -519,6 +554,13 @@ const LOJA_BASE: DashboardModules = {
       },
     ],
     atendimento: [
+      {
+        title: "QR Code",
+        description: "Mostre um QR para o cliente escanear",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
       {
         title: "Pedidos",
         description: "Separação e status",
