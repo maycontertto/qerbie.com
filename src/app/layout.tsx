@@ -21,6 +21,14 @@ export const metadata: Metadata = {
   title: "Qerbie — Plataforma de atendimento com QR Code",
   description:
     "Qerbie é uma plataforma de atendimento para restaurantes e comércios locais: cardápio digital, pedidos e filas via QR Code.",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
   verification: {
     google: "x-lzVtrLnP9adgFUUThENzUtroY1TF7rT-hChmUWnxA",
   },
