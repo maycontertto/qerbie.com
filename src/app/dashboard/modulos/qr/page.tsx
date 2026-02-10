@@ -6,6 +6,7 @@ import {
   cancelMerchantTable,
   createMerchantTable,
   createQuickServiceTable,
+  deleteMerchantTable,
 } from "@/lib/merchant/tableActions";
 import { TableQrPanel } from "@/app/dashboard/modulos/mesas/TableQrPanel";
 
@@ -67,6 +68,8 @@ export default async function QrModulePage({
       ? "Falha ao criar atendimento. Tente mudar o nome."
       : error === "table_cancel_failed"
         ? "Falha ao cancelar atendimento."
+        : error === "table_delete_failed"
+          ? "Falha ao remover atendimento. Apenas o dono pode remover e ele precisa estar cancelado (inativo)."
         : error === "invalid_table"
           ? "Atendimento inválido."
           : null;
@@ -210,6 +213,20 @@ export default async function QrModulePage({
                                 className="text-xs font-semibold text-zinc-600 hover:underline dark:text-zinc-300"
                               >
                                 Cancelar
+                              </button>
+                            </form>
+                          ) : null}
+
+                          {!t.is_active && isOwner ? (
+                            <form action={deleteMerchantTable}>
+                              <input type="hidden" name="return_to" value="/dashboard/modulos/qr" />
+                              <input type="hidden" name="table_id" value={t.id} />
+                              <button
+                                type="submit"
+                                className="text-xs font-semibold text-red-600 hover:underline dark:text-red-400"
+                                title="Remove da lista. Só funciona para itens inativos."
+                              >
+                                Remover
                               </button>
                             </form>
                           ) : null}

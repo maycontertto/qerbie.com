@@ -21,7 +21,13 @@ async function requireTablesAccess() {
 
 function safeReturnTo(raw: FormDataEntryValue | null): string {
   const v = typeof raw === "string" ? raw : "";
-  if (v === "/dashboard/modulos/mesas" || v === "/dashboard/modulos/produtos") return v;
+  if (
+    v === "/dashboard/modulos/mesas" ||
+    v === "/dashboard/modulos/qr" ||
+    v === "/dashboard/modulos/produtos"
+  ) {
+    return v;
+  }
   return "/dashboard/modulos/produtos";
 }
 
@@ -186,6 +192,31 @@ export async function cancelMerchantTable(formData: FormData): Promise<void> {
 
   if (error) {
     redirect(`${returnTo}?error=table_cancel_failed`);
+  }
+
+  redirect(returnTo);
+}
+
+export async function deleteMerchantTable(formData: FormData): Promise<void> {
+  const tableId = (formData.get("table_id") as string | null)?.trim() ?? "";
+  const returnTo = safeReturnTo(formData.get("return_to"));
+  if (!tableId) {
+    redirect(`${returnTo}?error=invalid_table`);
+  }
+
+  const { supabase, merchant } = await requireTablesAccess();
+
+  // Safety: only allow deletion after it's been cancelled (inactive).
+  const { error } = await supabase
+    .from("merchant_tables")
+    .delete()
+    .eq("merchant_id", merchant.id)
+    .eq("id", tableId)
+    .eq("is_active", false);
+
+  if (error) {
+    // If RLS blocks delete for non-owner, or if row is still active.
+    redirect(`${returnTo}?error=table_delete_failed`);
   }
 
   redirect(returnTo);
