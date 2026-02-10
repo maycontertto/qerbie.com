@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BILLING_PLAN } from "@/lib/billing/constants";
+import { sendEmailWithResend } from "@/lib/email/resend";
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient();
   const now = new Date();
+  const nowIso = now.toISOString();
 
   // Fetch subscriptions and merchants email
   const { data: subs, error } = await admin
@@ -33,6 +35,43 @@ export async function GET(request: Request) {
 
   let suspended = 0;
   let pastDue = 0;
+  let emailed = 0;
+
+  const maybeSendNotice = async (merchantId: string, stage: string, subject: string, text: string) => {
+    const { data: current } = await admin
+      .from("merchant_subscriptions")
+      .select("last_notice_stage,last_notice_at")
+      .eq("merchant_id", merchantId)
+      .maybeSingle();
+
+    const lastStage = current?.last_notice_stage ?? null;
+    const lastAt = current?.last_notice_at ? new Date(current.last_notice_at) : null;
+
+    if (lastStage === stage && lastAt && now.getTime() - lastAt.getTime() < 20 * 60 * 60 * 1000) {
+      return;
+    }
+
+    const { data: merchant } = await admin
+      .from("merchants")
+      .select("id,name,owner_user_id")
+      .eq("id", merchantId)
+      .maybeSingle();
+
+    if (!merchant?.owner_user_id) return;
+
+    const { data: owner } = await admin.auth.admin.getUserById(merchant.owner_user_id);
+    const email = owner?.user?.email ?? null;
+    if (!email) return;
+
+    const out = await sendEmailWithResend({ to: email, subject, text });
+    if (out.ok) {
+      emailed++;
+      await admin
+        .from("merchant_subscriptions")
+        .update({ last_notice_stage: stage, last_notice_at: nowIso })
+        .eq("merchant_id", merchantId);
+    }
+  };
 
   for (const s of subs ?? []) {
     const trialEndsAt = new Date(s.trial_ends_at);
@@ -41,6 +80,37 @@ export async function GET(request: Request) {
 
     const shouldPastDue = now >= periodEnd;
     const shouldSuspend = now > graceUntil;
+
+    // Notices (optional): 3 days before, 1 day before, and on due day.
+    const msDay = 24 * 60 * 60 * 1000;
+    const daysToPeriodEnd = Math.ceil((periodEnd.getTime() - now.getTime()) / msDay);
+
+    if (daysToPeriodEnd === 3) {
+      await maybeSendNotice(
+        s.merchant_id,
+        "due_in_3",
+        "Qerbie: vencimento em 3 dias",
+        "Sua assinatura do Qerbie vence em 3 dias. Acesse o painel e clique em Pagamento para gerar o Pix.",
+      );
+    }
+
+    if (daysToPeriodEnd === 1) {
+      await maybeSendNotice(
+        s.merchant_id,
+        "due_in_1",
+        "Qerbie: vencimento amanhã",
+        "Sua assinatura do Qerbie vence amanhã. Acesse o painel e clique em Pagamento para gerar o Pix.",
+      );
+    }
+
+    if (daysToPeriodEnd === 0) {
+      await maybeSendNotice(
+        s.merchant_id,
+        "due_today",
+        "Qerbie: assinatura vence hoje",
+        "Sua assinatura do Qerbie vence hoje. Acesse o painel e clique em Pagamento para gerar o Pix.",
+      );
+    }
 
     if (shouldSuspend && s.status !== "suspended") {
       await admin
@@ -64,5 +134,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, suspended, pastDue, checked: subs?.length ?? 0 });
+  return NextResponse.json({ ok: true, suspended, pastDue, emailed, checked: subs?.length ?? 0 });
 }
