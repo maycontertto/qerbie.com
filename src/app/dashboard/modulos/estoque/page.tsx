@@ -11,11 +11,7 @@ export default async function EstoqueModulePage({
   const { saved, error } = await searchParams;
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
-  const canProducts =
-    isOwner ||
-    (membership
-      ? hasMemberPermission(membership.role, membership.permissions, "dashboard_products")
-      : false);
+  const canProducts = isOwner;
 
   if (!canProducts) {
     return (
@@ -32,7 +28,7 @@ export default async function EstoqueModulePage({
               Estoque
             </h1>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Você não tem permissão para acessar este módulo.
+              Apenas o dono do negócio pode acessar este módulo.
             </p>
           </div>
         </main>
@@ -46,6 +42,7 @@ export default async function EstoqueModulePage({
     .from("products")
     .select("id, name, is_active, track_stock, stock_quantity, updated_at")
     .eq("merchant_id", merchant.id)
+    .eq("track_stock", true)
     .order("is_active", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(200);
@@ -173,7 +170,8 @@ export default async function EstoqueModulePage({
             })
           ) : (
             <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-              Nenhum produto cadastrado ainda. Comece em <Link className="underline" href="/dashboard/modulos/produtos">Produtos</Link>.
+              Nenhum item com controle de estoque.
+              Ative em <Link className="underline" href="/dashboard/modulos/produtos">Produtos</Link> marcando “Controlar estoque”.
             </div>
           )}
         </div>

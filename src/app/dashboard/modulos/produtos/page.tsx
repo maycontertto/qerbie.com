@@ -207,7 +207,7 @@ export default async function ProdutosModulePage({
 
   let productsQuery = supabase
     .from("products")
-    .select("id, name, price, image_url, is_active")
+    .select("id, name, price, image_url, is_active, track_stock, stock_quantity")
     .eq("merchant_id", merchant.id)
     .eq("menu_id", menu.id);
 
@@ -626,6 +626,55 @@ export default async function ProdutosModulePage({
                 </div>
 
                 <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    Restrições (farmácia)
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                      <input name="requires_prescription" type="checkbox" className="h-4 w-4" />
+                      Exige receita
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                      <input name="requires_document" type="checkbox" className="h-4 w-4" />
+                      Exige documento
+                    </label>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Se marcado, o cliente verá um aviso no cardápio (não bloqueia pedidos).
+                  </p>
+                </div>
+
+                {isOwner ? (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                      Estoque (opcional)
+                    </p>
+                    <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                      <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        <input name="track_stock" type="checkbox" className="h-4 w-4" />
+                        Controlar estoque deste item
+                      </label>
+                      <div>
+                        <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                          Quantidade
+                        </label>
+                        <input
+                          name="stock_quantity"
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          placeholder="Ex: 20"
+                          className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                        />
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      Apenas controle interno do dono. Não impede vendas se estiver desatualizado.
+                    </p>
+                  </div>
+                ) : null}
+
+                <div className="sm:col-span-2">
                   <button
                     type="submit"
                     className="w-full rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -681,6 +730,9 @@ export default async function ProdutosModulePage({
                           </a>
                           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                             R$ {Number(p.price ?? 0).toFixed(2)} • {p.is_active ? "Ativo" : "Inativo"}
+                            {Boolean((p as { track_stock?: boolean }).track_stock)
+                              ? ` • Qtd: ${Number((p as { stock_quantity?: number }).stock_quantity ?? 0)}`
+                              : ""}
                           </p>
                         </div>
                         {p.image_url ? (

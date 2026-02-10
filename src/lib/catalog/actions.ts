@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
+import type { Database } from "@/lib/supabase/database.types";
 import { getSuggestedCategories } from "@/lib/catalog/templates";
 
 function getRedirectBase(formData: FormData): "/dashboard/modulos/produtos" | "/dashboard/modulos/servicos" {
@@ -29,6 +30,19 @@ function parsePriceBR(input: string): number {
   const value = Number(normalized);
   if (!Number.isFinite(value) || value < 0) return 0;
   return Math.round(value * 100) / 100;
+}
+
+function clampIntFromForm(
+  value: FormDataEntryValue | null,
+  min: number,
+  max: number,
+): number | null {
+  if (value == null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const n = Math.trunc(Number(s));
+  if (!Number.isFinite(n)) return null;
+  return Math.max(min, Math.min(max, n));
 }
 
 export async function createMenuCategory(formData: FormData): Promise<void> {
@@ -111,10 +125,14 @@ export async function createProduct(formData: FormData): Promise<void> {
   const imageFile = formData.get("image_file");
   const menuId = (formData.get("menu_id") as string | null)?.trim() ?? "";
   const categoryId = (formData.get("category_id") as string | null)?.trim() ?? "";
+  const requiresPrescription = (formData.get("requires_prescription") as string | null) === "on";
+  const requiresDocument = (formData.get("requires_document") as string | null) === "on";
+  const trackStock = (formData.get("track_stock") as string | null) === "on";
+  const stockQty = clampIntFromForm(formData.get("stock_quantity"), 0, 1_000_000);
 
   const redirectBase = getRedirectBase(formData);
 
-  const { supabase, merchant } = await requireProductsAccess();
+  const { supabase, merchant, isOwner } = await requireProductsAccess();
 
   if (!menuId || name.length < 2) {
     redirect(`${redirectBase}?error=invalid_product`);
@@ -122,20 +140,30 @@ export async function createProduct(formData: FormData): Promise<void> {
 
   const price = parsePriceBR(priceRaw || "0");
 
+  const insertRow: Database["public"]["Tables"]["products"]["Insert"] = {
+    merchant_id: merchant.id,
+    menu_id: menuId,
+    category_id: categoryId || null,
+    name,
+    description: description || null,
+    image_url: imageUrl || null,
+    price,
+    is_active: true,
+    is_featured: false,
+    requires_prescription: requiresPrescription,
+    requires_document: requiresDocument,
+    display_order: 0,
+  };
+
+  // Estoque é controle apenas do dono.
+  if (isOwner) {
+    insertRow.track_stock = trackStock;
+    insertRow.stock_quantity = trackStock ? (stockQty ?? 0) : 0;
+  }
+
   const { data, error } = await supabase
     .from("products")
-    .insert({
-      merchant_id: merchant.id,
-      menu_id: menuId,
-      category_id: categoryId || null,
-      name,
-      description: description || null,
-      image_url: imageUrl || null,
-      price,
-      is_active: true,
-      is_featured: false,
-      display_order: 0,
-    })
+    .insert(insertRow)
     .select("id")
     .maybeSingle();
 
@@ -194,10 +222,14 @@ export async function updateProduct(formData: FormData): Promise<void> {
   const categoryId = (formData.get("category_id") as string | null)?.trim() ?? "";
   const isActive = (formData.get("is_active") as string | null) === "on";
   const isFeatured = (formData.get("is_featured") as string | null) === "on";
+  const requiresPrescription = (formData.get("requires_prescription") as string | null) === "on";
+  const requiresDocument = (formData.get("requires_document") as string | null) === "on";
+  const trackStock = (formData.get("track_stock") as string | null) === "on";
+  const stockQty = clampIntFromForm(formData.get("stock_quantity"), 0, 1_000_000);
 
   const redirectBase = getRedirectBase(formData);
 
-  const { supabase, merchant } = await requireProductsAccess();
+  const { supabase, merchant, isOwner } = await requireProductsAccess();
 
   if (!productId || name.length < 2) {
     redirect(`${redirectBase}?error=invalid_product`);
@@ -205,17 +237,31 @@ export async function updateProduct(formData: FormData): Promise<void> {
 
   const price = parsePriceBR(priceRaw || "0");
 
+  const updateRow: Database["public"]["Tables"]["products"]["Update"] = {
+    name,
+    description: description || null,
+    price,
+    image_url: imageUrl || null,
+    category_id: categoryId || null,
+    is_active: isActive,
+    is_featured: isFeatured,
+    requires_prescription: requiresPrescription,
+    requires_document: requiresDocument,
+  };
+
+  // Se o item for desativado, remove do estoque automaticamente.
+  if (!isActive) {
+    updateRow.track_stock = false;
+    updateRow.stock_quantity = 0;
+  } else if (isOwner) {
+    // Estoque só pode ser alterado pelo dono.
+    updateRow.track_stock = trackStock;
+    updateRow.stock_quantity = trackStock ? (stockQty ?? 0) : 0;
+  }
+
   const { error } = await supabase
     .from("products")
-    .update({
-      name,
-      description: description || null,
-      price,
-      image_url: imageUrl || null,
-      category_id: categoryId || null,
-      is_active: isActive,
-      is_featured: isFeatured,
-    })
+    .update(updateRow)
     .eq("id", productId)
     .eq("merchant_id", merchant.id);
 

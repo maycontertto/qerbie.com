@@ -86,7 +86,16 @@ export type CustomerI18nKey =
   | "status_finished"
   | "status_cancelled"
   | "status"
-  | "obs";
+  | "obs"
+  | "restriction_title"
+  | "restriction_hint"
+  | "restriction_badge_prescription"
+  | "restriction_badge_document"
+  | "restriction_ack_prescription"
+  | "restriction_ack_document"
+  | "restriction_ack_required"
+  | "restriction_ack_required_prescription"
+  | "restriction_ack_required_document";
 
 const dict: Record<CustomerLanguage, Record<CustomerI18nKey, string>> = {
   pt: {
@@ -163,6 +172,18 @@ const dict: Record<CustomerLanguage, Record<CustomerI18nKey, string>> = {
     status_cancelled: "Cancelado",
     status: "Status",
     obs: "Obs",
+    restriction_title: "Medicamentos com cuidados especiais",
+    restriction_hint:
+      "Alguns itens exigem receita e/ou documento. Consulte o estabelecimento para orientações.",
+    restriction_badge_prescription: "Receita",
+    restriction_badge_document: "Documento",
+    restriction_ack_prescription: "Confirmo que vou apresentar a receita, se necessário.",
+    restriction_ack_document: "Confirmo que vou apresentar o documento, se necessário.",
+    restriction_ack_required: "Confirme as restrições para continuar.",
+    restriction_ack_required_prescription:
+      "Este pedido tem itens que exigem receita. Confirme para continuar.",
+    restriction_ack_required_document:
+      "Este pedido tem itens que exigem documento. Confirme para continuar.",
   },
   en: {
     language: "Language",
@@ -238,6 +259,18 @@ const dict: Record<CustomerLanguage, Record<CustomerI18nKey, string>> = {
     status_cancelled: "Cancelled",
     status: "Status",
     obs: "Note",
+    restriction_title: "Special-care medicines",
+    restriction_hint:
+      "Some items require a prescription and/or an ID/document. Please check with the store for guidance.",
+    restriction_badge_prescription: "Prescription",
+    restriction_badge_document: "Document",
+    restriction_ack_prescription: "I confirm I will present the prescription, if required.",
+    restriction_ack_document: "I confirm I will present the document/ID, if required.",
+    restriction_ack_required: "Please confirm the restrictions to continue.",
+    restriction_ack_required_prescription:
+      "This order includes items that require a prescription. Please confirm to continue.",
+    restriction_ack_required_document:
+      "This order includes items that require a document/ID. Please confirm to continue.",
   },
   es: {
     language: "Idioma",
@@ -313,6 +346,18 @@ const dict: Record<CustomerLanguage, Record<CustomerI18nKey, string>> = {
     status_cancelled: "Cancelado",
     status: "Estado",
     obs: "Obs",
+    restriction_title: "Medicamentos con cuidados especiales",
+    restriction_hint:
+      "Algunos artículos requieren receta y/o documento. Consulta con el establecimiento para indicaciones.",
+    restriction_badge_prescription: "Receta",
+    restriction_badge_document: "Documento",
+    restriction_ack_prescription: "Confirmo que presentaré la receta, si es necesario.",
+    restriction_ack_document: "Confirmo que presentaré el documento, si es necesario.",
+    restriction_ack_required: "Confirma las restricciones para continuar.",
+    restriction_ack_required_prescription:
+      "Este pedido tiene artículos que requieren receta. Confirma para continuar.",
+    restriction_ack_required_document:
+      "Este pedido tiene artículos que requieren documento. Confirma para continuar.",
   },
 };
 

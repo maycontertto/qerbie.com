@@ -531,6 +531,8 @@ export interface Database {
           price: number;
           is_active: boolean;
           is_featured: boolean;
+          requires_prescription: boolean;
+          requires_document: boolean;
           track_stock: boolean;
           stock_quantity: number;
           display_order: number;
@@ -548,6 +550,8 @@ export interface Database {
           price?: number;
           is_active?: boolean;
           is_featured?: boolean;
+          requires_prescription?: boolean;
+          requires_document?: boolean;
           track_stock?: boolean;
           stock_quantity?: number;
           display_order?: number;
@@ -565,6 +569,8 @@ export interface Database {
           price?: number;
           is_active?: boolean;
           is_featured?: boolean;
+          requires_prescription?: boolean;
+          requires_document?: boolean;
           track_stock?: boolean;
           stock_quantity?: number;
           display_order?: number;

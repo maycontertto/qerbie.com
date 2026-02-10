@@ -23,13 +23,7 @@ export async function saveProductStock(formData: FormData): Promise<void> {
 
   const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
-  const canProducts =
-    isOwner ||
-    (membership
-      ? hasMemberPermission(membership.role, membership.permissions, "dashboard_products")
-      : false);
-
-  if (!canProducts) {
+  if (!isOwner) {
     redirect("/dashboard");
   }
 

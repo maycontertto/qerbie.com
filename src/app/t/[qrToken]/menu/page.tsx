@@ -85,7 +85,7 @@ export default async function CustomerMenuPage({
     ? await supabase
         .from("products")
         .select(
-          "id, category_id, name, description, price, image_url, is_featured",
+          "id, category_id, name, description, price, image_url, is_featured, requires_prescription, requires_document",
         )
         .eq("merchant_id", table.merchant_id)
         .eq("menu_id", activeMenuId)
@@ -101,6 +101,8 @@ export default async function CustomerMenuPage({
           price: number | null;
           image_url: string | null;
           is_featured: boolean;
+          requires_prescription: boolean;
+          requires_document: boolean;
         }>,
       };
 

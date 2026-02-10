@@ -24,6 +24,8 @@ type Product = {
   price: number | null;
   image_url: string | null;
   is_featured: boolean;
+  requires_prescription: boolean;
+  requires_document: boolean;
 };
 
 type CartItem = {
@@ -32,6 +34,8 @@ type CartItem = {
   price: number;
   imageUrl: string | null;
   quantity: number;
+  requiresPrescription: boolean;
+  requiresDocument: boolean;
 };
 
 type DeliverySettings = {
@@ -71,6 +75,8 @@ function safeParseCart(raw: string | null): { items: CartItem[]; notes: string }
         const name = String(obj.name ?? "");
         const price = Number(obj.price ?? 0);
         const imageUrl = (obj.imageUrl ?? null) as string | null;
+        const requiresPrescription = Boolean(obj.requiresPrescription ?? false);
+        const requiresDocument = Boolean(obj.requiresDocument ?? false);
         const quantity = Number(obj.quantity ?? 0);
         if (!productId || !name) return null;
         if (!Number.isFinite(price) || price < 0) return null;
@@ -81,6 +87,8 @@ function safeParseCart(raw: string | null): { items: CartItem[]; notes: string }
           price,
           imageUrl,
           quantity: Math.min(99, Math.trunc(quantity)),
+          requiresPrescription,
+          requiresDocument,
         } satisfies CartItem;
       })
       .filter(Boolean) as CartItem[];
@@ -195,13 +203,34 @@ export function CustomerMenuBrowser({
     });
   }, [products, query]);
 
+  const isSpecialCare = (p: Product): boolean =>
+    Boolean(p.requires_prescription || p.requires_document);
+
+  const specialCareProducts = useMemo(
+    () => filteredProducts.filter(isSpecialCare),
+    [filteredProducts],
+  );
+
+  const regularProducts = useMemo(
+    () => filteredProducts.filter((p) => !isSpecialCare(p)),
+    [filteredProducts],
+  );
+
   const visibleProducts = useMemo(() => {
-    if (selectedCategoryId === "__all__") return filteredProducts;
+    if (selectedCategoryId === "__all__") return regularProducts;
     if (selectedCategoryId === "__uncategorized__") {
-      return filteredProducts.filter((p) => !p.category_id);
+      return regularProducts.filter((p) => !p.category_id);
     }
-    return filteredProducts.filter((p) => p.category_id === selectedCategoryId);
-  }, [filteredProducts, selectedCategoryId]);
+    return regularProducts.filter((p) => p.category_id === selectedCategoryId);
+  }, [regularProducts, selectedCategoryId]);
+
+  const visibleSpecialCareProducts = useMemo(() => {
+    if (selectedCategoryId === "__all__") return specialCareProducts;
+    if (selectedCategoryId === "__uncategorized__") {
+      return specialCareProducts.filter((p) => !p.category_id);
+    }
+    return specialCareProducts.filter((p) => p.category_id === selectedCategoryId);
+  }, [specialCareProducts, selectedCategoryId]);
 
   const featured = useMemo(
     () => visibleProducts.filter((p) => p.is_featured),
@@ -248,6 +277,11 @@ export function CustomerMenuBrowser({
     if (orderType !== "delivery") return cartSubtotal;
     return Math.round((cartSubtotal + deliveryFee) * 100) / 100;
   }, [cartSubtotal, deliveryFee, orderType]);
+
+  const hasSpecialCareInCart = useMemo(
+    () => cartItems.some((i) => i.requiresPrescription || i.requiresDocument),
+    [cartItems],
+  );
 
   const paymentMethods = useMemo(() => {
     const methods: Array<
@@ -350,6 +384,8 @@ export function CustomerMenuBrowser({
             price,
             imageUrl: p.image_url,
             quantity: 1,
+            requiresPrescription: Boolean(p.requires_prescription),
+            requiresDocument: Boolean(p.requires_document),
           },
         ];
       }
@@ -623,6 +659,20 @@ export function CustomerMenuBrowser({
                     <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                       {p.name}
                     </p>
+                    {(p.requires_prescription || p.requires_document) && (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {p.requires_prescription && (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                            {tCustomer(lang, "restriction_badge_prescription")}
+                          </span>
+                        )}
+                        {p.requires_document && (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                            {tCustomer(lang, "restriction_badge_document")}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {p.description ? (
                       <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
                         {p.description}
@@ -655,6 +705,83 @@ export function CustomerMenuBrowser({
             ))}
           </ul>
         </div>
+      )}
+
+      {visibleSpecialCareProducts.length > 0 && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                {tCustomer(lang, "restriction_title")}
+              </h2>
+              <p className="mt-1 text-xs text-amber-800/90 dark:text-amber-100/80">
+                {tCustomer(lang, "restriction_hint")}
+              </p>
+            </div>
+            <a
+              href="#top"
+              className="text-xs font-semibold text-amber-800/80 hover:underline dark:text-amber-100/70"
+            >
+              {ui.top}
+            </a>
+          </div>
+
+          <ul className="mt-3 divide-y divide-amber-200/60 dark:divide-amber-900/60">
+            {visibleSpecialCareProducts.map((p) => (
+              <li key={p.id} className="py-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                      {p.name}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {p.requires_prescription && (
+                        <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
+                          {tCustomer(lang, "restriction_badge_prescription")}
+                        </span>
+                      )}
+                      {p.requires_document && (
+                        <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
+                          {tCustomer(lang, "restriction_badge_document")}
+                        </span>
+                      )}
+                    </div>
+                    {p.description ? (
+                      <p className="mt-1 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-300">
+                        {p.description}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                      {formatBRL(Number(p.price ?? 0), lang)}
+                    </p>
+                  </div>
+
+                  {p.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.image_url}
+                      alt={p.name}
+                      className="h-16 w-16 shrink-0 rounded-2xl border border-amber-200 bg-white object-cover dark:border-amber-900"
+                    />
+                  ) : (
+                    <div className="h-16 w-16 shrink-0 rounded-2xl border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950" />
+                  )}
+                </div>
+
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    style={buttonStyle}
+                    className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                    onClick={() => addToCart(p)}
+                  >
+                    {ui.addToCart}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <div className="space-y-5">
@@ -699,6 +826,20 @@ export function CustomerMenuBrowser({
                         <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                           {p.name}
                         </p>
+                        {(p.requires_prescription || p.requires_document) && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {p.requires_prescription && (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                {tCustomer(lang, "restriction_badge_prescription")}
+                              </span>
+                            )}
+                            {p.requires_document && (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                {tCustomer(lang, "restriction_badge_document")}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {p.description ? (
                           <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
                             {p.description}
@@ -1012,6 +1153,20 @@ export function CustomerMenuBrowser({
                               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                                 {formatBRL(i.price, lang)}
                               </p>
+                              {(i.requiresPrescription || i.requiresDocument) && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {i.requiresPrescription && (
+                                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                      {tCustomer(lang, "restriction_badge_prescription")}
+                                    </span>
+                                  )}
+                                  {i.requiresDocument && (
+                                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                                      {tCustomer(lang, "restriction_badge_document")}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
                             {i.imageUrl ? (
@@ -1056,6 +1211,17 @@ export function CustomerMenuBrowser({
                         </li>
                       ))}
                     </ul>
+
+                    {hasSpecialCareInCart && (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                        <p className="text-xs font-semibold uppercase tracking-wide">
+                          {tCustomer(lang, "restriction_title")}
+                        </p>
+                        <p className="mt-1 text-sm">
+                          {tCustomer(lang, "restriction_hint")}
+                        </p>
+                      </div>
+                    )}
 
                     <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                       <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">

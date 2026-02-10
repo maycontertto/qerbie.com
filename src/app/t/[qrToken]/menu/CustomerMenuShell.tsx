@@ -25,6 +25,8 @@ type Product = {
   price: number | null;
   image_url: string | null;
   is_featured: boolean;
+  requires_prescription: boolean;
+  requires_document: boolean;
 };
 
 type DeliverySettings = {

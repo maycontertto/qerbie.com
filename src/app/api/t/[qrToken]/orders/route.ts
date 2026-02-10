@@ -114,7 +114,7 @@ export async function POST(
   const productIds = Array.from(new Set(items.map((i) => i.productId)));
   const { data: products, error: productsError } = await supabase
     .from("products")
-    .select("id, name, price, is_active")
+    .select("id, name, price, is_active, requires_prescription, requires_document")
     .eq("merchant_id", merchantId)
     .eq("menu_id", menuId)
     .in("id", productIds);

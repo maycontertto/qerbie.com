@@ -114,6 +114,13 @@ const RESTAURANTE_BASE: DashboardModules = {
         ctaLabel: "Configurar agora",
       },
       {
+        title: "Estoque",
+        description: "Controle simples (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/estoque",
+        ctaLabel: "Abrir",
+      },
+      {
         title: "Opcionais",
         description: "Borda, tamanho, adicionais",
         hint: "Em breve",
@@ -278,6 +285,13 @@ const FARMACIA_BASE: DashboardModules = {
         hint: "Próximo",
         href: "/dashboard/modulos/produtos",
         ctaLabel: "Configurar agora",
+      },
+      {
+        title: "Estoque",
+        description: "Controle simples (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/estoque",
+        ctaLabel: "Abrir",
       },
       {
         title: "Categorias",
