@@ -25,6 +25,7 @@ export type CustomerI18nKey =
   | "continue"
   | "your_name"
   | "name_placeholder"
+    | "name_helper"
   | "start_terms"
   | "you_are_served_by"
   | "could_not_continue"
@@ -100,6 +101,7 @@ const dict: Record<CustomerLanguage, Record<CustomerI18nKey, string>> = {
     continue: "Continuar",
     your_name: "Seu nome",
     name_placeholder: "Ex: Ana",
+      name_helper: "Isso não cria uma conta — é só para identificar seu pedido.",
     start_terms: "Ao continuar, você aceita receber atualizações do seu pedido nesta sessão.",
     you_are_served_by: "Você está sendo atendido por {name}",
     could_not_continue: "Não foi possível continuar.",
@@ -174,6 +176,7 @@ const dict: Record<CustomerLanguage, Record<CustomerI18nKey, string>> = {
     continue: "Continue",
     your_name: "Your name",
     name_placeholder: "e.g. Ana",
+    name_helper: "This does not create an account — it only identifies your order.",
     start_terms: "By continuing, you agree to receive updates about your order in this session.",
     you_are_served_by: "You are being served by {name}",
     could_not_continue: "Couldn't continue.",
@@ -248,6 +251,7 @@ const dict: Record<CustomerLanguage, Record<CustomerI18nKey, string>> = {
     continue: "Continuar",
     your_name: "Tu nombre",
     name_placeholder: "p. ej.: Ana",
+    name_helper: "Esto no crea una cuenta — solo identifica tu pedido.",
     start_terms: "Al continuar, aceptas recibir actualizaciones de tu pedido en esta sesión.",
     you_are_served_by: "Estás siendo atendido por {name}",
     could_not_continue: "No se pudo continuar.",

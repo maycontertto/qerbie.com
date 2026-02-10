@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -7,6 +8,7 @@ import {
   createQuickServiceTable,
   ensureDemoTable,
 } from "@/lib/merchant/tableActions";
+import { TableQrPanel } from "@/app/dashboard/modulos/mesas/TableQrPanel";
 
 export default async function MesasModulePage({
   searchParams,
@@ -61,6 +63,14 @@ export default async function MesasModulePage({
     : null;
   const activeIsQuick = Boolean(activeTable?.label?.toLowerCase().startsWith("atendimento"));
 
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const origin = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000");
+  const activeCustomerUrl = activeQrToken
+    ? `${origin}/t/${encodeURIComponent(activeQrToken)}${activeIsQuick ? "?quick=1" : ""}`
+    : null;
+
   const banner =
     error === "table_create_failed"
       ? "Falha ao criar atendimento. Tente mudar o nome."
@@ -106,6 +116,8 @@ export default async function MesasModulePage({
         ) : null}
 
         <section className="mt-6 space-y-6">
+          {activeCustomerUrl ? <TableQrPanel url={activeCustomerUrl} /> : null}
+
           <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -188,7 +200,11 @@ export default async function MesasModulePage({
                     {(tables ?? []).map((t) => (
                       <li
                         key={t.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-900"
+                        className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm dark:bg-zinc-900 ${
+                          t.qr_token === activeQrToken
+                            ? "border-zinc-900 bg-white ring-1 ring-zinc-900/10 dark:border-zinc-50 dark:ring-zinc-50/10"
+                            : "border-zinc-200 bg-white dark:border-zinc-800"
+                        }`}
                       >
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
@@ -212,6 +228,17 @@ export default async function MesasModulePage({
                               </button>
                             </form>
                           ) : null}
+                          <a
+                            href={`/dashboard/modulos/mesas?qr=${encodeURIComponent(t.qr_token)}`}
+                            aria-current={t.qr_token === activeQrToken ? "page" : undefined}
+                            className={`text-xs font-semibold hover:underline ${
+                              t.qr_token === activeQrToken
+                                ? "text-zinc-400 dark:text-zinc-500"
+                                : "text-zinc-600 dark:text-zinc-300"
+                            }`}
+                          >
+                            Ver QR
+                          </a>
                           <a
                             href={`/t/${encodeURIComponent(t.qr_token)}${t.label.toLowerCase().startsWith("atendimento") ? "?quick=1" : ""}`}
                             className="text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
