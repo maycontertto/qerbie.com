@@ -282,12 +282,16 @@ const FARMACIA_BASE: DashboardModules = {
       {
         title: "Categorias",
         description: "Organize por linha/necessidade",
-        hint: "Em breve",
+        hint: "Agora",
+        href: "/dashboard/modulos/categorias",
+        ctaLabel: "Abrir",
       },
       {
         title: "Restrições",
         description: "Regras por item (opcional)",
-        hint: "Em breve",
+        hint: "Agora",
+        href: "/dashboard/modulos/restricoes",
+        ctaLabel: "Abrir",
       },
     ],
     atendimento: [
