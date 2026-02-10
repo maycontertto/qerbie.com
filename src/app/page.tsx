@@ -16,16 +16,16 @@ export default async function HomePage() {
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-zinc-50 to-white px-4 dark:from-zinc-950 dark:to-zinc-900">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10 dark:opacity-10"
-        style={{ backgroundImage: "url(/qerbie%20fundo.png)" }}
-      />
-      <div
-        aria-hidden
         className="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-accent/15 blur-3xl dark:bg-accent/10"
       />
       <div
         aria-hidden
         className="pointer-events-none absolute -bottom-28 right-[-4rem] h-80 w-80 rounded-full bg-brand/10 blur-3xl dark:bg-brand/10"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20 dark:opacity-15"
+        style={{ backgroundImage: 'url("/qerbie fundo.png")' }}
       />
       <div className="relative z-10 mx-auto w-full max-w-5xl py-16 sm:py-20">
         <div className="mx-auto max-w-2xl text-center">
