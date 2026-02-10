@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 import { CUSTOMER_SESSION_COOKIE } from "@/lib/customer/constants";
+import { GYM_SESSION_COOKIE } from "@/lib/gym/constants";
 
 /**
  * Refreshes the Supabase auth session on every request via middleware.
@@ -24,13 +25,17 @@ export async function updateSession(request: NextRequest) {
   }
 
   const sessionToken = request.cookies.get(CUSTOMER_SESSION_COOKIE)?.value;
+  const gymSessionToken = request.cookies.get(GYM_SESSION_COOKIE)?.value;
 
   const supabase = createServerClient<Database>(
     supabaseUrl,
     supabaseAnonKey,
     {
       global: {
-        headers: sessionToken ? { "x-session-token": sessionToken } : {},
+        headers: {
+          ...(sessionToken ? { "x-session-token": sessionToken } : {}),
+          ...(gymSessionToken ? { "x-gym-session-token": gymSessionToken } : {}),
+        },
       },
       cookies: {
         getAll() {

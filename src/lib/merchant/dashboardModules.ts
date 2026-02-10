@@ -300,6 +300,82 @@ const MERCADO_BASE: DashboardModules = {
   },
 };
 
+const ACADEMIAS_BASE: DashboardModules = {
+  headerNudge: "Alunos, planos e controle mensal da academia.",
+  sections: {
+    catalogo: [
+      {
+        title: "Planos",
+        description: "Mensalidades e valores",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_planos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Modalidades",
+        description: "Musculação, funcional, etc.",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_modalidades",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Serviços adicionais",
+        description: "Avaliação, personal, extras",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_servicos",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "QR de cadastro",
+        description: "Cliente entra pelo QR e vê instruções de pagamento",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Alunos",
+        description: "Status, vencimentos e controle",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_alunos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Renovações",
+        description: "Quem está vencendo/vencido",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_renovacoes",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Cadastre atendentes/gerentes e controle acessos",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Histórico & Faturamento",
+        description: "Pagamentos registrados e totais",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_financeiro",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Administração & Controle",
+        description:
+          "Cadastre atendentes/gerentes e controle os acessos por área (o dono pode restringir mesmo o gerente).",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const FARMACIA_BASE: DashboardModules = {
   headerNudge: "Catálogo, pedidos e atendimento rápido.",
   sections: {
@@ -666,6 +742,9 @@ export function getDashboardModules(
   let modules: DashboardModules;
 
   switch (categoryKey) {
+    case "academias":
+      modules = ACADEMIAS_BASE;
+      break;
     case "restaurante":
       modules = RESTAURANTE_BASE;
       break;

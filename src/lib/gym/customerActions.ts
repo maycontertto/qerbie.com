@@ -1,0 +1,152 @@
+"use server";
+
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { randomBytes } from "crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { GYM_SESSION_COOKIE } from "@/lib/gym/constants";
+import { hashPassword, verifyPassword } from "@/lib/gym/password";
+
+function makeSessionToken(): string {
+  return randomBytes(24).toString("base64url");
+}
+
+async function setGymSessionCookie(token: string) {
+  // Non-HttpOnly by design so the browser can attach it (middleware will forward as header).
+  // Matches the existing anon-RLS strategy used elsewhere.
+  const cookieStore = await cookies();
+  cookieStore.set(GYM_SESSION_COOKIE, token, {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+export async function gymSignUp(formData: FormData): Promise<void> {
+  const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
+  const name = (formData.get("name") as string | null)?.trim() ?? "";
+  const login = (formData.get("login") as string | null)?.trim() ?? "";
+  const password = (formData.get("password") as string | null)?.trim() ?? "";
+  const rawPlanId = (formData.get("plan_id") as string | null)?.trim() ?? "";
+
+  if (!qrToken) redirect("/");
+  if (name.length < 2 || login.length < 2 || password.length < 4) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
+  }
+
+  const admin = createAdminClient();
+
+  const { data: qr, error: qrError } = await admin
+    .from("gym_qr_tokens")
+    .select("merchant_id")
+    .eq("qr_token", qrToken)
+    .eq("is_active", true)
+    .single();
+
+  if (qrError || !qr?.merchant_id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid_qr`);
+  }
+
+  const passwordHash = hashPassword(password);
+  const sessionToken = makeSessionToken();
+
+  const { data: student, error: insertError } = await admin
+    .from("gym_students")
+    .insert({
+      merchant_id: qr.merchant_id,
+      name,
+      login,
+      password_hash: passwordHash,
+      session_token: sessionToken,
+      is_active: true,
+    })
+    .select("id")
+    .single();
+
+  if (insertError || !student?.id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=signup_failed`);
+  }
+
+  let planId: string | null = null;
+  if (rawPlanId) {
+    const { data: plan } = await admin
+      .from("gym_plans")
+      .select("id")
+      .eq("merchant_id", qr.merchant_id)
+      .eq("id", rawPlanId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    planId = plan?.id ?? null;
+  }
+
+  // Create membership with due today (merchant can adjust later).
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, "0");
+  const dd = String(today.getDate()).padStart(2, "0");
+  const due = `${yyyy}-${mm}-${dd}`;
+
+  await admin.from("gym_memberships").insert({
+    merchant_id: qr.merchant_id,
+    student_id: student.id,
+    plan_id: planId,
+    status: "active",
+    next_due_at: due,
+    last_paid_at: null,
+  });
+
+  await setGymSessionCookie(sessionToken);
+  redirect(`/g/${encodeURIComponent(qrToken)}`);
+}
+
+export async function gymSignIn(formData: FormData): Promise<void> {
+  const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
+  const login = (formData.get("login") as string | null)?.trim() ?? "";
+  const password = (formData.get("password") as string | null)?.trim() ?? "";
+
+  if (!qrToken) redirect("/");
+  if (login.length < 2 || password.length < 4) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
+  }
+
+  const admin = createAdminClient();
+
+  const { data: qr, error: qrError } = await admin
+    .from("gym_qr_tokens")
+    .select("merchant_id")
+    .eq("qr_token", qrToken)
+    .eq("is_active", true)
+    .single();
+
+  if (qrError || !qr?.merchant_id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid_qr`);
+  }
+
+  const { data: student, error: studentError } = await admin
+    .from("gym_students")
+    .select("id, password_hash, is_active")
+    .eq("merchant_id", qr.merchant_id)
+    .ilike("login", login)
+    .single();
+
+  if (studentError || !student || !student.is_active) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  if (!verifyPassword(password, student.password_hash)) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  const sessionToken = makeSessionToken();
+
+  await admin
+    .from("gym_students")
+    .update({ session_token: sessionToken, updated_at: new Date().toISOString() })
+    .eq("id", student.id);
+
+  await setGymSessionCookie(sessionToken);
+  redirect(`/g/${encodeURIComponent(qrToken)}`);
+}

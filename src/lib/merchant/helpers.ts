@@ -6,6 +6,8 @@ export function getBusinessCategoryLabel(
   if (!key) return null;
 
   switch (key) {
+    case "academias":
+      return "Academias";
     case "farmacia":
       return "Farmácia";
     case "mercado":

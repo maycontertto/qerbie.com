@@ -64,6 +64,8 @@ export type HousekeepingTaskStatus = "open" | "in_progress" | "done" | "cancelle
 
 export type ExchangeRequestStatus = "open" | "in_progress" | "done" | "cancelled";
 
+export type GymMembershipStatus = "active" | "overdue" | "paused" | "cancelled";
+
 // ── Database interface ───────────────────────────────────────
 
 export interface Database {
@@ -329,6 +331,316 @@ export interface Database {
         Relationships: [
           {
             foreignKeyName: "billing_invoices_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      gym_additional_services: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          price_cents: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          price_cents?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          price_cents?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_additional_services_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      gym_memberships: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          student_id: string;
+          plan_id: string | null;
+          status: GymMembershipStatus;
+          next_due_at: string | null;
+          last_paid_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          student_id: string;
+          plan_id?: string | null;
+          status?: GymMembershipStatus;
+          next_due_at?: string | null;
+          last_paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          student_id?: string;
+          plan_id?: string | null;
+          status?: GymMembershipStatus;
+          next_due_at?: string | null;
+          last_paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_memberships_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gym_memberships_plan_id_fkey";
+            columns: ["plan_id"];
+            isOneToOne: false;
+            referencedRelation: "gym_plans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gym_memberships_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "gym_students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      gym_modalities: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_modalities_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      gym_payments: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          student_id: string;
+          membership_id: string | null;
+          amount_cents: number;
+          paid_at: string;
+          note: string | null;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          student_id: string;
+          membership_id?: string | null;
+          amount_cents?: number;
+          paid_at?: string;
+          note?: string | null;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          student_id?: string;
+          membership_id?: string | null;
+          amount_cents?: number;
+          paid_at?: string;
+          note?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_payments_membership_id_fkey";
+            columns: ["membership_id"];
+            isOneToOne: false;
+            referencedRelation: "gym_memberships";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gym_payments_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gym_payments_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "gym_students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      gym_plans: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          price_cents: number;
+          billing_period_months: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          price_cents?: number;
+          billing_period_months?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          price_cents?: number;
+          billing_period_months?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_plans_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      gym_qr_tokens: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          label: string;
+          qr_token: string;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          label?: string;
+          qr_token: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          label?: string;
+          qr_token?: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_qr_tokens_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      gym_students: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          login: string;
+          password_hash: string;
+          session_token: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          login: string;
+          password_hash: string;
+          session_token?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          login?: string;
+          password_hash?: string;
+          session_token?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_students_merchant_id_fkey";
             columns: ["merchant_id"];
             isOneToOne: false;
             referencedRelation: "merchants";
