@@ -6,6 +6,7 @@ import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
 import { getDashboardModules } from "@/lib/merchant/dashboardModules";
 import { HistoryRangePicker } from "./HistoryRangePicker";
 import Image from "next/image";
+import Link from "next/link";
 
 type DashboardSection = "catalogo" | "atendimento" | "vendas" | "historico";
 type HistoryRange = "diario" | "semanal" | "mensal";
@@ -200,6 +201,51 @@ export default async function DashboardPage({
             ? { kind: "success" as const, message: "Preferência salva." }
             : null;
 
+  const { data: subscription } = await supabase
+    .from("merchant_subscriptions")
+    .select("status,trial_ends_at,current_period_end,grace_until,plan_amount_cents")
+    .eq("merchant_id", merchant.id)
+    .maybeSingle();
+
+  const billingBanner = (() => {
+    if (!subscription) return null;
+
+    const now = new Date();
+    const trialEndsAt = new Date(subscription.trial_ends_at);
+    const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : trialEndsAt;
+    const graceUntil = subscription.grace_until
+      ? new Date(subscription.grace_until)
+      : new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+    const msDay = 24 * 60 * 60 * 1000;
+    const daysToTrialEnd = Math.ceil((trialEndsAt.getTime() - now.getTime()) / msDay);
+    const daysToGraceEnd = Math.ceil((graceUntil.getTime() - now.getTime()) / msDay);
+
+    if (now > graceUntil) {
+      return {
+        kind: "error" as const,
+        message:
+          "Assinatura vencida: acesso funcional bloqueado. Regularize para liberar.",
+      };
+    }
+
+    if (now >= periodEnd) {
+      return {
+        kind: "error" as const,
+        message: `Assinatura vencida. Carência: ${Math.max(0, daysToGraceEnd)} dia(s).`,
+      };
+    }
+
+    if (now < trialEndsAt && daysToTrialEnd <= 7) {
+      return {
+        kind: "success" as const,
+        message: `Teste grátis termina em ${Math.max(0, daysToTrialEnd)} dia(s).`,
+      };
+    }
+
+    return null;
+  })();
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       <div
@@ -268,6 +314,24 @@ export default async function DashboardPage({
               }`}
             >
               {banner.message}
+            </div>
+          )}
+
+          {billingBanner && (
+            <div
+              className={`mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 text-sm ${
+                billingBanner.kind === "error"
+                  ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+              }`}
+            >
+              <span>{billingBanner.message}</span>
+              <Link
+                href="/dashboard/pagamento"
+                className="rounded-md border border-current/20 bg-white/60 px-3 py-1.5 text-xs font-semibold text-zinc-900 hover:bg-white dark:bg-zinc-900/40 dark:text-zinc-50 dark:hover:bg-zinc-900"
+              >
+                Pagamento
+              </Link>
             </div>
           )}
 

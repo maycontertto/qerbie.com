@@ -223,6 +223,120 @@ export interface Database {
         ];
       };
 
+      merchant_subscriptions: {
+        Row: {
+          merchant_id: string;
+          status: string;
+          plan_amount_cents: number;
+          currency: string;
+          trial_ends_at: string;
+          current_period_start: string | null;
+          current_period_end: string | null;
+          grace_until: string | null;
+          last_payment_at: string | null;
+          last_notice_stage: string | null;
+          last_notice_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          merchant_id: string;
+          status?: string;
+          plan_amount_cents?: number;
+          currency?: string;
+          trial_ends_at: string;
+          current_period_start?: string | null;
+          current_period_end?: string | null;
+          grace_until?: string | null;
+          last_payment_at?: string | null;
+          last_notice_stage?: string | null;
+          last_notice_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          merchant_id?: string;
+          status?: string;
+          plan_amount_cents?: number;
+          currency?: string;
+          trial_ends_at?: string;
+          current_period_start?: string | null;
+          current_period_end?: string | null;
+          grace_until?: string | null;
+          last_payment_at?: string | null;
+          last_notice_stage?: string | null;
+          last_notice_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "merchant_subscriptions_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: true;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      billing_invoices: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          amount_cents: number;
+          currency: string;
+          status: string;
+          due_at: string;
+          paid_at: string | null;
+          provider: string;
+          external_reference: string | null;
+          provider_preference_id: string | null;
+          payment_url: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          amount_cents: number;
+          currency?: string;
+          status?: string;
+          due_at: string;
+          paid_at?: string | null;
+          provider?: string;
+          external_reference?: string | null;
+          provider_preference_id?: string | null;
+          payment_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          amount_cents?: number;
+          currency?: string;
+          status?: string;
+          due_at?: string;
+          paid_at?: string | null;
+          provider?: string;
+          external_reference?: string | null;
+          provider_preference_id?: string | null;
+          payment_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
       merchant_appointment_slots: {
         Row: {
           id: string;

@@ -146,7 +146,7 @@ export async function getMerchantMemberOrRedirect() {
 /**
  * Dashboard guard: owner sempre entra; membro só entra se tiver permissão.
  */
-export async function getDashboardUserOrRedirect() {
+export async function getDashboardUserOrRedirect(options?: { allowSuspended?: boolean }) {
   const { supabase, user } = await getSessionOrRedirect();
 
   // 1) Owner always allowed.
@@ -157,7 +157,30 @@ export async function getDashboardUserOrRedirect() {
     .limit(1)
     .maybeSingle();
 
+  const enforceBillingOrRedirect = async (merchantId: string, options?: { allowSuspended?: boolean }) => {
+    const { data: sub } = await supabase
+      .from("merchant_subscriptions")
+      .select("status,trial_ends_at,current_period_end,grace_until")
+      .eq("merchant_id", merchantId)
+      .maybeSingle();
+
+    if (!sub) return;
+
+    const now = new Date();
+    const trialEndsAt = new Date(sub.trial_ends_at);
+    const periodEnd = sub.current_period_end ? new Date(sub.current_period_end) : trialEndsAt;
+    const graceUntil = sub.grace_until
+      ? new Date(sub.grace_until)
+      : new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+    const isSuspended = now > graceUntil;
+    if (isSuspended && !options?.allowSuspended) {
+      redirect("/dashboard/pagamento");
+    }
+  };
+
   if (ownedMerchant) {
+    await enforceBillingOrRedirect(ownedMerchant.id, options);
     return { supabase, user, merchant: ownedMerchant, membership: null };
   }
 
@@ -189,5 +212,6 @@ export async function getDashboardUserOrRedirect() {
     redirect("/atendente/vincular");
   }
 
+  await enforceBillingOrRedirect(memberMerchant.id, options);
   return { supabase, user, merchant: memberMerchant, membership };
 }
