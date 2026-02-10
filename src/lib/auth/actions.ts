@@ -9,7 +9,19 @@ async function getRequestOrigin(): Promise<string> {
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
   if (host) return `${proto}://${host}`;
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+  const appUrlRaw = process.env.NEXT_PUBLIC_APP_URL;
+  if (appUrlRaw) {
+    const appUrl = appUrlRaw.startsWith("http://") || appUrlRaw.startsWith("https://")
+      ? appUrlRaw
+      : `https://${appUrlRaw}`;
+    return appUrl;
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl}`;
+
+  return "http://localhost:3000";
 }
 
 // ── Types ───────────────────────────────────────────────────
