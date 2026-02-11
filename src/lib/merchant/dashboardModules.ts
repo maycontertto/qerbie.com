@@ -689,6 +689,110 @@ const LAVAJATO_BASE: DashboardModules = {
   },
 };
 
+const CASA_RACAO_BASE: DashboardModules = {
+  headerNudge: "Gestão simples de produtos, clientes e vendas em um só lugar.",
+  sections: {
+    catalogo: [
+      {
+        title: "Produtos",
+        description: "Rações, suplementos, sementes e acessórios",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Variações (Peso)",
+        description: "1kg, 5kg, 15kg, 25kg, 40kg",
+        hint: "Agora",
+        href: "/dashboard/modulos/variacoes",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Relatórios",
+        description: "Resumo de operação e indicadores",
+        hint: "Agora",
+        href: "/dashboard/modulos/relatorios",
+        ctaLabel: "Abrir",
+      },
+      STOCK_CARD,
+    ],
+    atendimento: [
+      {
+        title: "Venda rápida (Caixa)",
+        description: "Pedidos e vendas assistidas",
+        hint: "Agora",
+        href: "/dashboard/modulos/pedidos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Retirada",
+        description: "Pedidos para retirada (separação)",
+        hint: "Agora",
+        href: "/dashboard/modulos/retirada",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Entregas",
+        description: "Pedidos para entrega e status",
+        hint: "Agora",
+        href: "/dashboard/modulos/entregas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Recepção (Separação)",
+        description: "Em separação → Pronto → Finalizado (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Agenda",
+        description: "Entregas programadas e recorrência (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/agenda",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "QR da casa de ração",
+        description: "Cliente consulta catálogo e faz pedidos",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Permissões de caixa/estoque/relatórios",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Acompanhe totais e histórico",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Trocas",
+        description: "Cancelamentos e devoluções (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/trocas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Pagamento",
+        description: "Configurar Pix/cartão/dinheiro",
+        hint: "Agora",
+        href: "/dashboard/pagamento",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const ACADEMIAS_BASE: DashboardModules = {
   headerNudge: "Alunos, planos e controle mensal da academia.",
   sections: {
@@ -1148,6 +1252,10 @@ export function getDashboardModules(
       break;
     case "lava_jato":
       modules = LAVAJATO_BASE;
+      break;
+    case "casa_de_racao":
+    case "casa_racao":
+      modules = CASA_RACAO_BASE;
       break;
     case "restaurante":
       modules = RESTAURANTE_BASE;
