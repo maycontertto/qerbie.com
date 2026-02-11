@@ -111,7 +111,7 @@ export default async function ProductEditPage({
             : error === "image_too_large"
               ? {
                   kind: "error" as const,
-                  message: "Imagem muito grande. Use um arquivo menor (até 8MB).",
+                  message: "Imagem muito grande. Use um arquivo menor (até 12MB).",
                 }
       : saved
         ? { kind: "success" as const, message: "Salvo." }

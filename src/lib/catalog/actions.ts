@@ -5,6 +5,37 @@ import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guar
 import type { Database } from "@/lib/supabase/database.types";
 import { getSuggestedCategories } from "@/lib/catalog/templates";
 
+const MAX_PRODUCT_IMAGE_BYTES = 12 * 1024 * 1024;
+
+function getFileExtension(file: File): string {
+  return (
+    (file.name.split(".").pop() || "")
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .slice(0, 10)
+      .toLowerCase() || "bin"
+  );
+}
+
+function isProbablyImageFile(file: File): boolean {
+  if ((file.type || "").toLowerCase().startsWith("image/")) return true;
+  const ext = getFileExtension(file);
+  return ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif"].includes(ext);
+}
+
+function guessImageContentType(file: File): string {
+  const t = (file.type || "").toLowerCase();
+  if (t.startsWith("image/")) return t;
+
+  const ext = getFileExtension(file);
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  if (ext === "heic") return "image/heic";
+  if (ext === "heif") return "image/heif";
+  return "application/octet-stream";
+}
+
 function getRedirectBase(formData: FormData): "/dashboard/modulos/produtos" | "/dashboard/modulos/servicos" {
   const raw = (formData.get("redirect_to") as string | null)?.trim() ?? "";
   if (raw === "/dashboard/modulos/servicos") return raw;
@@ -173,18 +204,15 @@ export async function createProduct(formData: FormData): Promise<void> {
 
   // Optional: if a file was provided, upload it and persist the public URL.
   if (imageFile instanceof File && imageFile.size > 0) {
-    if (!imageFile.type.startsWith("image/")) {
+    if (!isProbablyImageFile(imageFile)) {
       redirect(`${redirectBase}/${encodeURIComponent(data.id)}?error=image_type`);
     }
 
-    if (imageFile.size > 8 * 1024 * 1024) {
+    if (imageFile.size > MAX_PRODUCT_IMAGE_BYTES) {
       redirect(`${redirectBase}/${encodeURIComponent(data.id)}?error=image_too_large`);
     }
 
-    const ext =
-      (imageFile.name.split(".").pop() || "bin")
-        .replace(/[^a-zA-Z0-9]/g, "")
-        .slice(0, 10) || "bin";
+    const ext = getFileExtension(imageFile);
     const path = `${merchant.id}/${data.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
     const bytes = new Uint8Array(await imageFile.arrayBuffer());
@@ -192,7 +220,7 @@ export async function createProduct(formData: FormData): Promise<void> {
       .from("product-images")
       .upload(path, bytes, {
         upsert: true,
-        contentType: imageFile.type || "application/octet-stream",
+        contentType: guessImageContentType(imageFile),
       });
 
     if (uploadError) {
@@ -286,12 +314,12 @@ export async function uploadProductImage(formData: FormData): Promise<void> {
     redirect(`${redirectBase}/${encodeURIComponent(productId)}?error=image_missing`);
   }
 
-  if (!file.type.startsWith("image/")) {
+  if (!isProbablyImageFile(file)) {
     redirect(`${redirectBase}/${encodeURIComponent(productId)}?error=image_type`);
   }
 
-  // 8MB guardrail to avoid oversized uploads.
-  if (file.size > 8 * 1024 * 1024) {
+  // Guardrail to avoid oversized uploads.
+  if (file.size > MAX_PRODUCT_IMAGE_BYTES) {
     redirect(`${redirectBase}/${encodeURIComponent(productId)}?error=image_too_large`);
   }
 
@@ -309,7 +337,7 @@ export async function uploadProductImage(formData: FormData): Promise<void> {
     redirect(`${redirectBase}?error=invalid_product`);
   }
 
-  const ext = (file.name.split(".").pop() || "bin").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) || "bin";
+  const ext = getFileExtension(file);
   const path = `${merchant.id}/${productId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -317,7 +345,7 @@ export async function uploadProductImage(formData: FormData): Promise<void> {
     .from("product-images")
     .upload(path, bytes, {
       upsert: true,
-      contentType: file.type || "application/octet-stream",
+      contentType: guessImageContentType(file),
     });
 
   if (uploadError) {
