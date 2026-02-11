@@ -576,6 +576,82 @@ const PETSHOP_BASE: DashboardModules = {
   },
 };
 
+const LAVAJATO_BASE: DashboardModules = {
+  headerNudge: "Organize serviços, equipe e atendimento do seu lava jato em um único painel simples.",
+  sections: {
+    catalogo: [
+      {
+        title: "Serviços",
+        description: "Lavagens, estética e pacotes",
+        hint: "Agora",
+        href: "/dashboard/modulos/lava_servicos",
+        ctaLabel: "Abrir",
+      },
+      STOCK_CARD,
+    ],
+    atendimento: [
+      {
+        title: "Equipe",
+        description: "Funcionários e serviços por função",
+        hint: "Agora",
+        href: "/dashboard/modulos/lava_profissionais",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Recepção (Fila)",
+        description: "Ordem de chegada e atendimento",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Agenda",
+        description: "Horários e confirmações (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/agenda",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Histórico",
+        description: "Atendimentos por veículo",
+        hint: "Agora",
+        href: "/dashboard/modulos/lava_historico",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "QR do lava jato",
+        description: "Portal do cliente (fila/agendamento)",
+        hint: "Agora",
+        href: "/dashboard/modulos/lava_qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe (Permissões)",
+        description: "Acessos e papéis",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Acompanhe totais e histórico",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Pagamento",
+        description: "Configurar Pix/cartão/dinheiro",
+        hint: "Agora",
+        href: "/dashboard/pagamento",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const ACADEMIAS_BASE: DashboardModules = {
   headerNudge: "Alunos, planos e controle mensal da academia.",
   sections: {
@@ -1032,6 +1108,9 @@ export function getDashboardModules(
       break;
     case "pet_shop":
       modules = PETSHOP_BASE;
+      break;
+    case "lava_jato":
+      modules = LAVAJATO_BASE;
       break;
     case "restaurante":
       modules = RESTAURANTE_BASE;

@@ -24,7 +24,8 @@ export async function POST(request: Request) {
   // Try body JSON
   if (!paymentId) {
     try {
-      const body = (await request.json().catch(() => null)) as any;
+      const bodyUnknown: unknown = await request.json().catch(() => null);
+      const body = bodyUnknown as null | { data?: { id?: unknown }; id?: unknown };
       paymentId = body?.data?.id ? String(body.data.id) : body?.id ? String(body.id) : null;
     } catch {
       // ignore

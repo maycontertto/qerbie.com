@@ -38,6 +38,8 @@ export function getBusinessCategoryLabel(
       return "Conveniência";
     case "pet_shop":
       return "Pet Shop / Clínica Veterinária";
+    case "lava_jato":
+      return "Lava Jato / Estética Automotiva";
     default:
       return null;
   }

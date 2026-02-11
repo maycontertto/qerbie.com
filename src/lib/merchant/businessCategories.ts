@@ -8,6 +8,7 @@ export type BusinessCategoryKey =
   | "conveniencia"
   | "farmacia"
   | "hoteis"
+  | "lava_jato"
   | "loja_calcados"
   | "loja_roupas"
   | "mercado"
@@ -24,6 +25,7 @@ export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: strin
   { key: "clinica_estetica", label: "Clínica de Estética" },
   { key: "salao_de_beleza", label: "Salão de Beleza" },
   { key: "pet_shop", label: "Pet Shop / Clínica Veterinária" },
+  { key: "lava_jato", label: "Lava Jato / Estética Automotiva" },
   { key: "conveniencia", label: "Conveniência" },
   { key: "consultorio", label: "Consultório" },
   { key: "farmacia", label: "Farmácia" },
