@@ -44,11 +44,6 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
     .limit(1)
     .maybeSingle();
 
-  if (existing?.payment_url) {
-    const mode = existing.provider_preference_id ? "mercadopago" : "fallback";
-    redirect(`/dashboard/pagamento?pay=${encodeURIComponent(existing.payment_url)}&mode=${mode}`);
-  }
-
   const trialEndsAt = sub?.trial_ends_at ? new Date(sub.trial_ends_at) : addDays(new Date(merchant.created_at), BILLING_PLAN.trialDays);
   const periodEnd = sub?.current_period_end ? new Date(sub.current_period_end) : trialEndsAt;
 
@@ -61,10 +56,35 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
   const appUrl = process.env.APP_URL;
 
   // Fallback: user-provided payment link (manual)
-  const fallbackPaymentUrl = process.env.NEXT_PUBLIC_BILLING_FALLBACK_PAYMENT_URL;
+  const fallbackPaymentUrl =
+    process.env.NEXT_PUBLIC_BILLING_FALLBACK_PAYMENT_URL ?? "https://mpago.la/2227ERU";
+
+  const hasFallbackPaymentUrl = Boolean(fallbackPaymentUrl?.trim());
+
+  if (existing?.payment_url) {
+    const isProviderInvoice = Boolean(existing.provider_preference_id);
+    const mode = isProviderInvoice ? "mercadopago" : "fallback";
+
+    // Se for invoice de fallback e o link mudou, atualiza para evitar ficar preso em links antigos.
+    if (!isProviderInvoice && hasFallbackPaymentUrl && existing.payment_url !== fallbackPaymentUrl) {
+      const { error: updErr } = await supabase
+        .from("billing_invoices")
+        .update({ payment_url: fallbackPaymentUrl })
+        .eq("id", existing.id)
+        .eq("merchant_id", merchant.id);
+
+      if (updErr) {
+        console.error("createOrGetMonthlyInvoice: update fallback payment_url failed", updErr);
+      }
+
+      redirect(`/dashboard/pagamento?pay=${encodeURIComponent(fallbackPaymentUrl)}&mode=fallback`);
+    }
+
+    redirect(`/dashboard/pagamento?pay=${encodeURIComponent(existing.payment_url)}&mode=${mode}`);
+  }
 
   if (!accessToken || !appUrl) {
-    if (fallbackPaymentUrl) {
+    if (hasFallbackPaymentUrl) {
       const { error: invErr } = await supabase.from("billing_invoices").insert({
         id: invoiceId,
         merchant_id: merchant.id,
@@ -124,7 +144,7 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
   } catch (e) {
     console.error("mercadopago preference error", e);
 
-    if (fallbackPaymentUrl) {
+    if (hasFallbackPaymentUrl) {
       const { error: invErr } = await supabase.from("billing_invoices").insert({
         id: invoiceId,
         merchant_id: merchant.id,

@@ -769,9 +769,9 @@ const CASA_RACAO_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Acompanhe totais e histórico",
-        hint: "Em breve",
+        title: "Vendas & Formas de pagamento",
+        description: "Pix/link/dinheiro e avisos pro cliente",
+        hint: "Agora",
         href: "/dashboard/modulos/vendas",
         ctaLabel: "Abrir",
       },
@@ -780,13 +780,6 @@ const CASA_RACAO_BASE: DashboardModules = {
         description: "Cancelamentos e devoluções (opcional)",
         hint: "Agora",
         href: "/dashboard/modulos/trocas",
-        ctaLabel: "Abrir",
-      },
-      {
-        title: "Pagamento",
-        description: "Configurar Pix/cartão/dinheiro",
-        hint: "Agora",
-        href: "/dashboard/pagamento",
         ctaLabel: "Abrir",
       },
     ],
