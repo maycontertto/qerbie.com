@@ -649,6 +649,90 @@ export interface Database {
         ];
       };
 
+      barbershop_services: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          description: string | null;
+          price_cents: number;
+          duration_min: number;
+          image_url: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          description?: string | null;
+          price_cents?: number;
+          duration_min?: number;
+          image_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          description?: string | null;
+          price_cents?: number;
+          duration_min?: number;
+          image_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "barbershop_services_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      barbershop_qr_tokens: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          label: string;
+          qr_token: string;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          label?: string;
+          qr_token: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          label?: string;
+          qr_token?: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "barbershop_qr_tokens_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
       merchant_appointment_slots: {
         Row: {
           id: string;
@@ -707,6 +791,7 @@ export interface Database {
           merchant_id: string;
           slot_id: string;
           queue_id: string | null;
+          service_id: string | null;
           session_token: string;
           customer_name: string | null;
           customer_contact: string | null;
@@ -725,6 +810,7 @@ export interface Database {
           merchant_id: string;
           slot_id: string;
           queue_id?: string | null;
+          service_id?: string | null;
           session_token: string;
           customer_name?: string | null;
           customer_contact?: string | null;
@@ -743,6 +829,7 @@ export interface Database {
           merchant_id?: string;
           slot_id?: string;
           queue_id?: string | null;
+          service_id?: string | null;
           session_token?: string;
           customer_name?: string | null;
           customer_contact?: string | null;
@@ -776,6 +863,13 @@ export interface Database {
             columns: ["queue_id"];
             isOneToOne: false;
             referencedRelation: "merchant_queues";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "merchant_appointment_requests_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "barbershop_services";
             referencedColumns: ["id"];
           },
         ];
@@ -1239,6 +1333,7 @@ export interface Database {
           ticket_number: number;
           status: QueueTicketStatus;
           customer_name: string | null;
+          service_id: string | null;
           called_at: string | null;
           served_at: string | null;
           completed_at: string | null;
@@ -1253,6 +1348,7 @@ export interface Database {
           ticket_number: number;
           status?: QueueTicketStatus;
           customer_name?: string | null;
+          service_id?: string | null;
           called_at?: string | null;
           served_at?: string | null;
           completed_at?: string | null;
@@ -1267,6 +1363,7 @@ export interface Database {
           ticket_number?: number;
           status?: QueueTicketStatus;
           customer_name?: string | null;
+          service_id?: string | null;
           called_at?: string | null;
           served_at?: string | null;
           completed_at?: string | null;
@@ -1287,6 +1384,13 @@ export interface Database {
             columns: ["queue_id"];
             isOneToOne: false;
             referencedRelation: "merchant_queues";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "queue_tickets_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "barbershop_services";
             referencedColumns: ["id"];
           },
         ];

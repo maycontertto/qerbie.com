@@ -1,5 +1,6 @@
 export type BusinessCategoryKey =
   | "academias"
+  | "barbearia"
   | "bares"
   | "clinica"
   | "consultorio"
@@ -14,6 +15,7 @@ export type BusinessCategoryKey =
 
 export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: string }> = [
   { key: "academias", label: "Academias" },
+  { key: "barbearia", label: "Barbearia" },
   { key: "bares", label: "Bares" },
   { key: "clinica", label: "Clínica" },
   { key: "conveniencia", label: "Conveniência" },

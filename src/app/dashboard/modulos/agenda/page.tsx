@@ -85,7 +85,7 @@ export default async function AgendaModulePage({
 
   const supabase = await createClient();
 
-  const [{ data: queues }, { data: slots }, { data: pendingRequests }] = await Promise.all([
+  const [{ data: queues }, { data: slots }, { data: pendingRequests }, { data: services }] = await Promise.all([
     supabase
       .from("merchant_queues")
       .select("id, name")
@@ -102,15 +102,24 @@ export default async function AgendaModulePage({
     supabase
       .from("merchant_appointment_requests")
       .select(
-        "id, queue_id, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
+        "id, queue_id, service_id, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
       )
       .eq("merchant_id", merchant.id)
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
+    supabase
+      .from("barbershop_services")
+      .select("id, name")
+      .eq("merchant_id", merchant.id)
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false }),
   ]);
 
   const queueNameById = new Map<string, string>();
   for (const q of queues ?? []) queueNameById.set(q.id, q.name);
+
+  const serviceNameById = new Map<string, string>();
+  for (const s of services ?? []) serviceNameById.set(s.id, s.name);
 
   const banner =
     error === "invalid_slot"
@@ -242,6 +251,9 @@ export default async function AgendaModulePage({
                     {(pendingRequests ?? []).map((r) => {
                       const badge = requestBadge(r.status as RequestStatus);
                       const queueName = r.queue_id ? (queueNameById.get(r.queue_id) ?? "") : "";
+                      const serviceName = (r as { service_id?: string | null }).service_id
+                        ? serviceNameById.get(String((r as { service_id?: string | null }).service_id)) ?? ""
+                        : "";
                       return (
                         <div
                           key={r.id}
@@ -255,6 +267,11 @@ export default async function AgendaModulePage({
                               {queueName ? (
                                 <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                   {queueName}
+                                </div>
+                              ) : null}
+                              {serviceName ? (
+                                <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                  {serviceName}
                                 </div>
                               ) : null}
 

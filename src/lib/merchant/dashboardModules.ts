@@ -300,6 +300,68 @@ const MERCADO_BASE: DashboardModules = {
   },
 };
 
+const BARBEARIA_BASE: DashboardModules = {
+  headerNudge: "Serviços, equipe, agenda e fila da barbearia.",
+  sections: {
+    catalogo: [
+      {
+        title: "Serviços",
+        description: "Cortes, barba e adicionais",
+        hint: "Agora",
+        href: "/dashboard/modulos/barbearia_servicos",
+        ctaLabel: "Abrir",
+      },
+      STOCK_CARD,
+    ],
+    atendimento: [
+      {
+        title: "Recepção (Fila)",
+        description: "Filas por barbeiro/serviço",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Agenda",
+        description: "Horários e confirmações",
+        hint: "Agora",
+        href: "/dashboard/modulos/agenda",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "QR da barbearia",
+        description: "Portal do cliente (fila/agendamento)",
+        hint: "Agora",
+        href: "/dashboard/modulos/barbearia_qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Permissões e acessos",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Acompanhe totais e histórico",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Pagamento",
+        description: "Configurar Pix/cartão/dinheiro",
+        hint: "Agora",
+        href: "/dashboard/pagamento",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const ACADEMIAS_BASE: DashboardModules = {
   headerNudge: "Alunos, planos e controle mensal da academia.",
   sections: {
@@ -744,6 +806,9 @@ export function getDashboardModules(
   switch (categoryKey) {
     case "academias":
       modules = ACADEMIAS_BASE;
+      break;
+    case "barbearia":
+      modules = BARBEARIA_BASE;
       break;
     case "restaurante":
       modules = RESTAURANTE_BASE;

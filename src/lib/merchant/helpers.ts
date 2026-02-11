@@ -8,6 +8,8 @@ export function getBusinessCategoryLabel(
   switch (key) {
     case "academias":
       return "Academias";
+    case "barbearia":
+      return "Barbearia";
     case "farmacia":
       return "Farmácia";
     case "mercado":

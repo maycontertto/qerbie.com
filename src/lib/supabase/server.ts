@@ -14,16 +14,21 @@ import {
  * - Must be called inside a request context (not at module top-level).
  * - Uses the anon key (RLS enforced).
  */
-export async function createClient() {
+export async function createClient(extraHeaders: Record<string, string> = {}) {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
+
+  const headers = {
+    ...(sessionToken ? { [CUSTOMER_SESSION_HEADER]: sessionToken } : {}),
+    ...extraHeaders,
+  };
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       global: {
-        headers: sessionToken ? { [CUSTOMER_SESSION_HEADER]: sessionToken } : {},
+        headers,
       },
       cookies: {
         getAll() {

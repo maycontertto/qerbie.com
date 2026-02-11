@@ -88,6 +88,16 @@ export default async function RecepcaoModulePage({
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
 
+  const { data: services } = await supabase
+    .from("barbershop_services")
+    .select("id, name")
+    .eq("merchant_id", merchant.id)
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false });
+
+  const serviceNameById = new Map<string, string>();
+  for (const s of services ?? []) serviceNameById.set(s.id, s.name);
+
   const selectedQueueId = (queue ?? "").trim() || queues?.[0]?.id || "";
 
   const selectedQueue = (queues ?? []).find((q) => q.id === selectedQueueId) ?? null;
@@ -95,12 +105,21 @@ export default async function RecepcaoModulePage({
   const { data: tickets } = selectedQueueId
     ? await supabase
         .from("queue_tickets")
-        .select("id, ticket_number, status, customer_name, created_at")
+        .select("id, ticket_number, status, customer_name, created_at, service_id")
         .eq("merchant_id", merchant.id)
         .eq("queue_id", selectedQueueId)
         .in("status", ["waiting", "called", "serving"])
         .order("ticket_number", { ascending: true })
-    : { data: [] as Array<{ id: string; ticket_number: number; status: TicketStatus; customer_name: string | null; created_at: string }> };
+    : {
+        data: [] as Array<{
+          id: string;
+          ticket_number: number;
+          status: TicketStatus;
+          customer_name: string | null;
+          created_at: string;
+          service_id: string | null;
+        }>,
+      };
 
   const banner =
     error === "invalid_queue"
