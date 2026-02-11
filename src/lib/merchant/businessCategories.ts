@@ -12,7 +12,8 @@ export type BusinessCategoryKey =
   | "loja_roupas"
   | "mercado"
   | "pizzaria"
-  | "restaurante";
+  | "restaurante"
+  | "salao_de_beleza";
 
 export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: string }> = [
   { key: "academias", label: "Academias" },
@@ -20,6 +21,7 @@ export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: strin
   { key: "bares", label: "Bares" },
   { key: "clinica", label: "Clínica" },
   { key: "clinica_estetica", label: "Clínica de Estética" },
+  { key: "salao_de_beleza", label: "Salão de Beleza" },
   { key: "conveniencia", label: "Conveniência" },
   { key: "consultorio", label: "Consultório" },
   { key: "farmacia", label: "Farmácia" },

@@ -102,11 +102,21 @@ export default async function RecepcaoModulePage({
     .eq("is_active", true)
     .order("updated_at", { ascending: false });
 
+  const { data: beautyServices } = await supabase
+    .from("beauty_services")
+    .select("id, name")
+    .eq("merchant_id", merchant.id)
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false });
+
   const serviceNameById = new Map<string, string>();
   for (const s of services ?? []) serviceNameById.set(s.id, s.name);
 
   const aestheticServiceNameById = new Map<string, string>();
   for (const s of aestheticServices ?? []) aestheticServiceNameById.set(s.id, s.name);
+
+  const beautyServiceNameById = new Map<string, string>();
+  for (const s of beautyServices ?? []) beautyServiceNameById.set(s.id, s.name);
 
   const selectedQueueId = (queue ?? "").trim() || queues?.[0]?.id || "";
 
@@ -115,7 +125,9 @@ export default async function RecepcaoModulePage({
   const { data: tickets } = selectedQueueId
     ? await supabase
         .from("queue_tickets")
-        .select("id, ticket_number, status, customer_name, created_at, service_id, aesthetic_service_id")
+        .select(
+          "id, ticket_number, status, customer_name, created_at, service_id, aesthetic_service_id, beauty_service_id",
+        )
         .eq("merchant_id", merchant.id)
         .eq("queue_id", selectedQueueId)
         .in("status", ["waiting", "called", "serving"])
@@ -129,6 +141,7 @@ export default async function RecepcaoModulePage({
           created_at: string;
           service_id: string | null;
           aesthetic_service_id: string | null;
+          beauty_service_id: string | null;
         }>,
       };
 
@@ -350,6 +363,10 @@ export default async function RecepcaoModulePage({
                         const badge = ticketBadge(t.status as TicketStatus);
                         const procedureName = t.aesthetic_service_id
                           ? aestheticServiceNameById.get(t.aesthetic_service_id) ?? ""
+                          : (t as { beauty_service_id?: string | null }).beauty_service_id
+                            ? beautyServiceNameById.get(
+                                String((t as { beauty_service_id?: string | null }).beauty_service_id),
+                              ) ?? ""
                           : t.service_id
                             ? serviceNameById.get(t.service_id) ?? ""
                             : "";

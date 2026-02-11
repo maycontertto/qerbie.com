@@ -867,6 +867,140 @@ export interface Database {
         ];
       };
 
+      beauty_services: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          description: string | null;
+          notes: string | null;
+          price_cents: number;
+          duration_min: number;
+          image_url: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          description?: string | null;
+          notes?: string | null;
+          price_cents?: number;
+          duration_min?: number;
+          image_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          description?: string | null;
+          notes?: string | null;
+          price_cents?: number;
+          duration_min?: number;
+          image_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "beauty_services_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      beauty_qr_tokens: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          label: string;
+          qr_token: string;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          label?: string;
+          qr_token: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          label?: string;
+          qr_token?: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "beauty_qr_tokens_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      beauty_queue_services: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          queue_id: string;
+          service_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          queue_id: string;
+          service_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          queue_id?: string;
+          service_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "beauty_queue_services_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "beauty_queue_services_queue_id_fkey";
+            columns: ["queue_id"];
+            isOneToOne: false;
+            referencedRelation: "merchant_queues";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "beauty_queue_services_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "beauty_services";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
       merchant_appointment_slots: {
         Row: {
           id: string;
@@ -927,6 +1061,7 @@ export interface Database {
           queue_id: string | null;
           service_id: string | null;
           aesthetic_service_id: string | null;
+          beauty_service_id: string | null;
           session_token: string;
           customer_name: string | null;
           customer_contact: string | null;
@@ -947,6 +1082,7 @@ export interface Database {
           queue_id?: string | null;
           service_id?: string | null;
           aesthetic_service_id?: string | null;
+          beauty_service_id?: string | null;
           session_token: string;
           customer_name?: string | null;
           customer_contact?: string | null;
@@ -967,6 +1103,7 @@ export interface Database {
           queue_id?: string | null;
           service_id?: string | null;
           aesthetic_service_id?: string | null;
+          beauty_service_id?: string | null;
           session_token?: string;
           customer_name?: string | null;
           customer_contact?: string | null;
@@ -1014,6 +1151,13 @@ export interface Database {
             columns: ["aesthetic_service_id"];
             isOneToOne: false;
             referencedRelation: "aesthetic_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "merchant_appointment_requests_beauty_service_id_fkey";
+            columns: ["beauty_service_id"];
+            isOneToOne: false;
+            referencedRelation: "beauty_services";
             referencedColumns: ["id"];
           },
         ];
@@ -1479,6 +1623,7 @@ export interface Database {
           customer_name: string | null;
           service_id: string | null;
           aesthetic_service_id: string | null;
+          beauty_service_id: string | null;
           called_at: string | null;
           served_at: string | null;
           completed_at: string | null;
@@ -1495,6 +1640,7 @@ export interface Database {
           customer_name?: string | null;
           service_id?: string | null;
           aesthetic_service_id?: string | null;
+          beauty_service_id?: string | null;
           called_at?: string | null;
           served_at?: string | null;
           completed_at?: string | null;
@@ -1511,6 +1657,7 @@ export interface Database {
           customer_name?: string | null;
           service_id?: string | null;
           aesthetic_service_id?: string | null;
+          beauty_service_id?: string | null;
           called_at?: string | null;
           served_at?: string | null;
           completed_at?: string | null;
@@ -1545,6 +1692,13 @@ export interface Database {
             columns: ["aesthetic_service_id"];
             isOneToOne: false;
             referencedRelation: "aesthetic_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "queue_tickets_beauty_service_id_fkey";
+            columns: ["beauty_service_id"];
+            isOneToOne: false;
+            referencedRelation: "beauty_services";
             referencedColumns: ["id"];
           },
         ];

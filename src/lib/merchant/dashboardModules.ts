@@ -431,6 +431,75 @@ const ESTETICA_BASE: DashboardModules = {
   },
 };
 
+const SALAO_BASE: DashboardModules = {
+  headerNudge: "Organize serviços, profissionais e atendimentos em um único painel.",
+  sections: {
+    catalogo: [
+      {
+        title: "Serviços",
+        description: "Cortes, cores, tratamentos e valores",
+        hint: "Agora",
+        href: "/dashboard/modulos/salao_servicos",
+        ctaLabel: "Abrir",
+      },
+      STOCK_CARD,
+    ],
+    atendimento: [
+      {
+        title: "Profissionais",
+        description: "Equipe e serviços por profissional",
+        hint: "Agora",
+        href: "/dashboard/modulos/salao_profissionais",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Recepção (Fila)",
+        description: "Chegada e atendimento por ordem",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Agenda",
+        description: "Horários e confirmações",
+        hint: "Agora",
+        href: "/dashboard/modulos/agenda",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "QR do salão",
+        description: "Portal do cliente (serviços/agendamento)",
+        hint: "Agora",
+        href: "/dashboard/modulos/salao_qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Permissões e acessos",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Acompanhe totais e histórico",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Pagamento",
+        description: "Configurar Pix/cartão/dinheiro",
+        hint: "Agora",
+        href: "/dashboard/pagamento",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const ACADEMIAS_BASE: DashboardModules = {
   headerNudge: "Alunos, planos e controle mensal da academia.",
   sections: {
@@ -881,6 +950,9 @@ export function getDashboardModules(
       break;
     case "clinica_estetica":
       modules = ESTETICA_BASE;
+      break;
+    case "salao_de_beleza":
+      modules = SALAO_BASE;
       break;
     case "restaurante":
       modules = RESTAURANTE_BASE;
