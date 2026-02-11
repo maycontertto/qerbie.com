@@ -85,7 +85,7 @@ export default async function AgendaModulePage({
 
   const supabase = await createClient();
 
-  const [{ data: queues }, { data: slots }, { data: pendingRequests }, { data: services }] = await Promise.all([
+  const [{ data: queues }, { data: slots }, { data: pendingRequests }, { data: services }, { data: aestheticServices }] = await Promise.all([
     supabase
       .from("merchant_queues")
       .select("id, name")
@@ -102,13 +102,19 @@ export default async function AgendaModulePage({
     supabase
       .from("merchant_appointment_requests")
       .select(
-        "id, queue_id, service_id, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
+        "id, queue_id, service_id, aesthetic_service_id, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
       )
       .eq("merchant_id", merchant.id)
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
     supabase
       .from("barbershop_services")
+      .select("id, name")
+      .eq("merchant_id", merchant.id)
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("aesthetic_services")
       .select("id, name")
       .eq("merchant_id", merchant.id)
       .eq("is_active", true)
@@ -120,6 +126,9 @@ export default async function AgendaModulePage({
 
   const serviceNameById = new Map<string, string>();
   for (const s of services ?? []) serviceNameById.set(s.id, s.name);
+
+  const aestheticServiceNameById = new Map<string, string>();
+  for (const s of aestheticServices ?? []) aestheticServiceNameById.set(s.id, s.name);
 
   const banner =
     error === "invalid_slot"
@@ -251,9 +260,13 @@ export default async function AgendaModulePage({
                     {(pendingRequests ?? []).map((r) => {
                       const badge = requestBadge(r.status as RequestStatus);
                       const queueName = r.queue_id ? (queueNameById.get(r.queue_id) ?? "") : "";
-                      const serviceName = (r as { service_id?: string | null }).service_id
-                        ? serviceNameById.get(String((r as { service_id?: string | null }).service_id)) ?? ""
-                        : "";
+                      const serviceId = (r as { service_id?: string | null }).service_id ?? null;
+                      const aestheticServiceId = (r as { aesthetic_service_id?: string | null }).aesthetic_service_id ?? null;
+                      const serviceName = aestheticServiceId
+                        ? aestheticServiceNameById.get(String(aestheticServiceId)) ?? ""
+                        : serviceId
+                          ? serviceNameById.get(String(serviceId)) ?? ""
+                          : "";
                       return (
                         <div
                           key={r.id}

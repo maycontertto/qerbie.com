@@ -95,8 +95,18 @@ export default async function RecepcaoModulePage({
     .eq("is_active", true)
     .order("updated_at", { ascending: false });
 
+  const { data: aestheticServices } = await supabase
+    .from("aesthetic_services")
+    .select("id, name")
+    .eq("merchant_id", merchant.id)
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false });
+
   const serviceNameById = new Map<string, string>();
   for (const s of services ?? []) serviceNameById.set(s.id, s.name);
+
+  const aestheticServiceNameById = new Map<string, string>();
+  for (const s of aestheticServices ?? []) aestheticServiceNameById.set(s.id, s.name);
 
   const selectedQueueId = (queue ?? "").trim() || queues?.[0]?.id || "";
 
@@ -105,7 +115,7 @@ export default async function RecepcaoModulePage({
   const { data: tickets } = selectedQueueId
     ? await supabase
         .from("queue_tickets")
-        .select("id, ticket_number, status, customer_name, created_at, service_id")
+        .select("id, ticket_number, status, customer_name, created_at, service_id, aesthetic_service_id")
         .eq("merchant_id", merchant.id)
         .eq("queue_id", selectedQueueId)
         .in("status", ["waiting", "called", "serving"])
@@ -118,6 +128,7 @@ export default async function RecepcaoModulePage({
           customer_name: string | null;
           created_at: string;
           service_id: string | null;
+          aesthetic_service_id: string | null;
         }>,
       };
 
@@ -337,6 +348,11 @@ export default async function RecepcaoModulePage({
                     <div className="mt-4 divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
                       {(tickets ?? []).map((t) => {
                         const badge = ticketBadge(t.status as TicketStatus);
+                        const procedureName = t.aesthetic_service_id
+                          ? aestheticServiceNameById.get(t.aesthetic_service_id) ?? ""
+                          : t.service_id
+                            ? serviceNameById.get(t.service_id) ?? ""
+                            : "";
                         return (
                           <div
                             key={t.id}
@@ -351,6 +367,11 @@ export default async function RecepcaoModulePage({
                                   </span>
                                 ) : null}
                               </div>
+                              {procedureName ? (
+                                <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                  {procedureName}
+                                </div>
+                              ) : null}
                               <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${badge.cls}`}>
                                 {badge.label}
                               </span>

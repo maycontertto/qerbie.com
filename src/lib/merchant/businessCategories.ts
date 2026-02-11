@@ -3,6 +3,7 @@ export type BusinessCategoryKey =
   | "barbearia"
   | "bares"
   | "clinica"
+  | "clinica_estetica"
   | "consultorio"
   | "conveniencia"
   | "farmacia"
@@ -18,6 +19,7 @@ export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: strin
   { key: "barbearia", label: "Barbearia" },
   { key: "bares", label: "Bares" },
   { key: "clinica", label: "Clínica" },
+  { key: "clinica_estetica", label: "Clínica de Estética" },
   { key: "conveniencia", label: "Conveniência" },
   { key: "consultorio", label: "Consultório" },
   { key: "farmacia", label: "Farmácia" },

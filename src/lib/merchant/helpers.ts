@@ -10,6 +10,8 @@ export function getBusinessCategoryLabel(
       return "Academias";
     case "barbearia":
       return "Barbearia";
+    case "clinica_estetica":
+      return "Clínica de Estética";
     case "farmacia":
       return "Farmácia";
     case "mercado":
