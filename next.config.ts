@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "20mb",
+    },
+  },
   async redirects() {
     // Canonical domain: https://www.qerbie.com
     // Consolidate indexing and avoid duplicate content across apex and www.
