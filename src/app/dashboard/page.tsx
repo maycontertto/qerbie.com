@@ -282,11 +282,12 @@ export default async function DashboardPage({
               href="https://wa.me/558496416053"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50 sm:inline"
+              className="text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-50 sm:text-sm"
             >
-              Suporte (WhatsApp)
+              <span className="sm:hidden">Suporte</span>
+              <span className="hidden sm:inline">Suporte (WhatsApp)</span>
             </a>
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="hidden text-sm text-zinc-500 dark:text-zinc-400 sm:inline">
               {user.email}
             </span>
             <form action={signOut}>
