@@ -103,11 +103,15 @@ function safeParseCart(raw: string | null): { items: CartItem[]; notes: string }
 }
 
 function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
+  const lowered = s.toLowerCase();
+  try {
+    if (typeof (lowered as unknown as { normalize?: unknown }).normalize === "function") {
+      return lowered.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    }
+  } catch {
+    // ignore and fallback
+  }
+  return lowered.trim();
 }
 
 export function CustomerMenuBrowser({
