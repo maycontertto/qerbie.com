@@ -92,6 +92,7 @@ export default async function AgendaModulePage({
     { data: services },
     { data: aestheticServices },
     { data: beautyServices },
+    { data: petServices },
   ] = await Promise.all([
     supabase
       .from("merchant_queues")
@@ -109,7 +110,7 @@ export default async function AgendaModulePage({
     supabase
       .from("merchant_appointment_requests")
       .select(
-        "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
+        "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
       )
       .eq("merchant_id", merchant.id)
       .eq("status", "pending")
@@ -132,6 +133,12 @@ export default async function AgendaModulePage({
       .eq("merchant_id", merchant.id)
       .eq("is_active", true)
       .order("updated_at", { ascending: false }),
+    supabase
+      .from("pet_services")
+      .select("id, name")
+      .eq("merchant_id", merchant.id)
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false }),
   ]);
 
   const queueNameById = new Map<string, string>();
@@ -145,6 +152,9 @@ export default async function AgendaModulePage({
 
   const beautyServiceNameById = new Map<string, string>();
   for (const s of beautyServices ?? []) beautyServiceNameById.set(s.id, s.name);
+
+  const petServiceNameById = new Map<string, string>();
+  for (const s of petServices ?? []) petServiceNameById.set(s.id, s.name);
 
   const banner =
     error === "invalid_slot"
@@ -279,10 +289,13 @@ export default async function AgendaModulePage({
                       const serviceId = (r as { service_id?: string | null }).service_id ?? null;
                       const aestheticServiceId = (r as { aesthetic_service_id?: string | null }).aesthetic_service_id ?? null;
                       const beautyServiceId = (r as { beauty_service_id?: string | null }).beauty_service_id ?? null;
+                      const petServiceId = (r as { pet_service_id?: string | null }).pet_service_id ?? null;
                       const serviceName = aestheticServiceId
                         ? aestheticServiceNameById.get(String(aestheticServiceId)) ?? ""
                         : beautyServiceId
                           ? beautyServiceNameById.get(String(beautyServiceId)) ?? ""
+                        : petServiceId
+                          ? petServiceNameById.get(String(petServiceId)) ?? ""
                         : serviceId
                           ? serviceNameById.get(String(serviceId)) ?? ""
                           : "";
@@ -304,6 +317,12 @@ export default async function AgendaModulePage({
                               {serviceName ? (
                                 <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                   {serviceName}
+                                </div>
+                              ) : null}
+
+                              {(r as { pet_name?: string | null }).pet_name ? (
+                                <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                  Pet: {String((r as { pet_name?: string | null }).pet_name)}
                                 </div>
                               ) : null}
 

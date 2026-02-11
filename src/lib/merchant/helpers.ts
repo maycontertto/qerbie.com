@@ -36,6 +36,8 @@ export function getBusinessCategoryLabel(
       return "Loja de calçados";
     case "conveniencia":
       return "Conveniência";
+    case "pet_shop":
+      return "Pet Shop / Clínica Veterinária";
     default:
       return null;
   }

@@ -1001,6 +1001,182 @@ export interface Database {
         ];
       };
 
+      pet_services: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          description: string | null;
+          notes: string | null;
+          price_cents: number;
+          duration_min: number;
+          image_url: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          description?: string | null;
+          notes?: string | null;
+          price_cents?: number;
+          duration_min?: number;
+          image_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          description?: string | null;
+          notes?: string | null;
+          price_cents?: number;
+          duration_min?: number;
+          image_url?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pet_services_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      pet_qr_tokens: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          label: string;
+          qr_token: string;
+          is_active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          label?: string;
+          qr_token: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          label?: string;
+          qr_token?: string;
+          is_active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pet_qr_tokens_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      pet_queue_services: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          queue_id: string;
+          service_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          queue_id: string;
+          service_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          queue_id?: string;
+          service_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pet_queue_services_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pet_queue_services_queue_id_fkey";
+            columns: ["queue_id"];
+            isOneToOne: false;
+            referencedRelation: "merchant_queues";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pet_queue_services_service_id_fkey";
+            columns: ["service_id"];
+            isOneToOne: false;
+            referencedRelation: "pet_services";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      pet_profiles: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          pet_name: string;
+          owner_name: string | null;
+          owner_contact: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          pet_name: string;
+          owner_name?: string | null;
+          owner_contact?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          pet_name?: string;
+          owner_name?: string | null;
+          owner_contact?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pet_profiles_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
       merchant_appointment_slots: {
         Row: {
           id: string;
@@ -1062,10 +1238,12 @@ export interface Database {
           service_id: string | null;
           aesthetic_service_id: string | null;
           beauty_service_id: string | null;
+          pet_service_id: string | null;
           session_token: string;
           customer_name: string | null;
           customer_contact: string | null;
           customer_notes: string | null;
+          pet_name: string | null;
           status: AppointmentRequestStatus;
           slot_starts_at: string;
           slot_ends_at: string;
@@ -1083,10 +1261,12 @@ export interface Database {
           service_id?: string | null;
           aesthetic_service_id?: string | null;
           beauty_service_id?: string | null;
+          pet_service_id?: string | null;
           session_token: string;
           customer_name?: string | null;
           customer_contact?: string | null;
           customer_notes?: string | null;
+          pet_name?: string | null;
           status?: AppointmentRequestStatus;
           slot_starts_at: string;
           slot_ends_at: string;
@@ -1104,10 +1284,12 @@ export interface Database {
           service_id?: string | null;
           aesthetic_service_id?: string | null;
           beauty_service_id?: string | null;
+          pet_service_id?: string | null;
           session_token?: string;
           customer_name?: string | null;
           customer_contact?: string | null;
           customer_notes?: string | null;
+          pet_name?: string | null;
           status?: AppointmentRequestStatus;
           slot_starts_at?: string;
           slot_ends_at?: string;
@@ -1158,6 +1340,13 @@ export interface Database {
             columns: ["beauty_service_id"];
             isOneToOne: false;
             referencedRelation: "beauty_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "merchant_appointment_requests_pet_service_id_fkey";
+            columns: ["pet_service_id"];
+            isOneToOne: false;
+            referencedRelation: "pet_services";
             referencedColumns: ["id"];
           },
         ];
@@ -1624,6 +1813,8 @@ export interface Database {
           service_id: string | null;
           aesthetic_service_id: string | null;
           beauty_service_id: string | null;
+          pet_service_id: string | null;
+          pet_name: string | null;
           called_at: string | null;
           served_at: string | null;
           completed_at: string | null;
@@ -1641,6 +1832,8 @@ export interface Database {
           service_id?: string | null;
           aesthetic_service_id?: string | null;
           beauty_service_id?: string | null;
+          pet_service_id?: string | null;
+          pet_name?: string | null;
           called_at?: string | null;
           served_at?: string | null;
           completed_at?: string | null;
@@ -1658,6 +1851,8 @@ export interface Database {
           service_id?: string | null;
           aesthetic_service_id?: string | null;
           beauty_service_id?: string | null;
+          pet_service_id?: string | null;
+          pet_name?: string | null;
           called_at?: string | null;
           served_at?: string | null;
           completed_at?: string | null;
@@ -1699,6 +1894,13 @@ export interface Database {
             columns: ["beauty_service_id"];
             isOneToOne: false;
             referencedRelation: "beauty_services";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "queue_tickets_pet_service_id_fkey";
+            columns: ["pet_service_id"];
+            isOneToOne: false;
+            referencedRelation: "pet_services";
             referencedColumns: ["id"];
           },
         ];

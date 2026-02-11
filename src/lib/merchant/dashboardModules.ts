@@ -500,6 +500,82 @@ const SALAO_BASE: DashboardModules = {
   },
 };
 
+const PETSHOP_BASE: DashboardModules = {
+  headerNudge: "Serviços, profissionais e atendimento do pet em um só lugar.",
+  sections: {
+    catalogo: [
+      {
+        title: "Serviços",
+        description: "Banho, tosa, consulta, vacina e valores",
+        hint: "Agora",
+        href: "/dashboard/modulos/pet_servicos",
+        ctaLabel: "Abrir",
+      },
+      STOCK_CARD,
+    ],
+    atendimento: [
+      {
+        title: "Profissionais",
+        description: "Equipe e serviços por profissional",
+        hint: "Agora",
+        href: "/dashboard/modulos/pet_profissionais",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Recepção (Fila)",
+        description: "Chegada e atendimento por ordem",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Agenda",
+        description: "Horários e confirmações",
+        hint: "Agora",
+        href: "/dashboard/modulos/agenda",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Histórico do pet",
+        description: "Preferências e ocorrências operacionais (sem prontuário)",
+        hint: "Agora",
+        href: "/dashboard/modulos/pet_historico",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "QR do pet shop",
+        description: "Portal do cliente (serviços/agendamento)",
+        hint: "Agora",
+        href: "/dashboard/modulos/pet_qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Permissões e acessos",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Faturamento",
+        description: "Acompanhe totais e histórico",
+        hint: "Em breve",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Pagamento",
+        description: "Configurar Pix/cartão/dinheiro",
+        hint: "Agora",
+        href: "/dashboard/pagamento",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const ACADEMIAS_BASE: DashboardModules = {
   headerNudge: "Alunos, planos e controle mensal da academia.",
   sections: {
@@ -953,6 +1029,9 @@ export function getDashboardModules(
       break;
     case "salao_de_beleza":
       modules = SALAO_BASE;
+      break;
+    case "pet_shop":
+      modules = PETSHOP_BASE;
       break;
     case "restaurante":
       modules = RESTAURANTE_BASE;

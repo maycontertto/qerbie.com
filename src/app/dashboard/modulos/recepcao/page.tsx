@@ -109,6 +109,13 @@ export default async function RecepcaoModulePage({
     .eq("is_active", true)
     .order("updated_at", { ascending: false });
 
+  const { data: petServices } = await supabase
+    .from("pet_services")
+    .select("id, name")
+    .eq("merchant_id", merchant.id)
+    .eq("is_active", true)
+    .order("updated_at", { ascending: false });
+
   const serviceNameById = new Map<string, string>();
   for (const s of services ?? []) serviceNameById.set(s.id, s.name);
 
@@ -118,6 +125,9 @@ export default async function RecepcaoModulePage({
   const beautyServiceNameById = new Map<string, string>();
   for (const s of beautyServices ?? []) beautyServiceNameById.set(s.id, s.name);
 
+  const petServiceNameById = new Map<string, string>();
+  for (const s of petServices ?? []) petServiceNameById.set(s.id, s.name);
+
   const selectedQueueId = (queue ?? "").trim() || queues?.[0]?.id || "";
 
   const selectedQueue = (queues ?? []).find((q) => q.id === selectedQueueId) ?? null;
@@ -126,7 +136,7 @@ export default async function RecepcaoModulePage({
     ? await supabase
         .from("queue_tickets")
         .select(
-          "id, ticket_number, status, customer_name, created_at, service_id, aesthetic_service_id, beauty_service_id",
+          "id, ticket_number, status, customer_name, pet_name, created_at, service_id, aesthetic_service_id, beauty_service_id, pet_service_id",
         )
         .eq("merchant_id", merchant.id)
         .eq("queue_id", selectedQueueId)
@@ -138,10 +148,12 @@ export default async function RecepcaoModulePage({
           ticket_number: number;
           status: TicketStatus;
           customer_name: string | null;
+          pet_name: string | null;
           created_at: string;
           service_id: string | null;
           aesthetic_service_id: string | null;
           beauty_service_id: string | null;
+          pet_service_id: string | null;
         }>,
       };
 
@@ -367,6 +379,10 @@ export default async function RecepcaoModulePage({
                             ? beautyServiceNameById.get(
                                 String((t as { beauty_service_id?: string | null }).beauty_service_id),
                               ) ?? ""
+                          : (t as { pet_service_id?: string | null }).pet_service_id
+                            ? petServiceNameById.get(
+                                String((t as { pet_service_id?: string | null }).pet_service_id),
+                              ) ?? ""
                           : t.service_id
                             ? serviceNameById.get(t.service_id) ?? ""
                             : "";
@@ -384,6 +400,11 @@ export default async function RecepcaoModulePage({
                                   </span>
                                 ) : null}
                               </div>
+                              {t.pet_name ? (
+                                <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                  Pet: {t.pet_name}
+                                </div>
+                              ) : null}
                               {procedureName ? (
                                 <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                                   {procedureName}

@@ -11,6 +11,7 @@ export type BusinessCategoryKey =
   | "loja_calcados"
   | "loja_roupas"
   | "mercado"
+  | "pet_shop"
   | "pizzaria"
   | "restaurante"
   | "salao_de_beleza";
@@ -22,6 +23,7 @@ export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: strin
   { key: "clinica", label: "Clínica" },
   { key: "clinica_estetica", label: "Clínica de Estética" },
   { key: "salao_de_beleza", label: "Salão de Beleza" },
+  { key: "pet_shop", label: "Pet Shop / Clínica Veterinária" },
   { key: "conveniencia", label: "Conveniência" },
   { key: "consultorio", label: "Consultório" },
   { key: "farmacia", label: "Farmácia" },
