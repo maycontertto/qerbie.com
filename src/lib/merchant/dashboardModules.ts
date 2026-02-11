@@ -27,6 +27,14 @@ const STOCK_CARD: DashboardCardModel = {
   ctaLabel: "Abrir",
 };
 
+const PRODUCTS_CARD: DashboardCardModel = {
+  title: "Produtos",
+  description: "Cadastro de produtos e preços",
+  hint: "Agora",
+  href: "/dashboard/modulos/produtos",
+  ctaLabel: "Abrir",
+};
+
 function withStockInCatalog(modules: DashboardModules): DashboardModules {
   const catalog = modules.sections.catalogo ?? [];
   const alreadyHasStock = catalog.some(
@@ -40,6 +48,28 @@ function withStockInCatalog(modules: DashboardModules): DashboardModules {
     sections: {
       ...modules.sections,
       catalogo: [...catalog, STOCK_CARD],
+    },
+  };
+}
+
+function withProductsInCatalog(modules: DashboardModules): DashboardModules {
+  const catalog = modules.sections.catalogo ?? [];
+  const alreadyHasProducts = catalog.some((card) => {
+    const href = card.href ?? "";
+    return (
+      card.title.toLowerCase() === "produtos" ||
+      href === PRODUCTS_CARD.href ||
+      href.startsWith(`${PRODUCTS_CARD.href}?`)
+    );
+  });
+
+  if (alreadyHasProducts) return modules;
+
+  return {
+    ...modules,
+    sections: {
+      ...modules.sections,
+      catalogo: [...catalog, PRODUCTS_CARD],
     },
   };
 }
@@ -509,6 +539,13 @@ const PETSHOP_BASE: DashboardModules = {
         description: "Banho, tosa, consulta, vacina e valores",
         hint: "Agora",
         href: "/dashboard/modulos/pet_servicos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Produtos",
+        description: "Rações, petiscos e acessórios",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
         ctaLabel: "Abrir",
       },
       STOCK_CARD,
@@ -1217,5 +1254,5 @@ export function getDashboardModules(
       break;
   }
 
-  return withStockInCatalog(modules);
+  return withStockInCatalog(withProductsInCatalog(modules));
 }
