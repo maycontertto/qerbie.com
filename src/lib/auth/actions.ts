@@ -117,7 +117,7 @@ function normalizeNext(value: string): string | null {
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/auth/sign-in");
+  redirect("/");
 }
 
 // ── Helpers ─────────────────────────────────────────────────
