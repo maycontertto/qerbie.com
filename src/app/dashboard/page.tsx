@@ -278,6 +278,14 @@ export default async function DashboardPage({
           </div>
 
           <div className="flex items-center gap-4">
+            <a
+              href="https://wa.me/558496416053"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden text-sm font-semibold text-zinc-900 hover:underline dark:text-zinc-50 sm:inline"
+            >
+              Suporte (WhatsApp)
+            </a>
             <span className="text-sm text-zinc-500 dark:text-zinc-400">
               {user.email}
             </span>

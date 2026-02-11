@@ -101,6 +101,15 @@ export default async function HomePage() {
 
       <footer className="fixed bottom-3 right-3 z-40">
         <div className="rounded-lg border border-zinc-200 bg-white/90 px-3 py-2 text-xs text-zinc-600 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-300">
+          <a
+            href="https://wa.me/558496416053"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
+          >
+            Suporte (WhatsApp)
+          </a>
+          <span className="mx-2 text-zinc-300 dark:text-zinc-700">·</span>
           <span className="hidden text-zinc-500 dark:text-zinc-400 sm:inline">
             © {new Date().getFullYear()} Qerbie
           </span>
