@@ -381,7 +381,7 @@ export default async function DashboardPage({
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {BUSINESS_CATEGORIES.map((c) => {
-                const selected = merchant.business_category === c.key;
+                const selected = selectedKey === c.key;
 
                 return (
                   <form key={c.key} action={setBusinessCategory}>

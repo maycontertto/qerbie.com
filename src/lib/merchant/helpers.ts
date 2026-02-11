@@ -40,6 +40,9 @@ export function getBusinessCategoryLabel(
       return "Pet Shop / Clínica Veterinária";
     case "lava_jato":
       return "Lava Jato / Estética Automotiva";
+    case "casa_de_racao":
+    case "casa_racao":
+      return "Casa de Ração";
     default:
       return null;
   }
