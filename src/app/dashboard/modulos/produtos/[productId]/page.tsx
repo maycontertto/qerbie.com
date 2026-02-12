@@ -188,6 +188,23 @@ export default async function ProductEditPage({
 
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Código de barras
+              </label>
+              <input
+                name="barcode"
+                type="text"
+                inputMode="numeric"
+                defaultValue={String((product as { barcode?: string | null }).barcode ?? "")}
+                placeholder="Opcional (para usar no Caixa)"
+                className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+              />
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Use o mesmo número que sai no leitor/etiqueta.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Categoria
               </label>
               <div className="mt-1">

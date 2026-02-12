@@ -20,6 +20,8 @@ type OrderRow = {
   customer_notes: string | null;
   table_id: string | null;
   total: number | null;
+  payment_method?: string | null;
+  payment_notes?: string | null;
   delivery_address?: string | null;
   delivery_fee?: number | null;
 };
@@ -34,9 +36,21 @@ type RealtimeOrderRow = {
   customer_notes?: unknown;
   table_id?: unknown;
   total?: unknown;
+  payment_method?: unknown;
+  payment_notes?: unknown;
   delivery_address?: unknown;
   delivery_fee?: unknown;
 };
+
+function paymentLabel(method: string | null | undefined): string {
+  const m = String(method ?? "").trim().toLowerCase();
+  if (!m) return "";
+  if (m === "cash") return "Dinheiro";
+  if (m === "pix") return "Pix";
+  if (m === "card") return "Cartão";
+  if (m === "other") return "Outro";
+  return m;
+}
 
 type OrderItemRow = {
   id: string;
@@ -163,6 +177,8 @@ export function OrdersRealtimeBoard({
                   customer_notes: (row.customer_notes as string | null) ?? null,
                   table_id: (row.table_id as string | null) ?? null,
                   total: row.total != null ? Number(row.total) : null,
+              payment_method: (row.payment_method as string | null) ?? null,
+              payment_notes: (row.payment_notes as string | null) ?? null,
                   delivery_address: (row.delivery_address as string | null) ?? null,
                   delivery_fee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
               }
@@ -408,6 +424,12 @@ export function OrdersRealtimeBoard({
                     <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                       {typeLabel(o, tableLabelById)} • {fmtTime(o.created_at)}
                     </p>
+                    {o.status === "completed" && o.payment_method ? (
+                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        Pago: {paymentLabel(o.payment_method)}
+                        {o.payment_notes ? ` • ${o.payment_notes}` : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <span
                     className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${statusPillClass(

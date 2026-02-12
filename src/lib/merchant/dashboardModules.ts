@@ -305,6 +305,13 @@ const MERCADO_BASE: DashboardModules = {
     ],
     vendas: [
       {
+        title: "Caixa",
+        description: "Tela de balcão com leitor de código de barras",
+        hint: "Agora",
+        href: "/dashboard/modulos/vendas/caixa",
+        ctaLabel: "Abrir",
+      },
+      {
         title: "Formas de pagamento",
         description: "Escolha Pix/link/dinheiro e o aviso pro cliente",
         hint: "Agora",

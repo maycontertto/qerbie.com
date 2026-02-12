@@ -561,6 +561,19 @@ export default async function ProdutosModulePage({
                   />
                 </div>
 
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                    Código de barras
+                  </label>
+                  <input
+                    name="barcode"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Opcional (para usar no Caixa)"
+                    className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
                     Categoria

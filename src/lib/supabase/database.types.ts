@@ -1711,6 +1711,7 @@ export interface Database {
           merchant_id: string;
           menu_id: string;
           category_id: string | null;
+          barcode: string | null;
           name: string;
           description: string | null;
           image_url: string | null;
@@ -1730,6 +1731,7 @@ export interface Database {
           merchant_id: string;
           menu_id: string;
           category_id?: string | null;
+          barcode?: string | null;
           name: string;
           description?: string | null;
           image_url?: string | null;
@@ -1749,6 +1751,7 @@ export interface Database {
           merchant_id?: string;
           menu_id?: string;
           category_id?: string | null;
+          barcode?: string | null;
           name?: string;
           description?: string | null;
           image_url?: string | null;
@@ -2122,6 +2125,8 @@ export interface Database {
           subtotal: number;
           discount: number;
           total: number;
+          payment_method: string | null;
+          payment_notes: string | null;
           delivery_address: string | null;
           delivery_fee: number | null;
           delivery_eta_minutes: number | null;
@@ -2149,6 +2154,8 @@ export interface Database {
           subtotal?: number;
           discount?: number;
           total?: number;
+          payment_method?: string | null;
+          payment_notes?: string | null;
           delivery_address?: string | null;
           delivery_fee?: number | null;
           delivery_eta_minutes?: number | null;
@@ -2176,6 +2183,8 @@ export interface Database {
           subtotal?: number;
           discount?: number;
           total?: number;
+          payment_method?: string | null;
+          payment_notes?: string | null;
           delivery_address?: string | null;
           delivery_fee?: number | null;
           delivery_eta_minutes?: number | null;

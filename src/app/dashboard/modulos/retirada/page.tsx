@@ -15,6 +15,8 @@ type BoardOrderRow = Pick<
   | "customer_notes"
   | "table_id"
   | "total"
+  | "payment_method"
+  | "payment_notes"
   | "delivery_address"
   | "delivery_fee"
 >;
@@ -65,7 +67,7 @@ export default async function RetiradaModulePage() {
   const { data: orders } = await supabase
     .from("orders")
     .select(
-      "id, order_number, status, order_type, created_at, customer_name, customer_notes, table_id, total, delivery_address, delivery_fee",
+      "id, order_number, status, order_type, created_at, customer_name, customer_notes, table_id, total, payment_method, payment_notes, delivery_address, delivery_fee",
     )
     .eq("merchant_id", merchant.id)
     .eq("order_type", "takeaway")
@@ -84,6 +86,8 @@ export default async function RetiradaModulePage() {
     customer_notes: o.customer_notes,
     table_id: o.table_id,
     total: o.total ?? 0,
+    payment_method: (o as BoardOrderRow).payment_method ?? null,
+    payment_notes: (o as BoardOrderRow).payment_notes ?? null,
     delivery_address: (o as BoardOrderRow).delivery_address ?? null,
     delivery_fee: (o as BoardOrderRow).delivery_fee ?? null,
   }));

@@ -150,6 +150,7 @@ export async function createSuggestedMenuCategories(formData: FormData): Promise
 
 export async function createProduct(formData: FormData): Promise<void> {
   const name = (formData.get("name") as string | null)?.trim() ?? "";
+  const barcode = (formData.get("barcode") as string | null)?.trim() ?? "";
   const description = (formData.get("description") as string | null)?.trim() ?? "";
   const priceRaw = (formData.get("price") as string | null)?.trim() ?? "";
   const imageUrl = (formData.get("image_url") as string | null)?.trim() ?? "";
@@ -175,6 +176,7 @@ export async function createProduct(formData: FormData): Promise<void> {
     merchant_id: merchant.id,
     menu_id: menuId,
     category_id: categoryId || null,
+    barcode: barcode || null,
     name,
     description: description || null,
     image_url: imageUrl || null,
@@ -244,6 +246,7 @@ export async function createProduct(formData: FormData): Promise<void> {
 export async function updateProduct(formData: FormData): Promise<void> {
   const productId = (formData.get("product_id") as string | null)?.trim() ?? "";
   const name = (formData.get("name") as string | null)?.trim() ?? "";
+  const barcode = (formData.get("barcode") as string | null)?.trim() ?? "";
   const description = (formData.get("description") as string | null)?.trim() ?? "";
   const priceRaw = (formData.get("price") as string | null)?.trim() ?? "";
   const imageUrl = (formData.get("image_url") as string | null)?.trim() ?? "";
@@ -271,6 +274,7 @@ export async function updateProduct(formData: FormData): Promise<void> {
     price,
     image_url: imageUrl || null,
     category_id: categoryId || null,
+    barcode: barcode || null,
     is_active: isActive,
     is_featured: isFeatured,
     requires_prescription: requiresPrescription,
