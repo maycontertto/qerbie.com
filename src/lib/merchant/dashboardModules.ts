@@ -925,6 +925,13 @@ const ACADEMIAS_BASE: DashboardModules = {
         ctaLabel: "Abrir",
       },
       {
+        title: "Formas de pagamento",
+        description: "Pix/link/dinheiro e aviso para o aluno",
+        hint: "Agora",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Configurar",
+      },
+      {
         title: "Alunos",
         description: "Status, vencimentos e controle",
         hint: "Agora",
