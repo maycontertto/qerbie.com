@@ -1383,6 +1383,19 @@ export function getDashboardModules(
       modules = {
         ...MERCADO_BASE,
         headerNudge: "Operação rápida (24h), catálogo e pedidos.",
+        sections: {
+          ...MERCADO_BASE.sections,
+          vendas: [
+            {
+              title: "Formas de pagamento",
+              description: "Escolha Pix/link/dinheiro e o aviso pro cliente",
+              hint: "Agora",
+              href: "/dashboard/modulos/vendas",
+              ctaLabel: "Configurar",
+            },
+            ...MERCADO_BASE.sections.vendas,
+          ],
+        },
       };
       break;
     case "farmacia":
