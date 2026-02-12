@@ -554,11 +554,11 @@ const PETSHOP_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Pagamento",
-        description: "Configurar Pix/cartão/dinheiro",
+        title: "Formas de pagamento",
+        description: "Pix/link/dinheiro e aviso pro cliente",
         hint: "Agora",
-        href: "/dashboard/pagamento",
-        ctaLabel: "Abrir",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Configurar",
       },
     ],
   },
