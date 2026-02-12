@@ -51,7 +51,7 @@ export default async function GymCustomerPage({
   const { data: merchant } = await supabase
     .from("merchants")
     .select(
-      "name, brand_display_name, brand_logo_url, brand_primary_color, payment_pix_key, payment_pix_description, payment_disclaimer",
+      "name, brand_display_name, brand_logo_url, brand_primary_color, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer",
     )
     .eq("id", qr.merchant_id)
     .single();
@@ -142,19 +142,47 @@ export default async function GymCustomerPage({
 
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Pagamento</p>
-              {merchant?.payment_pix_key ? (
-                <div className="mt-2 space-y-2">
-                  <p className="text-sm text-zinc-700 dark:text-zinc-200">
-                    PIX: <span className="font-semibold">{maskPix(merchant.payment_pix_key)}</span>
-                  </p>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 break-words">{merchant.payment_pix_key}</p>
-                  {merchant.payment_pix_description ? (
-                    <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_pix_description}</p>
+              {merchant?.payment_pix_key || merchant?.payment_card_url || merchant?.payment_cash_description ? (
+                <div className="mt-2 space-y-3">
+                  {merchant?.payment_pix_key ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-zinc-700 dark:text-zinc-200">
+                        PIX: <span className="font-semibold">{maskPix(merchant.payment_pix_key)}</span>
+                      </p>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 break-words">{merchant.payment_pix_key}</p>
+                      {merchant.payment_pix_description ? (
+                        <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_pix_description}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {merchant?.payment_card_url ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Link (cartão/checkout)</p>
+                      {merchant.payment_card_description ? (
+                        <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_card_description}</p>
+                      ) : null}
+                      <a
+                        href={merchant.payment_card_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50 break-words"
+                      >
+                        {merchant.payment_card_url}
+                      </a>
+                    </div>
+                  ) : null}
+
+                  {merchant?.payment_cash_description ? (
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Dinheiro</p>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_cash_description}</p>
+                    </div>
                   ) : null}
                 </div>
               ) : (
                 <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                  A academia ainda não configurou a chave PIX.
+                  A academia ainda não configurou as formas de pagamento.
                 </p>
               )}
               {merchant?.payment_disclaimer ? (
