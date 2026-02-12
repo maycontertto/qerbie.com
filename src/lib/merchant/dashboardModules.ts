@@ -786,6 +786,110 @@ const CASA_RACAO_BASE: DashboardModules = {
   },
 };
 
+const ACAITERIA_SORVETERIA_BASE: DashboardModules = {
+  headerNudge: "Controle de pedidos, estoque e vendas em um só lugar.",
+  sections: {
+    catalogo: [
+      {
+        title: "Produtos",
+        description: "Açaí, sorvetes, milkshakes, combos e adicionais",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Variações (Tamanhos)",
+        description: "300ml, 500ml, 700ml, 1L e sabores",
+        hint: "Agora",
+        href: "/dashboard/modulos/variacoes",
+        ctaLabel: "Abrir",
+      },
+      STOCK_CARD,
+      {
+        title: "Relatórios",
+        description: "Resumo e indicadores de vendas",
+        hint: "Agora",
+        href: "/dashboard/modulos/relatorios",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "Modo Caixa (Pedido rápido)",
+        description: "Montagem, adicionais e observações",
+        hint: "Agora",
+        href: "/dashboard/modulos/pedidos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Recepção / Fila de preparo",
+        description: "Recebido → Em preparo → Pronto → Entregue",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Retirada",
+        description: "Pedidos para retirada (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/retirada",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Entregas",
+        description: "Pedidos para entrega e status (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/entregas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Agenda (Encomendas)",
+        description: "Reservas e pedidos programados (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/agenda",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "QR da açaíteria",
+        description: "Cliente acessa cardápio e faz pedidos",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Permissões de caixa/relatórios/estoque",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Vendas & Formas de pagamento",
+        description: "Pix/link/dinheiro e avisos pro cliente",
+        hint: "Agora",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Histórico de Vendas",
+        description: "Pedidos finalizados e ticket médio",
+        hint: "Agora",
+        href: "/dashboard/modulos/historico",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Trocas",
+        description: "Cancelamentos e devoluções (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/trocas",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const ACADEMIAS_BASE: DashboardModules = {
   headerNudge: "Alunos, planos e controle mensal da academia.",
   sections: {
@@ -1228,6 +1332,11 @@ export function getDashboardModules(
   let modules: DashboardModules;
 
   switch (categoryKey) {
+    case "acaiteria_sorveteria":
+    case "acaiteria":
+    case "sorveteria":
+      modules = ACAITERIA_SORVETERIA_BASE;
+      break;
     case "academias":
       modules = ACADEMIAS_BASE;
       break;

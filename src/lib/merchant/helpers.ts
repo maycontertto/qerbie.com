@@ -6,6 +6,10 @@ export function getBusinessCategoryLabel(
   if (!key) return null;
 
   switch (key) {
+    case "acaiteria_sorveteria":
+    case "acaiteria":
+    case "sorveteria":
+      return "Açaíteria / Sorveteria";
     case "academias":
       return "Academias";
     case "barbearia":

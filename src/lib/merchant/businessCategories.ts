@@ -1,4 +1,5 @@
 export type BusinessCategoryKey =
+  | "acaiteria_sorveteria"
   | "academias"
   | "barbearia"
   | "bares"
@@ -19,6 +20,7 @@ export type BusinessCategoryKey =
   | "salao_de_beleza";
 
 export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: string }> = [
+  { key: "acaiteria_sorveteria", label: "Açaíteria / Sorveteria" },
   { key: "academias", label: "Academias" },
   { key: "barbearia", label: "Barbearia" },
   { key: "bares", label: "Bares" },
