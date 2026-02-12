@@ -215,6 +215,13 @@ const RESTAURANTE_BASE: DashboardModules = {
     ],
     vendas: [
       {
+        title: "Formas de pagamento",
+        description: "Escolha Pix/link/dinheiro e o aviso pro cliente",
+        hint: "Agora",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Configurar",
+      },
+      {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
         hint: "Em breve",
