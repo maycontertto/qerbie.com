@@ -125,13 +125,6 @@ const GENERIC: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
-      {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
         hint: "Em breve",
@@ -214,13 +207,6 @@ const RESTAURANTE_BASE: DashboardModules = {
       },
     ],
     vendas: [
-      {
-        title: "Vendas & Faturamento",
-        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
       {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
@@ -305,13 +291,6 @@ const MERCADO_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
-      {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
         hint: "Em breve",
@@ -375,13 +354,6 @@ const BARBEARIA_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Acompanhe totais e histórico",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
-      {
         title: "Formas de pagamento",
         description: "Pix/link/dinheiro e aviso pro cliente",
         hint: "Agora",
@@ -444,13 +416,6 @@ const ESTETICA_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Acompanhe totais e histórico",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
-      {
         title: "Pagamento",
         description: "Configurar Pix/cartão/dinheiro",
         hint: "Agora",
@@ -512,13 +477,6 @@ const SALAO_BASE: DashboardModules = {
       },
     ],
     vendas: [
-      {
-        title: "Vendas & Faturamento",
-        description: "Acompanhe totais e histórico",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
       {
         title: "Pagamento",
         description: "Configurar Pix/cartão/dinheiro",
@@ -596,13 +554,6 @@ const PETSHOP_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Acompanhe totais e histórico",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
-      {
         title: "Pagamento",
         description: "Configurar Pix/cartão/dinheiro",
         hint: "Agora",
@@ -671,13 +622,6 @@ const LAVAJATO_BASE: DashboardModules = {
       },
     ],
     vendas: [
-      {
-        title: "Vendas & Faturamento",
-        description: "Acompanhe totais e histórico",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
       {
         title: "Pagamento",
         description: "Configurar Pix/cartão/dinheiro",
@@ -1038,13 +982,6 @@ const FARMACIA_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
-      {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
         hint: "Em breve",
@@ -1120,13 +1057,6 @@ const CLINICA_BASE: DashboardModules = {
       },
     ],
     vendas: [
-      {
-        title: "Vendas & Faturamento",
-        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
       {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
@@ -1218,13 +1148,6 @@ const HOTEIS_BASE: DashboardModules = {
     ],
     vendas: [
       {
-        title: "Vendas & Faturamento",
-        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
-      {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
         hint: "Em breve",
@@ -1307,13 +1230,6 @@ const LOJA_BASE: DashboardModules = {
       },
     ],
     vendas: [
-      {
-        title: "Vendas & Faturamento",
-        description: "Veja seus totais, acompanhe o histórico de vendas e tenha controle do faturamento do seu negócio.",
-        hint: "Em breve",
-        href: "/dashboard/modulos/vendas",
-        ctaLabel: "Abrir",
-      },
       {
         title: "Cupons & Promoções",
         description: "Crie campanhas e descontos para aumentar vendas e fidelizar clientes.",
