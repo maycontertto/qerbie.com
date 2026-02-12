@@ -1,6 +1,6 @@
 /* Minimal PWA service worker for Qerbie */
 
-const CACHE_NAME = "qerbie-pwa-v2";
+const CACHE_NAME = "qerbie-pwa-v3";
 const CORE_ASSETS = [
   "/",
   "/manifest.webmanifest",
@@ -39,6 +39,11 @@ self.addEventListener("fetch", (event) => {
   // Never cache API or auth-like endpoints.
   if (url.pathname.startsWith("/api")) return;
   if (url.pathname.startsWith("/auth")) return;
+
+  // Never cache authenticated/console routes.
+  // These pages change frequently and must always reflect the latest deploy.
+  if (url.pathname.startsWith("/dashboard")) return;
+  if (url.pathname.startsWith("/atendente")) return;
 
   // Network-first for navigations (keeps app fresh).
   if (request.mode === "navigate") {
