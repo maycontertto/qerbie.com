@@ -1356,6 +1356,16 @@ export function getDashboardModules(
               ctaLabel: "Cadastrar",
             },
           ],
+          vendas: [
+            {
+              title: "Formas de pagamento",
+              description: "Escolha Pix/link/dinheiro e o aviso pro cliente",
+              hint: "Agora",
+              href: "/dashboard/modulos/vendas",
+              ctaLabel: "Configurar",
+            },
+            ...RESTAURANTE_BASE.sections.vendas,
+          ],
         },
       };
       break;
