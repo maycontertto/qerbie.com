@@ -20,6 +20,12 @@ plugins {
     id 'com.android.application'
 }
 
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 def twaManifest = [
     applicationId: 'com.qerbie.www.twa',
     hostName: 'www.qerbie.com', // The domain being opened in the TWA.
@@ -53,6 +59,21 @@ def twaManifest = [
 android {
     compileSdkVersion 36
     namespace "com.qerbie.www.twa"
+
+    signingConfigs {
+        release {
+            def storeFilePath = (keystoreProperties['storeFile'] ?: 'android.keystore')?.toString()
+            def resolvedStoreFile = storeFilePath ? rootProject.file(storeFilePath) : null
+
+            if (resolvedStoreFile != null && resolvedStoreFile.exists()) {
+                storeFile resolvedStoreFile
+            }
+            storePassword (keystoreProperties['storePassword'] ?: System.getenv('ANDROID_KEYSTORE_PASSWORD'))
+            keyAlias (keystoreProperties['keyAlias'] ?: System.getenv('ANDROID_KEY_ALIAS'))
+            keyPassword (keystoreProperties['keyPassword'] ?: System.getenv('ANDROID_KEY_PASSWORD'))
+        }
+    }
+
     defaultConfig {
         applicationId "com.qerbie.www.twa"
         minSdkVersion 21
@@ -153,6 +174,19 @@ android {
     buildTypes {
         release {
             minifyEnabled true
+
+            def isValidSecret = { v ->
+                v != null && v.toString().trim() && v.toString() != 'REPLACE_ME'
+            }
+            def hasReleaseSigning = android.signingConfigs.release.storeFile != null &&
+                    isValidSecret(android.signingConfigs.release.storePassword) &&
+                    isValidSecret(android.signingConfigs.release.keyAlias) &&
+                    isValidSecret(android.signingConfigs.release.keyPassword)
+            if (hasReleaseSigning) {
+                signingConfig android.signingConfigs.release
+            } else {
+                println("WARNING: release bundle/APK will be UNSIGNED. Create keystore.properties or set ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD to build a Play-uploadable artifact.")
+            }
         }
     }
     compileOptions {
