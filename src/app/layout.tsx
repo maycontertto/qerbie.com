@@ -20,9 +20,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
-  title: "Qerbie — Plataforma de atendimento com QR Code",
+  title: "Qerbie — Cardápio Digital e Pedidos via QR Code para Restaurantes",
   description:
-    "Qerbie é uma plataforma de atendimento para restaurantes e comércios locais: cardápio digital, pedidos e filas via QR Code.",
+    "Organize seu restaurante com cardápio digital, pedidos em tempo real e atendimento via QR Code. Funciona no celular ou computador. Teste grátis por 30 dias.",
+  keywords: [
+    "cardápio digital",
+    "qr code restaurante",
+    "pedidos online restaurante",
+    "sistema para restaurante",
+    "fila digital restaurante",
+    "atendimento por qr code",
+  ],
   robots: {
     index: true,
     follow: true,
@@ -43,7 +51,9 @@ export const metadata: Metadata = {
       { url: "/pwa/icon-512.png", sizes: "512x512", type: "image/png" },
       { url: "/qrbie.png", type: "image/png" },
     ],
-    apple: [{ url: "/pwa/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [
+      { url: "/pwa/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
     shortcut: [
       { url: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/pwa/icon-512.png", sizes: "512x512", type: "image/png" },
@@ -57,17 +67,26 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    title: "Qerbie — Plataforma de atendimento com QR Code",
+    title: "Qerbie — Cardápio Digital e Pedidos via QR Code",
     description:
-      "Plataforma de atendimento para restaurantes e comércios locais: cardápio digital, pedidos e filas via QR Code.",
+      "Modernize seu atendimento com QR Code. Cardápio digital, pedidos instantâneos e organização completa para restaurantes.",
     url: "/",
     siteName: "Qerbie",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Qerbie - Cardápio Digital e Pedidos via QR Code",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Qerbie — Plataforma de atendimento com QR Code",
+    title: "Qerbie — Cardápio Digital e Pedidos via QR Code",
     description:
-      "Plataforma de atendimento para restaurantes e comércios locais: cardápio digital, pedidos e filas via QR Code.",
+      "Organize seu restaurante com cardápio digital e pedidos em tempo real. Funciona no celular ou computador.",
+    images: ["/og-image.png"],
   },
 };
 
@@ -83,6 +102,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const canonical = SITE_URL.replace(/\/$/, "");
+
   const schema = {
     "@context": "https://schema.org",
     "@graph": [
@@ -97,6 +117,20 @@ export default function RootLayout({
         name: "Qerbie",
         url: canonical,
       },
+      {
+        "@type": "SoftwareApplication",
+        name: "Qerbie",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        description:
+          "Plataforma de atendimento com cardápio digital, pedidos em tempo real e QR Code para restaurantes.",
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "BRL",
+          description: "Teste grátis por 30 dias",
+        },
+      },
     ],
   };
 
@@ -105,7 +139,6 @@ export default function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
         />
       </head>
