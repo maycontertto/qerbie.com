@@ -41,21 +41,16 @@ export default async function HomePage() {
           </div>
 
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-            Modernize seu atendimento com QR Code.
+            Inovação simples para o seu negócio.
             <span className="block text-zinc-600 dark:text-zinc-300">
-              Cardápio digital, pedidos em tempo real e organização completa — no celular ou no computador.
+              Atendimento organizado, pedidos em tempo real e gestão prática em um único lugar.
             </span>
           </h1>
 
           <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-400">
-            A Qerbie é a forma mais simples de organizar seu restaurante.
-            Crie seu cardápio digital, gere QR Code para mesas ou atendimento rápido e comece
-            a receber pedidos instantaneamente.
-            Use pelo celular ou pelo computador — você escolhe como trabalhar.
-          </p>
-
-          <p className="mt-3 text-sm font-semibold text-accent">
-            Ideal para restaurantes, lanchonetes, pizzarias, cafeterias e comércios locais.
+            A Qerbie ajuda você a modernizar seu atendimento sem complicação.
+            Organize serviços ou produtos, receba pedidos, gerencie filas e acompanhe tudo
+            de forma simples e intuitiva.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
@@ -76,7 +71,7 @@ export default async function HomePage() {
           </div>
 
           <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-            Sem instalação. Configure em minutos e comece a atender.
+            Configure em minutos e comece a atender.
           </p>
         </div>
 
@@ -84,27 +79,26 @@ export default async function HomePage() {
 
           <div className="rounded-2xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              Tudo que você precisa para organizar seu atendimento
+              Organização sem complicação
             </p>
             <ul className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
-              <li>✔ Monte seu cardápio digital em minutos</li>
-              <li>✔ Adicione variações, tamanhos e opcionais facilmente</li>
-              <li>✔ Gere QR Code para mesas ou atendimento rápido</li>
-              <li>✔ Receba pedidos instantaneamente na cozinha</li>
-              <li>✔ Organize retirada, entrega e fluxo operacional</li>
-              <li>✔ Use no celular ou no computador, sem complicação</li>
+              <li>✔ Cadastre produtos ou serviços facilmente</li>
+              <li>✔ Gerencie atendimentos e filas</li>
+              <li>✔ Receba pedidos em tempo real</li>
+              <li>✔ Controle equipe com permissões personalizadas</li>
+              <li>✔ Tenha tudo centralizado em um painel simples</li>
             </ul>
           </div>
 
           <div className="rounded-2xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-              Por que seus clientes gostam
+              Experiência moderna para seus clientes
             </p>
             <ul className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
-              <li>✔ Acessa o cardápio pelo QR sem baixar aplicativo</li>
-              <li>✔ Faz pedidos rápidos direto do celular</li>
-              <li>✔ Acompanha o pedido e reduz confusão no atendimento</li>
-              <li>✔ Experiência moderna que valoriza seu estabelecimento</li>
+              <li>✔ Atendimento mais rápido e organizado</li>
+              <li>✔ Processo simples e intuitivo</li>
+              <li>✔ Redução de erros e confusões</li>
+              <li>✔ Imagem mais profissional para seu negócio</li>
             </ul>
           </div>
 
