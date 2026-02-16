@@ -10,6 +10,7 @@ import {
   updateAttendantRole,
   updateAttendantPermissions,
 } from "@/lib/merchant/attendantsActions";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,15 @@ export default async function AdministracaoModulePage({
   const { saved, error, created_login } = await searchParams;
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
+
+  // If configuration is already present, clear a stale error from the URL.
+  if (
+    error === "server_config" &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  ) {
+    redirect("/dashboard/modulos/administracao");
+  }
 
   const canManage =
     isOwner ||

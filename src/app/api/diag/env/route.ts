@@ -18,6 +18,13 @@ export async function GET() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+  const anonEqualsServiceRole =
+    typeof supabaseAnonKey === "string" &&
+    typeof serviceRoleKey === "string" &&
+    supabaseAnonKey.length > 0 &&
+    serviceRoleKey.length > 0 &&
+    supabaseAnonKey === serviceRoleKey;
+
   return NextResponse.json(
     {
       ok: true,
@@ -33,6 +40,7 @@ export async function GET() {
         anonKeyLength: supabaseAnonKey?.length ?? 0,
         hasServiceRoleKey: hasNonEmpty(serviceRoleKey),
         serviceRoleKeyLength: serviceRoleKey?.length ?? 0,
+        anonEqualsServiceRole,
       },
     },
     { status: 200 },
