@@ -45,8 +45,14 @@ export default async function HomePage() {
         aria-hidden
         className="pointer-events-none absolute -bottom-28 right-[-4rem] h-80 w-80 rounded-full bg-brand/10 blur-3xl dark:bg-brand/10"
       />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-20 dark:opacity-15"
+        style={{ backgroundImage: 'url("/qerbie fundo.png")' }}
+      />
 
       <div className="relative z-10 mx-auto w-full max-w-3xl py-16 sm:py-20 text-center">
+
         {/* Logo */}
         <div className="text-4xl font-extrabold tracking-tight text-brand sm:text-5xl">
           Qerbie
@@ -78,7 +84,7 @@ export default async function HomePage() {
         <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:justify-center">
           <Link
             href="/auth/sign-up"
-            className="rounded-xl bg-accent px-8 py-4 text-lg font-semibold text-white shadow-lg transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+            className="cta-primary rounded-xl bg-brand px-8 py-4 text-lg font-semibold text-white shadow-lg transition hover:bg-brandHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
           >
             Criar conta grátis agora
           </Link>
@@ -95,6 +101,7 @@ export default async function HomePage() {
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
           30 dias gratuitos. Sem cartão. Sem contrato. Sem risco.
         </p>
+
       </div>
 
       {/* Minimal Footer */}
