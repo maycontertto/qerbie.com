@@ -14,14 +14,17 @@ export async function GET(request: Request) {
 
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
+  const flow = (searchParams.get("flow") ?? "").toLowerCase();
 
   if (code) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Ensure merchant record exists for OAuth users (first login).
-      await ensureMerchantForOAuth();
+      if (flow === "owner") {
+        // Ensure merchant record exists for OAuth users (first login).
+        await ensureMerchantForOAuth();
+      }
       return NextResponse.redirect(`${origin}${next}`);
     }
   }

@@ -3,9 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { Json, MerchantMemberRole } from "@/lib/supabase/database.types";
 import Link from "next/link";
 import { headers } from "next/headers";
+import * as QRCode from "qrcode";
 import {
-  createAttendantInvite,
-  revokeInvite,
+  createAttendantAccount,
   removeAttendant,
   updateAttendantRole,
   updateAttendantPermissions,
@@ -16,9 +16,9 @@ export const dynamic = "force-dynamic";
 export default async function AdministracaoModulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; created_login?: string }>;
 }) {
-  const { saved, error } = await searchParams;
+  const { saved, error, created_login } = await searchParams;
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
 
@@ -48,45 +48,36 @@ export default async function AdministracaoModulePage({
     .eq("merchant_id", merchant.id)
     .order("created_at", { ascending: false });
 
-  const { data: invites } = await supabase
-    .from("merchant_invites")
-    .select("id, code, login, display_name, job_title, used_count, max_uses, is_active, created_at")
-    .eq("merchant_id", merchant.id)
-    .order("created_at", { ascending: false })
-    .limit(30);
+  const banner =
+    error === "login_required"
+      ? { kind: "error" as const, message: "Informe um login (apelido) para o atendente." }
+      : error === "password_required"
+        ? { kind: "error" as const, message: "Informe uma senha (mínimo 8 caracteres)." }
+        : error === "login_taken"
+          ? { kind: "error" as const, message: "Esse login já está em uso. Escolha outro." }
+          : error === "create_account_failed"
+            ? { kind: "error" as const, message: "Não foi possível criar a conta agora. Tente novamente." }
+            : error === "member_create_failed"
+              ? { kind: "error" as const, message: "Conta criada, mas falhou ao vincular na loja. Tente novamente." }
+        : saved === "1"
+          ? {
+              kind: "success" as const,
+              message: created_login
+                ? `Funcionário criado. Login: ${created_login}`
+                : "Salvo.",
+            }
+          : null;
 
   const hdrs = await headers();
   const proto = hdrs.get("x-forwarded-proto") ?? "http";
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const origin = host ? `${proto}://${host}` : "";
 
-  const inviteLinks = new Map<string, { link: string; wa: string; tg: string }>();
-  for (const inv of invites ?? []) {
-    const linkPath = `/auth/atendente/sign-up?code=${encodeURIComponent(inv.code)}`;
-    const link = origin ? `${origin}${linkPath}` : linkPath;
-    const text = [
-      `Convite Qerbie — ${inv.display_name ?? inv.login ?? "Funcionário"}`,
-      inv.job_title ? `Função: ${inv.job_title}` : null,
-      inv.login ? `Login (apelido): ${inv.login}` : null,
-      `Código: ${inv.code}`,
-      `Link: ${link}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    const tg = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
-    inviteLinks.set(inv.id, { link, wa, tg });
-  }
-
-  const banner =
-    error === "login_required"
-      ? { kind: "error" as const, message: "Informe um login (apelido) para o atendente." }
-      : error === "invite_create_failed"
-        ? { kind: "error" as const, message: "Não foi possível criar o convite agora. Tente novamente." }
-        : saved === "1"
-          ? { kind: "success" as const, message: "Salvo." }
-          : null;
+  const staffLoginPathWithLogin = created_login
+    ? `/auth/sign-in?next=${encodeURIComponent("/atendente")}&login=${encodeURIComponent(created_login)}`
+    : `/auth/sign-in?next=${encodeURIComponent("/atendente")}`;
+  const staffLoginLink = origin ? `${origin}${staffLoginPathWithLogin}` : staffLoginPathWithLogin;
+  const staffQr = await QRCode.toDataURL(staffLoginLink, { width: 220, margin: 1 });
 
   const memberHas = (role: MerchantMemberRole, permissions: Json | null | undefined, perm: string) => {
     return hasMemberPermission(role, permissions, perm);
@@ -122,16 +113,49 @@ export default async function AdministracaoModulePage({
           </div>
         )}
 
+        <section className="mt-6 rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+            Login de funcionários
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Abra este link em outro aparelho ou leia o QR para ir direto ao login de atendente.
+          </p>
+
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <div className="rounded-xl border border-zinc-200 bg-white/60 p-3 text-xs text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
+              <div className="font-semibold text-zinc-900 dark:text-zinc-50">Link</div>
+              <a
+                href={staffLoginLink}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 block break-all font-mono text-xs text-zinc-700 underline dark:text-zinc-300"
+              >
+                {staffLoginLink}
+              </a>
+              {created_login ? (
+                <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  Login pré-preenchido: <span className="font-mono">{created_login}</span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="rounded-xl border border-zinc-200 bg-white/60 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={staffQr} alt="QR Code" className="h-[220px] w-[220px]" />
+            </div>
+          </div>
+        </section>
+
         <section className="mt-8 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              Cadastrar atendente
+              Cadastrar funcionário
             </h2>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Cria um código para o atendente vincular a conta dele à sua loja.
+              Você cria o login e a senha e passa para a pessoa usar no app.
             </p>
 
-            <form action={createAttendantInvite} className="mt-4 space-y-3">
+            <form action={createAttendantAccount} className="mt-4 space-y-3">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Nome
@@ -154,8 +178,25 @@ export default async function AdministracaoModulePage({
                   className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
                 />
                 <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                  Você passa esse login + o código pro atendente. Ele cria e entra com e-mail e senha.
+                  Dica: esse login precisa ser único no sistema. Ex: loja-garcom1.
                 </p>
+
+                <div className="mt-4">
+                  <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    Senha
+                  </label>
+                  <input
+                    name="password"
+                    type="password"
+                    required
+                    minLength={8}
+                    placeholder="Mínimo 8 caracteres"
+                    className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                  />
+                  <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    Você pode criar um login para ser usado por mais de uma pessoa no mesmo aparelho.
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -205,84 +246,9 @@ export default async function AdministracaoModulePage({
                 type="submit"
                 className="w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                Gerar código
+                Criar login e senha
               </button>
             </form>
-          </div>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              Convites
-            </h2>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              O atendente usa o código em /atendente/vincular.
-            </p>
-
-            <div className="mt-4 space-y-3">
-              {(invites ?? []).length === 0 && (
-                <div className="rounded-xl border border-zinc-200 bg-white/60 p-3 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300">
-                  Nenhum convite criado ainda.
-                </div>
-              )}
-
-              {(invites ?? []).map((inv) => (
-                <div
-                  key={inv.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
-                >
-                  <div>
-                    <div className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                      {inv.display_name ?? inv.login ?? "Atendente"}
-                    </div>
-                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      Código: <span className="font-mono">{inv.code}</span> • Usos: {inv.used_count}/{inv.max_uses}
-                    </div>
-                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      {inv.job_title ? `Categoria: ${inv.job_title}` : "Categoria: —"}
-                    </div>
-
-                    {inviteLinks.get(inv.id) ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <a
-                          href={inviteLinks.get(inv.id)?.wa}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                        >
-                          WhatsApp
-                        </a>
-                        <a
-                          href={inviteLinks.get(inv.id)?.tg}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                        >
-                          Telegram
-                        </a>
-                        <a
-                          href={inviteLinks.get(inv.id)?.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                        >
-                          Abrir link
-                        </a>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <form action={revokeInvite}>
-                    <input type="hidden" name="invite_id" value={inv.id} />
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      Remover
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 

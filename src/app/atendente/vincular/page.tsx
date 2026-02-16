@@ -6,12 +6,18 @@ export const dynamic = "force-dynamic";
 export default async function VincularAtendentePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; code?: string }>;
+  searchParams: Promise<{ error?: string; code?: string; auto?: string }>;
 }) {
-  const { error, code } = await searchParams;
+  const { error, code, auto } = await searchParams;
   const next = `/atendente/vincular${code ? `?code=${encodeURIComponent(code)}` : ""}`;
   // Ensure logged in, otherwise go sign-in (preserving next).
   await getSessionOrRedirect({ redirectTo: `/auth/sign-in?next=${encodeURIComponent(next)}` });
+
+  if (code && auto === "1" && !error) {
+    const fd = new FormData();
+    fd.set("code", code);
+    await redeemAttendantInvite(fd);
+  }
 
   const message =
     error === "code_required"
@@ -63,17 +69,7 @@ export default async function VincularAtendentePage({
         </form>
 
         <div className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
-          Ainda não tem conta?{" "}
-          <a
-            className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-            href={
-              code
-                ? `/auth/atendente/sign-up?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`
-                : `/auth/atendente/sign-up?next=${encodeURIComponent(next)}`
-            }
-          >
-            Criar conta
-          </a>
+          Ainda não tem login e senha? Peça ao dono da loja.
         </div>
       </main>
     </div>

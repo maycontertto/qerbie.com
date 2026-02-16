@@ -9,6 +9,28 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   if (user) {
+    const { data: owned } = await supabase
+      .from("merchants")
+      .select("id")
+      .eq("owner_user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (owned) {
+      redirect("/dashboard");
+    }
+
+    const { data: membership } = await supabase
+      .from("merchant_members")
+      .select("merchant_id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (membership) {
+      redirect("/atendente");
+    }
+
     redirect("/dashboard");
   }
 

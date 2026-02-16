@@ -109,7 +109,9 @@ export async function getMerchantOwnerOrRedirect() {
  * Staff/atendente guard: precisa estar logado e vinculado a uma loja.
  */
 export async function getMerchantMemberOrRedirect() {
-  const { supabase, user } = await getSessionOrRedirect();
+  const { supabase, user } = await getSessionOrRedirect({
+    redirectTo: "/auth/sign-in?next=%2Fatendente",
+  });
 
   // 1) owner também pode usar.
   const { data: ownedMerchant } = await supabase

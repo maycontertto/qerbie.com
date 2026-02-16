@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getDashboardUserOrRedirect,
   getMerchantMemberOrRedirect,
@@ -39,6 +40,85 @@ function makeCode(login: string): string {
   const base = normalizeLogin(login) || "ATENDENTE";
   const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `${base.toUpperCase()}-${suffix}`;
+}
+
+function makeStaffEmail(login: string): string {
+  // We hide email from the UX, but Supabase Auth still needs an email identifier.
+  return `${login.toLowerCase()}@staff.qerbie.local`;
+}
+
+export async function createAttendantAccount(formData: FormData) {
+  const displayName = String(formData.get("display_name") ?? "").trim();
+  const loginRaw = String(formData.get("login") ?? "");
+  const login = normalizeLogin(loginRaw);
+  const password = String(formData.get("password") ?? "");
+  const roleRaw = String(formData.get("role") ?? "staff").trim();
+  const role = roleRaw === "admin" ? "admin" : "staff";
+  const jobTitleRaw = String(formData.get("job_title") ?? "").trim();
+  const jobTitleCustomRaw = String(formData.get("job_title_custom") ?? "").trim();
+  const jobTitleValue = jobTitleRaw === "__other__" ? jobTitleCustomRaw : jobTitleRaw;
+  const jobTitle = jobTitleValue ? jobTitleValue.slice(0, 60) : null;
+
+  if (!login) {
+    redirect("/dashboard/modulos/administracao?error=login_required");
+  }
+
+  if (!password || password.length < 8) {
+    redirect("/dashboard/modulos/administracao?error=password_required");
+  }
+
+  const { user, merchant, supabase } = await requireManageAttendants();
+
+  const admin = createAdminClient();
+  const email = makeStaffEmail(login);
+
+  const { data: created, error: createError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: {
+      kind: "staff",
+      merchant_id: merchant.id,
+      login,
+      display_name: displayName || null,
+    },
+  });
+
+  if (createError || !created.user?.id) {
+    const msg = (createError?.message ?? "").toLowerCase();
+    if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
+      redirect("/dashboard/modulos/administracao?error=login_taken");
+    }
+    redirect("/dashboard/modulos/administracao?error=create_account_failed");
+  }
+
+  const staffUserId = created.user.id;
+
+  const { error: memberError } = await supabase.from("merchant_members").insert({
+    merchant_id: merchant.id,
+    user_id: staffUserId,
+    role,
+    display_name: displayName || null,
+    login,
+    job_title: jobTitle,
+    // permissions defaults handled by DB default '{}'
+  });
+
+  if (memberError) {
+    // Best-effort cleanup to avoid orphan auth users.
+    await admin.auth.admin.deleteUser(staffUserId).catch(() => undefined);
+
+    const m = (memberError.message ?? "").toLowerCase();
+    if (m.includes("login") && (m.includes("unique") || m.includes("duplicate"))) {
+      redirect("/dashboard/modulos/administracao?error=login_taken");
+    }
+    redirect("/dashboard/modulos/administracao?error=member_create_failed");
+  }
+
+  // Audit: mark who created (optional future). Keep it simple for now.
+  void user;
+
+  redirect(`/dashboard/modulos/administracao?saved=1&created_login=${encodeURIComponent(login)}`);
 }
 
 export async function createAttendantInvite(formData: FormData) {
