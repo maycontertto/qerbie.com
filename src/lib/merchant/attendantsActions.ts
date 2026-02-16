@@ -69,7 +69,19 @@ export async function createAttendantAccount(formData: FormData) {
 
   const { user, merchant, supabase } = await requireManageAttendants();
 
-  const admin = createAdminClient();
+  // This flow depends on Supabase service role (server-only). If not configured,
+  // fail gracefully instead of throwing a server-side exception.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    redirect("/dashboard/modulos/administracao?error=server_config");
+  }
+
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch (e) {
+    console.error("createAttendantAccount missing admin config", e);
+    redirect("/dashboard/modulos/administracao?error=server_config");
+  }
   const email = makeStaffEmail(login);
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({

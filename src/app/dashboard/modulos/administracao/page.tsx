@@ -53,6 +53,12 @@ export default async function AdministracaoModulePage({
       ? { kind: "error" as const, message: "Informe um login (apelido) para o atendente." }
       : error === "password_required"
         ? { kind: "error" as const, message: "Informe uma senha (mínimo 8 caracteres)." }
+        : error === "server_config"
+          ? {
+              kind: "error" as const,
+              message:
+                "Configuração do servidor incompleta. Verifique NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.",
+            }
         : error === "login_taken"
           ? { kind: "error" as const, message: "Esse login já está em uso. Escolha outro." }
           : error === "create_account_failed"
