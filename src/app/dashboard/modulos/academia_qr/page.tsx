@@ -47,7 +47,6 @@ export default async function AcademiaQrPage({
     .limit(200);
 
   const activeQrToken = qr ?? tokens?.[0]?.qr_token ?? null;
-  const activeToken = activeQrToken ? (tokens ?? []).find((t) => t.qr_token === activeQrToken) ?? null : null;
 
   const banner =
     error === "invalid" ? "Dados inválidos." : error === "save_failed" ? "Não foi possível gerar o QR agora." : null;

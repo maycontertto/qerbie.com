@@ -1,4 +1,4 @@
-import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
+import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
 import { saveProductStock } from "@/lib/merchant/stockActions";
 import Link from "next/link";
@@ -9,7 +9,7 @@ export default async function EstoqueModulePage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { saved, error } = await searchParams;
-  const { user, merchant, membership } = await getDashboardUserOrRedirect();
+  const { user, merchant } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
   const canProducts = isOwner;
 

@@ -25,8 +25,6 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
     redirect("/dashboard?error=not_owner");
   }
 
-  const now = new Date();
-
   const { data: sub } = await supabase
     .from("merchant_subscriptions")
     .select("merchant_id,status,trial_ends_at,current_period_end,grace_until,plan_amount_cents,currency")

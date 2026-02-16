@@ -23,12 +23,11 @@ function safeReturnTo(raw: FormDataEntryValue | null): string {
   const v = typeof raw === "string" ? raw : "";
   if (
     v === "/dashboard/modulos/mesas" ||
-    v === "/dashboard/modulos/qr" ||
-    v === "/dashboard/modulos/produtos"
+    v === "/dashboard/modulos/qr"
   ) {
     return v;
   }
-  return "/dashboard/modulos/produtos";
+  return "/dashboard/modulos/qr";
 }
 
 function parsePositiveInt(input: FormDataEntryValue | null, fallback: number): number {
@@ -220,62 +219,4 @@ export async function deleteMerchantTable(formData: FormData): Promise<void> {
   }
 
   redirect(returnTo);
-}
-
-export async function ensureDemoTable(formData: FormData): Promise<void> {
-  const labelRaw = (formData.get("label") as string | null)?.trim() ?? "";
-  const capacity = parsePositiveInt(formData.get("capacity"), 2);
-  const returnTo = safeReturnTo(formData.get("return_to"));
-
-  const { supabase, merchant } = await requireTablesAccess();
-
-  const { data: existing } = await supabase
-    .from("merchant_tables")
-    .select("qr_token")
-    .eq("merchant_id", merchant.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (existing?.qr_token) {
-    redirect(`${returnTo}?qr=${encodeURIComponent(existing.qr_token)}`);
-  }
-
-  const baseLabel = labelRaw || "Mesa Teste";
-  let lastError: string | null = null;
-
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const qrToken = makeQrToken();
-    const label = attempt === 0 ? baseLabel : `${baseLabel} ${attempt + 1}`;
-
-    const { error } = await supabase.from("merchant_tables").insert({
-      merchant_id: merchant.id,
-      label,
-      qr_token: qrToken,
-      capacity,
-      is_active: true,
-      display_order: 0,
-    });
-
-    if (!error) {
-      redirect(`${returnTo}?qr=${encodeURIComponent(qrToken)}`);
-    }
-
-    lastError = error.message;
-
-    // If it's a token collision, just loop again and generate another.
-    if (lastError.toLowerCase().includes("merchant_tables_qr_token_ux")) {
-      continue;
-    }
-
-    // If label is duplicated, try a new label on next attempt.
-    if (lastError.toLowerCase().includes("merchant_tables_merchant_label_ux")) {
-      continue;
-    }
-
-    break;
-  }
-
-  redirect(`${returnTo}?error=demo_table_failed`);
 }

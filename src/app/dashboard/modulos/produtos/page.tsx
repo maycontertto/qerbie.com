@@ -5,15 +5,8 @@ import {
   createMenuCategory,
   createProduct,
   createSuggestedMenuCategories,
-  createTestProduct,
 } from "@/lib/catalog/actions";
 import { DEFAULT_MENU_NAME, DEFAULT_MENU_SLUG } from "@/lib/catalog/templates";
-import {
-  cancelMerchantTable,
-  createMerchantTable,
-  createQuickServiceTable,
-  ensureDemoTable,
-} from "@/lib/merchant/tableActions";
 import { CategorySelect } from "./CategorySelect";
 
 function makeSlug(base: string): string {
@@ -31,7 +24,7 @@ function makeSlug(base: string): string {
 export default async function ProdutosModulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; error?: string; qr?: string; q?: string; catq?: string; preset?: string }>;
+  searchParams: Promise<{ category?: string; error?: string; q?: string; catq?: string; preset?: string }>;
 }) {
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
@@ -134,7 +127,7 @@ export default async function ProdutosModulePage({
     );
   }
 
-  const { category, error, qr, q, catq, preset } = await searchParams;
+  const { category, error, q, catq, preset } = await searchParams;
 
   const presetKey = (preset ?? "").trim().toLowerCase();
   const presetCategoryName =
@@ -224,36 +217,15 @@ export default async function ProdutosModulePage({
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: false });
 
-  const { data: tables } = await supabase
-    .from("merchant_tables")
-    .select("id, label, qr_token, is_active")
-    .eq("merchant_id", merchant.id)
-    .order("display_order", { ascending: true })
-    .order("created_at", { ascending: true });
-
-  const activeQrToken = qr ?? tables?.[0]?.qr_token ?? null;
-  const activeTable = activeQrToken
-    ? (tables ?? []).find((t) => t.qr_token === activeQrToken) ?? null
-    : null;
-  const activeIsQuick = Boolean(activeTable?.label?.toLowerCase().startsWith("atendimento"));
-
   const banner =
     error === "invalid_category"
       ? "Categoria inválida."
       : error === "invalid_product"
         ? "Produto inválido."
-        : error === "table_create_failed"
-          ? "Falha ao criar atendimento. Tente mudar o nome."
-          : error === "test_product_failed"
-            ? "Falha ao criar produto de teste."
         : error === "category_create_failed"
           ? "Falha ao criar categoria."
           : error === "product_create_failed"
             ? "Falha ao criar produto."
-            : error === "table_cancel_failed"
-              ? "Falha ao cancelar atendimento."
-              : error === "invalid_table"
-                ? "Atendimento inválido."
             : null;
 
   return (
@@ -381,164 +353,7 @@ export default async function ProdutosModulePage({
           {/* Main */}
           <section className="space-y-6">
             <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    Prévia do cliente (QR)
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Crie um atendimento e abra o QR para ver o fluxo real.
-                  </p>
-                  <div className="mt-3 rounded-lg border border-zinc-200 bg-white/70 p-3 text-xs text-zinc-600 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/50 dark:text-zinc-300">
-                    <p className="font-semibold text-zinc-900 dark:text-zinc-50">
-                      Fluxo de teste (2 min)
-                    </p>
-                    <ol className="mt-2 list-decimal space-y-1 pl-4">
-                      <li>
-                        Clique em &quot;Criar produto de teste&quot;.
-                      </li>
-                      <li>Crie um atendimento (ou use um existente).</li>
-                      <li>Abra o QR, digite seu nome e veja o cardápio.</li>
-                      <li>Adicione ao carrinho e envie o pedido.</li>
-                    </ol>
-                  </div>
-                </div>
-
-                {activeQrToken ? (
-                  <a
-                    href={`/t/${encodeURIComponent(activeQrToken)}${activeIsQuick ? "?quick=1" : ""}`}
-                    className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  >
-                    Abrir QR
-                  </a>
-                ) : null}
-              </div>
-
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    Atendimento rápido (QR)
-                  </h3>
-
-                  <form action={createQuickServiceTable} className="mt-3">
-                    <button
-                      type="submit"
-                      className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                    >
-                      Gerar QR automático (Atendimento rápido)
-                    </button>
-                  </form>
-
-                  <form action={ensureDemoTable} className="mt-3">
-                    <button
-                      type="submit"
-                      className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                    >
-                      Gerar QR automático (Mesa Teste)
-                    </button>
-                  </form>
-
-                  <form action={createMerchantTable} className="mt-3 space-y-3">
-                    <select
-                      name="kind"
-                      defaultValue="mesa"
-                      className="block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    >
-                      <option value="mesa">Mesa</option>
-                      <option value="balcao">Balcão</option>
-                      <option value="fila">Fila</option>
-                      <option value="outro">Outro</option>
-                    </select>
-                    <input
-                      name="label"
-                      type="text"
-                      placeholder="Ex: Mesa 1 (ou deixe em branco)"
-                      className="block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
-                    <input
-                      name="capacity"
-                      type="number"
-                      min={1}
-                      max={99}
-                      defaultValue={4}
-                      className="block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
-                    <button
-                      type="submit"
-                      className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                    >
-                      Criar atendimento
-                    </button>
-                  </form>
-                </div>
-
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    Atendimentos
-                  </h3>
-                  {!tables?.length ? (
-                    <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                      Nenhum atendimento criado ainda.
-                    </p>
-                  ) : (
-                    <ul className="mt-2 space-y-2">
-                      {tables.slice(0, 5).map((t) => (
-                        <li
-                          key={t.id}
-                          className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white/70 px-3 py-2 text-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/50"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-zinc-900 dark:text-zinc-50">
-                              {t.label}
-                            </p>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                              {t.is_active ? "Ativa" : "Inativa"}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {t.is_active ? (
-                              <form action={cancelMerchantTable}>
-                                <input type="hidden" name="table_id" value={t.id} />
-                                <button
-                                  type="submit"
-                                  className="text-xs font-semibold text-zinc-600 hover:underline dark:text-zinc-300"
-                                >
-                                  Cancelar
-                                </button>
-                              </form>
-                            ) : null}
-                            <a
-                              href={`/t/${encodeURIComponent(t.qr_token)}${t.label.toLowerCase().startsWith("atendimento") ? "?quick=1" : ""}`}
-                              className="text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
-                            >
-                              Abrir QR
-                            </a>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  Novo item
-                </h2>
-
-                <form action={createTestProduct}>
-                  <input type="hidden" name="menu_id" value={menu.id} />
-                  <input type="hidden" name="category_id" value={selectedCategoryId} />
-                  <button
-                    type="submit"
-                    className="text-xs font-semibold text-zinc-900 hover:underline dark:text-zinc-50"
-                  >
-                    Criar produto de teste
-                  </button>
-                </form>
-              </div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Novo item</h2>
 
               <form
                 action={createProduct}

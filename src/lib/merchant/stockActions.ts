@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
+import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 
 function clampInt(value: FormDataEntryValue | null, min: number, max: number): number | null {
   if (value == null) return null;
@@ -21,7 +21,7 @@ export async function saveProductStock(formData: FormData): Promise<void> {
     redirect("/dashboard/modulos/estoque?error=invalid_product");
   }
 
-  const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect();
+  const { supabase, user, merchant } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
   if (!isOwner) {
     redirect("/dashboard");

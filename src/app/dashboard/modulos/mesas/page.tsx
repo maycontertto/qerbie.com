@@ -7,7 +7,6 @@ import {
   createMerchantTable,
   createQuickServiceTable,
   deleteMerchantTable,
-  ensureDemoTable,
 } from "@/lib/merchant/tableActions";
 import { TableQrPanel } from "@/app/dashboard/modulos/mesas/TableQrPanel";
 
@@ -81,8 +80,6 @@ export default async function MesasModulePage({
           ? "Falha ao remover atendimento. Apenas o dono pode remover e ele precisa estar cancelado (inativo)."
         : error === "invalid_table"
           ? "Atendimento inválido."
-          : error === "demo_table_failed"
-            ? "Falha ao criar mesa de teste."
             : null;
 
   return (
@@ -144,16 +141,6 @@ export default async function MesasModulePage({
                     className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >
                     Gerar QR automático (Atendimento rápido)
-                  </button>
-                </form>
-
-                <form action={ensureDemoTable} className="mt-3">
-                  <input type="hidden" name="return_to" value="/dashboard/modulos/mesas" />
-                  <button
-                    type="submit"
-                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    Gerar QR automático (Mesa Teste)
                   </button>
                 </form>
 
