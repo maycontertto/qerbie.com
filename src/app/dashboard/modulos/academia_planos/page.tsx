@@ -192,12 +192,21 @@ export default async function AcademiaPlanosPage({
                     </label>
                     <div className="sm:col-span-2 flex justify-end">
                       <div className="flex items-center gap-4">
-                        {isOwner && !p.is_active ? (
+                        {isOwner ? (
                           <button
                             type="submit"
                             formAction={removeGymPlan}
-                            className="text-sm font-semibold text-red-600 hover:underline dark:text-red-400"
-                            title="Remove da lista. Só funciona para planos inativos e sem alunos vinculados."
+                            disabled={Boolean(p.is_active)}
+                            className={
+                              p.is_active
+                                ? "text-sm font-semibold text-zinc-400 cursor-not-allowed dark:text-zinc-600"
+                                : "text-sm font-semibold text-red-600 hover:underline dark:text-red-400"
+                            }
+                            title={
+                              p.is_active
+                                ? "Para remover, desative o plano e clique em Salvar."
+                                : "Remove da lista. Só funciona para planos inativos e sem alunos vinculados."
+                            }
                           >
                             Remover
                           </button>
