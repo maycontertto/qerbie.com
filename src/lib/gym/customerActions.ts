@@ -26,13 +26,13 @@ async function setGymSessionCookie(token: string) {
 
 export async function gymSignUp(formData: FormData): Promise<void> {
   const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
-  const name = (formData.get("name") as string | null)?.trim() ?? "";
-  const login = (formData.get("login") as string | null)?.trim() ?? "";
+  const loginRaw = (formData.get("login") as string | null)?.trim() ?? "";
+  const login = loginRaw.toLowerCase();
   const password = (formData.get("password") as string | null)?.trim() ?? "";
   const rawPlanId = (formData.get("plan_id") as string | null)?.trim() ?? "";
 
   if (!qrToken) redirect("/");
-  if (name.length < 2 || login.length < 2 || password.length < 4) {
+  if (login.length < 2 || password.length < 4) {
     redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
   }
 
@@ -49,8 +49,23 @@ export async function gymSignUp(formData: FormData): Promise<void> {
     redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid_qr`);
   }
 
+  // Prevent confusing generic failures when user already exists (unique index is lower(login)).
+  const { data: existing } = await admin
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", qr.merchant_id)
+    .ilike("login", login)
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=login_taken`);
+  }
+
   const passwordHash = hashPassword(password);
   const sessionToken = makeSessionToken();
+
+  const name = loginRaw || login;
 
   const { data: student, error: insertError } = await admin
     .from("gym_students")
@@ -66,6 +81,9 @@ export async function gymSignUp(formData: FormData): Promise<void> {
     .single();
 
   if (insertError || !student?.id) {
+    if (insertError && "code" in insertError && insertError.code === "23505") {
+      redirect(`/g/${encodeURIComponent(qrToken)}?error=login_taken`);
+    }
     redirect(`/g/${encodeURIComponent(qrToken)}?error=signup_failed`);
   }
 
@@ -89,7 +107,7 @@ export async function gymSignUp(formData: FormData): Promise<void> {
   const dd = String(today.getDate()).padStart(2, "0");
   const due = `${yyyy}-${mm}-${dd}`;
 
-  await admin.from("gym_memberships").insert({
+  const { error: membershipError } = await admin.from("gym_memberships").insert({
     merchant_id: qr.merchant_id,
     student_id: student.id,
     plan_id: planId,
@@ -98,13 +116,18 @@ export async function gymSignUp(formData: FormData): Promise<void> {
     last_paid_at: null,
   });
 
+  if (membershipError) {
+    await admin.from("gym_students").delete().eq("id", student.id);
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=signup_failed`);
+  }
+
   await setGymSessionCookie(sessionToken);
   redirect(`/g/${encodeURIComponent(qrToken)}`);
 }
 
 export async function gymSignIn(formData: FormData): Promise<void> {
   const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
-  const login = (formData.get("login") as string | null)?.trim() ?? "";
+  const login = ((formData.get("login") as string | null)?.trim() ?? "").toLowerCase();
   const password = (formData.get("password") as string | null)?.trim() ?? "";
 
   if (!qrToken) redirect("/");
@@ -130,7 +153,9 @@ export async function gymSignIn(formData: FormData): Promise<void> {
     .select("id, password_hash, is_active")
     .eq("merchant_id", qr.merchant_id)
     .ilike("login", login)
-    .single();
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   if (studentError || !student || !student.is_active) {
     redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);

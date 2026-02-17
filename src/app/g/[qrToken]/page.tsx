@@ -98,6 +98,8 @@ export default async function GymCustomerPage({
   const banner =
     error === "auth_failed"
       ? "Login ou senha inválidos."
+      : error === "login_taken"
+        ? "Esse usuário já existe. Tente outro."
       : error === "signup_failed"
         ? "Não foi possível criar seu cadastro."
         : error === "invalid"
@@ -204,7 +206,7 @@ export default async function GymCustomerPage({
                   name="login"
                   required
                   minLength={2}
-                  placeholder="Login"
+                  placeholder="Usuário"
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                 />
                 <input
@@ -238,17 +240,10 @@ export default async function GymCustomerPage({
                   ))}
                 </select>
                 <input
-                  name="name"
-                  required
-                  minLength={2}
-                  placeholder="Seu nome"
-                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                />
-                <input
                   name="login"
                   required
                   minLength={2}
-                  placeholder="Crie um login"
+                  placeholder="Crie um usuário"
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                 />
                 <input
