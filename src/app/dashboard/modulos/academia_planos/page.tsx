@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
-import { createGymPlan, updateGymPlan } from "@/lib/gym/actions";
+import { createGymPlan, removeGymPlan, updateGymPlan } from "@/lib/gym/actions";
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -12,9 +12,9 @@ function formatBrlCents(cents: number): string {
 export default async function AcademiaPlanosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; removed?: string; error?: string }>;
 }) {
-  const { saved, error } = await searchParams;
+  const { saved, removed, error } = await searchParams;
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
   const canCatalog =
@@ -48,8 +48,21 @@ export default async function AcademiaPlanosPage({
   const banner =
     saved === "1"
       ? { kind: "success" as const, message: "Salvo." }
+      : removed === "1"
+        ? { kind: "success" as const, message: "Removido." }
       : error === "invalid"
         ? { kind: "error" as const, message: "Dados inválidos." }
+        : error === "not_allowed"
+          ? { kind: "error" as const, message: "Apenas o dono pode remover planos." }
+          : error === "plan_active"
+            ? { kind: "error" as const, message: "Desative o plano antes de remover." }
+            : error === "plan_in_use"
+              ? {
+                  kind: "error" as const,
+                  message: "Este plano está em uso por algum aluno. Troque o plano do aluno antes de remover.",
+                }
+              : error === "plan_delete_failed"
+                ? { kind: "error" as const, message: "Não foi possível remover agora. Tente novamente." }
         : error === "save_failed"
           ? { kind: "error" as const, message: "Não foi possível salvar agora. Tente novamente." }
           : null;
@@ -178,12 +191,25 @@ export default async function AcademiaPlanosPage({
                       />
                     </label>
                     <div className="sm:col-span-2 flex justify-end">
-                      <button
-                        type="submit"
-                        className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                      >
-                        Salvar
-                      </button>
+                      <div className="flex items-center gap-4">
+                        {isOwner && !p.is_active ? (
+                          <button
+                            type="submit"
+                            formAction={removeGymPlan}
+                            className="text-sm font-semibold text-red-600 hover:underline dark:text-red-400"
+                            title="Remove da lista. Só funciona para planos inativos e sem alunos vinculados."
+                          >
+                            Remover
+                          </button>
+                        ) : null}
+
+                        <button
+                          type="submit"
+                          className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                        >
+                          Salvar
+                        </button>
+                      </div>
                     </div>
                   </form>
                 </div>

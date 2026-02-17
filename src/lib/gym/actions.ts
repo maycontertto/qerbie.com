@@ -121,6 +121,60 @@ export async function updateGymPlan(formData: FormData): Promise<void> {
   redirect(`${returnTo}?saved=1`);
 }
 
+export async function removeGymPlan(formData: FormData): Promise<void> {
+  const id = (formData.get("id") as string | null)?.trim() ?? "";
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_planos",
+  ]);
+
+  if (!id) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant, isOwner } = await requireGymAccess();
+  if (!isOwner) {
+    redirect(`${returnTo}?error=not_allowed`);
+  }
+
+  const { data: plan } = await supabase
+    .from("gym_plans")
+    .select("id, is_active")
+    .eq("merchant_id", merchant.id)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!plan?.id) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  if (plan.is_active) {
+    redirect(`${returnTo}?error=plan_active`);
+  }
+
+  const { data: inUse } = await supabase
+    .from("gym_memberships")
+    .select("id")
+    .eq("merchant_id", merchant.id)
+    .eq("plan_id", id)
+    .limit(1);
+
+  if (inUse?.length) {
+    redirect(`${returnTo}?error=plan_in_use`);
+  }
+
+  const { error } = await supabase
+    .from("gym_plans")
+    .delete()
+    .eq("merchant_id", merchant.id)
+    .eq("id", id);
+
+  if (error) {
+    redirect(`${returnTo}?error=plan_delete_failed`);
+  }
+
+  redirect(`${returnTo}?removed=1`);
+}
+
 export async function createGymModality(formData: FormData): Promise<void> {
   const name = (formData.get("name") as string | null)?.trim() ?? "";
   const returnTo = safeReturnTo(formData.get("return_to"), [
