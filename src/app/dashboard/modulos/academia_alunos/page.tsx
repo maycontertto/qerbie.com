@@ -96,6 +96,24 @@ export default async function AcademiaAlunosPage({
     if (!membershipByStudent.has(m.student_id)) membershipByStudent.set(m.student_id, m);
   }
 
+  let checkins: Array<{ student_id: string; checkin_date: string }> = [];
+  if (studentIds.length) {
+    const { data } = await supabase
+      .from("gym_checkins")
+      .select("student_id, checkin_date")
+      .eq("merchant_id", merchant.id)
+      .in("student_id", studentIds)
+      .order("checkin_date", { ascending: false })
+      .limit(5000);
+
+    checkins = (data ?? []) as typeof checkins;
+  }
+
+  const lastCheckinByStudent = new Map<string, string>();
+  for (const c of checkins) {
+    if (!lastCheckinByStudent.has(c.student_id)) lastCheckinByStudent.set(c.student_id, c.checkin_date);
+  }
+
   const planById = new Map<string, PlanRow>();
   for (const p of planRows) planById.set(p.id, p);
 
@@ -215,6 +233,7 @@ export default async function AcademiaAlunosPage({
                           {p ? `Plano: ${p.name} (${formatBrlCents(Number(p.price_cents ?? 0))})` : "Sem plano"}
                           {m?.next_due_at ? ` • Vence: ${m.next_due_at}` : ""}
                           {m?.last_paid_at ? ` • Último pag.: ${m.last_paid_at}` : ""}
+                          {lastCheckinByStudent.get(s.id) ? ` • Último check-in: ${lastCheckinByStudent.get(s.id)}` : ""}
                         </p>
                       </div>
                       <span

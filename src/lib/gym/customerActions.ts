@@ -251,3 +251,140 @@ export async function gymChangePassword(formData: FormData): Promise<void> {
   await setGymSessionCookie(newSessionToken);
   redirect(`/g/${encodeURIComponent(qrToken)}?changed=1`);
 }
+
+export async function gymChangePlan(formData: FormData): Promise<void> {
+  const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
+  const planId = (formData.get("plan_id") as string | null)?.trim() ?? "";
+  if (!qrToken) redirect("/");
+  if (!planId) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
+  }
+
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(GYM_SESSION_COOKIE)?.value ?? "";
+  if (!sessionToken) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  const admin = createAdminClient();
+
+  const { data: qr, error: qrError } = await admin
+    .from("gym_qr_tokens")
+    .select("merchant_id")
+    .eq("qr_token", qrToken)
+    .eq("is_active", true)
+    .single();
+
+  if (qrError || !qr?.merchant_id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid_qr`);
+  }
+
+  const { data: student } = await admin
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", qr.merchant_id)
+    .eq("session_token", sessionToken)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (!student?.id) {
+    await clearGymSessionCookie();
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  const { data: plan } = await admin
+    .from("gym_plans")
+    .select("id")
+    .eq("merchant_id", qr.merchant_id)
+    .eq("id", planId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (!plan?.id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
+  }
+
+  const { data: membership } = await admin
+    .from("gym_memberships")
+    .select("id")
+    .eq("merchant_id", qr.merchant_id)
+    .eq("student_id", student.id)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!membership?.id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=signup_failed`);
+  }
+
+  const { error: updateError } = await admin
+    .from("gym_memberships")
+    .update({ plan_id: plan.id, updated_at: new Date().toISOString() })
+    .eq("merchant_id", qr.merchant_id)
+    .eq("id", membership.id);
+
+  if (updateError) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=signup_failed`);
+  }
+
+  redirect(`/g/${encodeURIComponent(qrToken)}?plan_changed=1`);
+}
+
+export async function gymCheckIn(formData: FormData): Promise<void> {
+  const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
+  if (!qrToken) redirect("/");
+
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(GYM_SESSION_COOKIE)?.value ?? "";
+  if (!sessionToken) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  const admin = createAdminClient();
+  const { data: qr, error: qrError } = await admin
+    .from("gym_qr_tokens")
+    .select("merchant_id")
+    .eq("qr_token", qrToken)
+    .eq("is_active", true)
+    .single();
+
+  if (qrError || !qr?.merchant_id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid_qr`);
+  }
+
+  const { data: student } = await admin
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", qr.merchant_id)
+    .eq("session_token", sessionToken)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (!student?.id) {
+    await clearGymSessionCookie();
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  const today = new Date();
+  const checkinDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+    today.getDate(),
+  ).padStart(2, "0")}`;
+
+  const { error: insertError } = await admin.from("gym_checkins").insert({
+    merchant_id: qr.merchant_id,
+    student_id: student.id,
+    checkin_date: checkinDate,
+  });
+
+  if (insertError) {
+    if ("code" in insertError && insertError.code === "23505") {
+      redirect(`/g/${encodeURIComponent(qrToken)}?already_checked=1`);
+    }
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=signup_failed`);
+  }
+
+  redirect(`/g/${encodeURIComponent(qrToken)}?checked_in=1`);
+}

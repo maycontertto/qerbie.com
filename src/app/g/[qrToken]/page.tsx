@@ -1,6 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { gymChangePassword, gymSignIn, gymSignOut, gymSignUp } from "@/lib/gym/customerActions";
+import {
+  gymChangePassword,
+  gymChangePlan,
+  gymCheckIn,
+  gymSignIn,
+  gymSignOut,
+  gymSignUp,
+} from "@/lib/gym/customerActions";
 import { buildMerchantBranding, getButtonStyle } from "@/lib/merchant/branding";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,10 +30,16 @@ export default async function GymCustomerPage({
   searchParams,
 }: {
   params: Promise<{ qrToken: string }>;
-  searchParams: Promise<{ error?: string; changed?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    changed?: string;
+    plan_changed?: string;
+    checked_in?: string;
+    already_checked?: string;
+  }>;
 }) {
   const { qrToken } = await params;
-  const { error, changed } = await searchParams;
+  const { error, changed, plan_changed, checked_in, already_checked } = await searchParams;
 
   const supabase = await createClient();
 
@@ -99,7 +112,7 @@ export default async function GymCustomerPage({
   const { data: membership } = admin && me?.id
     ? await admin
         .from("gym_memberships")
-        .select("id, status, next_due_at, last_paid_at")
+        .select("id, status, plan_id, next_due_at, last_paid_at")
         .eq("merchant_id", qr.merchant_id)
         .eq("student_id", me.id)
         .order("updated_at", { ascending: false })
@@ -107,10 +120,31 @@ export default async function GymCustomerPage({
         .maybeSingle()
     : { data: null };
 
+  const { data: lastCheckin } = admin && me?.id
+    ? await admin
+        .from("gym_checkins")
+        .select("checkin_date")
+        .eq("merchant_id", qr.merchant_id)
+        .eq("student_id", me.id)
+        .order("checkin_date", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
+  const planName = membership?.plan_id
+    ? (plans ?? []).find((p) => p.id === membership.plan_id)?.name ?? null
+    : null;
+
   const banner =
     changed === "1"
       ? "Senha atualizada."
-      :
+      : plan_changed === "1"
+        ? "Plano atualizado."
+        : checked_in === "1"
+          ? "Check-in registrado."
+          : already_checked === "1"
+            ? "Check-in de hoje já estava registrado."
+            :
     error === "auth_failed"
       ? "Login ou senha inválidos."
       : error === "login_taken"
@@ -156,6 +190,11 @@ export default async function GymCustomerPage({
               Status: <span className="font-semibold">{membership.status}</span>
               {membership.next_due_at ? ` • Vencimento: ${membership.next_due_at}` : ""}
               {membership.last_paid_at ? ` • Pago em: ${membership.last_paid_at}` : ""}
+            </p>
+
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+              Plano: <span className="font-semibold">{planName ?? "(sem plano)"}</span>
+              {lastCheckin?.checkin_date ? ` • Último check-in: ${lastCheckin.checkin_date}` : ""}
             </p>
 
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -215,6 +254,38 @@ export default async function GymCustomerPage({
             </p>
 
             <div className="mt-5 grid gap-3">
+              <form action={gymCheckIn}>
+                <input type="hidden" name="qr_token" value={qrToken} />
+                <button type="submit" className={button.className} style={button.style}>
+                  Fazer check-in de hoje
+                </button>
+              </form>
+
+              <form action={gymChangePlan} className="space-y-2">
+                <input type="hidden" name="qr_token" value={qrToken} />
+                <select
+                  name="plan_id"
+                  defaultValue={membership.plan_id ?? ""}
+                  required
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                >
+                  <option value="" disabled>
+                    Escolha um plano
+                  </option>
+                  {(plans ?? []).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({formatBrlCents(Number(p.price_cents ?? 0))} / {Number(p.billing_period_months ?? 1)}m)
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  Trocar plano
+                </button>
+              </form>
+
               <form action={gymChangePassword} className="space-y-2">
                 <input type="hidden" name="qr_token" value={qrToken} />
                 <input

@@ -378,6 +378,46 @@ export interface Database {
         ];
       };
 
+      gym_checkins: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          student_id: string;
+          checkin_date: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          student_id: string;
+          checkin_date?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          student_id?: string;
+          checkin_date?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gym_checkins_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "gym_checkins_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "gym_students";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
       gym_memberships: {
         Row: {
           id: string;
