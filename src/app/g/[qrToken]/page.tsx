@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
-import { gymSignIn, gymSignUp } from "@/lib/gym/customerActions";
+import { gymChangePassword, gymSignIn, gymSignOut, gymSignUp } from "@/lib/gym/customerActions";
 import { buildMerchantBranding, getButtonStyle } from "@/lib/merchant/branding";
 
 function maskPix(pix: string): string {
@@ -20,10 +20,10 @@ export default async function GymCustomerPage({
   searchParams,
 }: {
   params: Promise<{ qrToken: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; changed?: string }>;
 }) {
   const { qrToken } = await params;
-  const { error } = await searchParams;
+  const { error, changed } = await searchParams;
 
   const supabase = await createClient();
 
@@ -96,6 +96,9 @@ export default async function GymCustomerPage({
     : { data: null };
 
   const banner =
+    changed === "1"
+      ? "Senha atualizada."
+      :
     error === "auth_failed"
       ? "Login ou senha inválidos."
       : error === "login_taken"
@@ -195,6 +198,33 @@ export default async function GymCustomerPage({
             <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
               Se você acabou de pagar, aguarde a confirmação do atendente.
             </p>
+
+            <div className="mt-5 grid gap-3">
+              <form action={gymChangePassword} className="space-y-2">
+                <input type="hidden" name="qr_token" value={qrToken} />
+                <input
+                  name="new_password"
+                  type="password"
+                  required
+                  minLength={1}
+                  placeholder="Nova senha"
+                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+                <button type="submit" className={button.className} style={button.style}>
+                  Trocar senha
+                </button>
+              </form>
+
+              <form action={gymSignOut}>
+                <input type="hidden" name="qr_token" value={qrToken} />
+                <button
+                  type="submit"
+                  className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                >
+                  Sair
+                </button>
+              </form>
+            </div>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -213,7 +243,7 @@ export default async function GymCustomerPage({
                   name="password"
                   type="password"
                   required
-                  minLength={4}
+                  minLength={1}
                   placeholder="Senha"
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                 />
@@ -250,7 +280,7 @@ export default async function GymCustomerPage({
                   name="password"
                   type="password"
                   required
-                  minLength={4}
+                  minLength={1}
                   placeholder="Crie uma senha"
                   className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                 />

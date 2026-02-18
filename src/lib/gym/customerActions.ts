@@ -12,15 +12,24 @@ function makeSessionToken(): string {
 }
 
 async function setGymSessionCookie(token: string) {
-  // Non-HttpOnly by design so the browser can attach it (middleware will forward as header).
-  // Matches the existing anon-RLS strategy used elsewhere.
   const cookieStore = await cookies();
   cookieStore.set(GYM_SESSION_COOKIE, token, {
-    httpOnly: false,
+    httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+async function clearGymSessionCookie() {
+  const cookieStore = await cookies();
+  cookieStore.set(GYM_SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
   });
 }
 
@@ -32,7 +41,7 @@ export async function gymSignUp(formData: FormData): Promise<void> {
   const rawPlanId = (formData.get("plan_id") as string | null)?.trim() ?? "";
 
   if (!qrToken) redirect("/");
-  if (login.length < 2 || password.length < 4) {
+  if (login.length < 2 || password.length < 1) {
     redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
   }
 
@@ -131,7 +140,7 @@ export async function gymSignIn(formData: FormData): Promise<void> {
   const password = (formData.get("password") as string | null)?.trim() ?? "";
 
   if (!qrToken) redirect("/");
-  if (login.length < 2 || password.length < 4) {
+  if (login.length < 2 || password.length < 1) {
     redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
   }
 
@@ -174,4 +183,71 @@ export async function gymSignIn(formData: FormData): Promise<void> {
 
   await setGymSessionCookie(sessionToken);
   redirect(`/g/${encodeURIComponent(qrToken)}`);
+}
+
+export async function gymSignOut(formData: FormData): Promise<void> {
+  const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
+  if (!qrToken) redirect("/");
+  await clearGymSessionCookie();
+  redirect(`/g/${encodeURIComponent(qrToken)}`);
+}
+
+export async function gymChangePassword(formData: FormData): Promise<void> {
+  const qrToken = (formData.get("qr_token") as string | null)?.trim() ?? "";
+  const newPassword = (formData.get("new_password") as string | null)?.trim() ?? "";
+  if (!qrToken) redirect("/");
+  if (newPassword.length < 1) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid`);
+  }
+
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(GYM_SESSION_COOKIE)?.value ?? "";
+  if (!sessionToken) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  const admin = createAdminClient();
+
+  const { data: qr, error: qrError } = await admin
+    .from("gym_qr_tokens")
+    .select("merchant_id")
+    .eq("qr_token", qrToken)
+    .eq("is_active", true)
+    .single();
+
+  if (qrError || !qr?.merchant_id) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=invalid_qr`);
+  }
+
+  const { data: student } = await admin
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", qr.merchant_id)
+    .eq("session_token", sessionToken)
+    .limit(1)
+    .maybeSingle();
+
+  if (!student?.id) {
+    await clearGymSessionCookie();
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=auth_failed`);
+  }
+
+  const passwordHash = hashPassword(newPassword);
+  const newSessionToken = makeSessionToken();
+
+  const { error: updateError } = await admin
+    .from("gym_students")
+    .update({
+      password_hash: passwordHash,
+      session_token: newSessionToken,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", student.id);
+
+  if (updateError) {
+    redirect(`/g/${encodeURIComponent(qrToken)}?error=signup_failed`);
+  }
+
+  await setGymSessionCookie(newSessionToken);
+  redirect(`/g/${encodeURIComponent(qrToken)}?changed=1`);
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
-import { createGymStudent, recordGymPayment, setGymMembershipDueDate } from "@/lib/gym/actions";
+import { createGymStudent, recordGymPayment, resetGymStudentPassword, setGymMembershipDueDate } from "@/lib/gym/actions";
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -20,9 +20,9 @@ function isOverdue(nextDueAt: string | null | undefined): boolean {
 export default async function AcademiaAlunosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; password_reset?: string; error?: string }>;
 }) {
-  const { saved, error } = await searchParams;
+  const { saved, password_reset, error } = await searchParams;
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
   const canAccess =
@@ -102,8 +102,12 @@ export default async function AcademiaAlunosPage({
   const banner =
     saved === "1"
       ? { kind: "success" as const, message: "Salvo." }
+      : password_reset === "1"
+        ? { kind: "success" as const, message: "Senha redefinida." }
       : error === "invalid"
         ? { kind: "error" as const, message: "Dados inválidos." }
+        : error === "login_taken"
+          ? { kind: "error" as const, message: "Esse login já existe." }
         : error === "save_failed"
           ? { kind: "error" as const, message: "Não foi possível salvar agora. Tente novamente." }
           : null;
@@ -139,23 +143,16 @@ export default async function AcademiaAlunosPage({
             <form action={createGymStudent} className="mt-4 space-y-3">
               <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
               <input
-                name="name"
-                required
-                minLength={2}
-                placeholder="Nome"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-              />
-              <input
                 name="login"
                 required
                 minLength={2}
-                placeholder="Login (ex: joao)"
+                placeholder="Usuário (ex: joao)"
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
               <input
                 name="password"
                 required
-                minLength={4}
+                minLength={1}
                 placeholder="Senha"
                 type="password"
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
@@ -233,6 +230,29 @@ export default async function AcademiaAlunosPage({
 
                     {m ? (
                       <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <form action={resetGymStudentPassword} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
+                          <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
+                          <input type="hidden" name="student_id" value={s.id} />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Senha</p>
+                          <input
+                            name="password"
+                            type="password"
+                            required
+                            minLength={1}
+                            placeholder="Nova senha"
+                            className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                          />
+                          <button
+                            type="submit"
+                            className="mt-2 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                          >
+                            Redefinir senha
+                          </button>
+                          <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                            Isso desconecta sessões ativas do aluno.
+                          </p>
+                        </form>
+
                         <form action={recordGymPayment} className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">
                           <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
                           <input type="hidden" name="membership_id" value={m.id} />

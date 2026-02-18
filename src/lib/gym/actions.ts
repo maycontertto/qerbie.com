@@ -284,8 +284,8 @@ export async function updateGymAdditionalService(formData: FormData): Promise<vo
 }
 
 export async function createGymStudent(formData: FormData): Promise<void> {
-  const name = (formData.get("name") as string | null)?.trim() ?? "";
-  const login = (formData.get("login") as string | null)?.trim() ?? "";
+  const loginRaw = (formData.get("login") as string | null)?.trim() ?? "";
+  const login = loginRaw.toLowerCase();
   const password = (formData.get("password") as string | null)?.trim() ?? "";
   const planId = (formData.get("plan_id") as string | null)?.trim() ?? "";
   const nextDueAt = parseDateOrNull(formData.get("next_due_at"));
@@ -294,7 +294,7 @@ export async function createGymStudent(formData: FormData): Promise<void> {
     "/dashboard/modulos/academia_renovacoes",
   ]);
 
-  if (name.length < 2 || login.length < 2 || password.length < 4) {
+  if (login.length < 2 || password.length < 1) {
     redirect(`${returnTo}?error=invalid`);
   }
 
@@ -302,6 +302,7 @@ export async function createGymStudent(formData: FormData): Promise<void> {
 
   const passwordHash = hashPassword(password);
   const sessionToken = randomBytes(24).toString("base64url");
+  const name = loginRaw || login;
 
   const { data: student, error: studentError } = await supabase
     .from("gym_students")
@@ -317,6 +318,9 @@ export async function createGymStudent(formData: FormData): Promise<void> {
     .single();
 
   if (studentError || !student?.id) {
+    if (studentError && "code" in studentError && studentError.code === "23505") {
+      redirect(`${returnTo}?error=login_taken`);
+    }
     redirect(`${returnTo}?error=save_failed`);
   }
 
@@ -336,6 +340,37 @@ export async function createGymStudent(formData: FormData): Promise<void> {
   }
 
   redirect(`${returnTo}?saved=1`);
+}
+
+export async function resetGymStudentPassword(formData: FormData): Promise<void> {
+  const studentId = (formData.get("student_id") as string | null)?.trim() ?? "";
+  const password = (formData.get("password") as string | null)?.trim() ?? "";
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_alunos",
+  ]);
+
+  if (!studentId || password.length < 1) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant } = await requireGymAccess();
+  const passwordHash = hashPassword(password);
+
+  const { error } = await supabase
+    .from("gym_students")
+    .update({
+      password_hash: passwordHash,
+      session_token: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("merchant_id", merchant.id)
+    .eq("id", studentId);
+
+  if (error) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  redirect(`${returnTo}?password_reset=1`);
 }
 
 export async function setGymMembershipDueDate(formData: FormData): Promise<void> {
