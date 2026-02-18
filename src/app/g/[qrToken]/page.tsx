@@ -11,6 +11,21 @@ import { buildMerchantBranding, getButtonStyle } from "@/lib/merchant/branding";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GYM_SESSION_COOKIE } from "@/lib/gym/constants";
+import { CopyButton } from "./CopyButton";
+
+function maskPix(pix: string): string {
+  const v = pix.trim();
+  if (v.length <= 10) return v;
+  return `${v.slice(0, 4)}…${v.slice(-4)}`;
+}
+
+function isOverdue(nextDueAt: string | null | undefined): boolean {
+  if (!nextDueAt) return false;
+  const due = new Date(`${nextDueAt}T00:00:00`);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return due.getTime() < now.getTime();
+}
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -60,7 +75,7 @@ export default async function GymCustomerPage({
   const { data: merchant } = await adminPublic
     .from("merchants")
     .select(
-      "name, brand_display_name, brand_logo_url, brand_primary_color",
+      "name, brand_display_name, brand_logo_url, brand_primary_color, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer",
     )
     .eq("id", qr.merchant_id)
     .single();
@@ -127,6 +142,8 @@ export default async function GymCustomerPage({
   const planName = membership?.plan_id
     ? (plans ?? []).find((p) => p.id === membership.plan_id)?.name ?? null
     : null;
+
+  const showPayment = membership ? !membership.last_paid_at || isOverdue(membership.next_due_at) : false;
 
   const banner =
     changed === "1"
@@ -198,6 +215,68 @@ export default async function GymCustomerPage({
             <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
               {membership.last_paid_at ? "Pagamento confirmado." : "Pagamento é confirmado pelo atendente."}
             </p>
+
+            {showPayment ? (
+              <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Pagamento</p>
+
+                {merchant?.payment_pix_key || merchant?.payment_card_url || merchant?.payment_cash_description ? (
+                  <div className="mt-2 space-y-4">
+                    {merchant?.payment_pix_key ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-sm text-zinc-700 dark:text-zinc-200">
+                            PIX: <span className="font-semibold">{maskPix(merchant.payment_pix_key)}</span>
+                          </p>
+                          <CopyButton value={merchant.payment_pix_key} label="Copiar PIX" />
+                        </div>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 break-words">
+                          {merchant.payment_pix_key}
+                        </p>
+                        {merchant.payment_pix_description ? (
+                          <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_pix_description}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {merchant?.payment_card_url ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Link (cartão/checkout)</p>
+                        {merchant.payment_card_description ? (
+                          <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_card_description}</p>
+                        ) : null}
+                        <div className="flex items-start justify-between gap-3">
+                          <a
+                            href={merchant.payment_card_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50 break-words"
+                          >
+                            {merchant.payment_card_url}
+                          </a>
+                          <CopyButton value={merchant.payment_card_url} label="Copiar" />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {merchant?.payment_cash_description ? (
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Dinheiro</p>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_cash_description}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                    A academia ainda não configurou as formas de pagamento.
+                  </p>
+                )}
+
+                {merchant?.payment_disclaimer ? (
+                  <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">{merchant.payment_disclaimer}</p>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="mt-5 grid gap-3">
               <form action={gymCheckIn}>
