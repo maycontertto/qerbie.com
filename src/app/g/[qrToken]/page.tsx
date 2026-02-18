@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import {
   gymChangePassword,
@@ -12,12 +11,6 @@ import { buildMerchantBranding, getButtonStyle } from "@/lib/merchant/branding";
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GYM_SESSION_COOKIE } from "@/lib/gym/constants";
-
-function maskPix(pix: string): string {
-  const v = pix.trim();
-  if (v.length <= 10) return v;
-  return `${v.slice(0, 4)}…${v.slice(-4)}`;
-}
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -41,10 +34,10 @@ export default async function GymCustomerPage({
   const { qrToken } = await params;
   const { error, changed, plan_changed, checked_in, already_checked } = await searchParams;
 
-  const supabase = await createClient();
+  const adminPublic = createAdminClient();
 
   // Resolve QR → merchant
-  const { data: qr } = await supabase
+  const { data: qr } = await adminPublic
     .from("gym_qr_tokens")
     .select("merchant_id, label")
     .eq("qr_token", qrToken)
@@ -64,15 +57,15 @@ export default async function GymCustomerPage({
     );
   }
 
-  const { data: merchant } = await supabase
+  const { data: merchant } = await adminPublic
     .from("merchants")
     .select(
-      "name, brand_display_name, brand_logo_url, brand_primary_color, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer",
+      "name, brand_display_name, brand_logo_url, brand_primary_color",
     )
     .eq("id", qr.merchant_id)
     .single();
 
-  const { data: plans } = await supabase
+  const { data: plans } = await adminPublic
     .from("gym_plans")
     .select("id, name, price_cents, billing_period_months")
     .eq("merchant_id", qr.merchant_id)
@@ -137,25 +130,24 @@ export default async function GymCustomerPage({
 
   const banner =
     changed === "1"
-      ? "Senha atualizada."
+      ? { kind: "success" as const, message: "Senha atualizada." }
       : plan_changed === "1"
-        ? "Plano atualizado."
+        ? { kind: "success" as const, message: "Plano atualizado." }
         : checked_in === "1"
-          ? "Check-in registrado."
+          ? { kind: "success" as const, message: "Check-in registrado." }
           : already_checked === "1"
-            ? "Check-in de hoje já estava registrado."
-            :
-    error === "auth_failed"
-      ? "Login ou senha inválidos."
-      : error === "login_taken"
-        ? "Esse usuário já existe. Tente outro."
-      : error === "signup_failed"
-        ? "Não foi possível criar seu cadastro."
-        : error === "invalid"
-          ? "Dados inválidos."
-          : error === "invalid_qr"
-            ? "QR inválido."
-            : null;
+            ? { kind: "success" as const, message: "Check-in de hoje já estava registrado." }
+            : error === "auth_failed"
+              ? { kind: "error" as const, message: "Login ou senha inválidos." }
+              : error === "login_taken"
+                ? { kind: "error" as const, message: "Esse usuário já existe. Tente outro." }
+                : error === "signup_failed"
+                  ? { kind: "error" as const, message: "Não foi possível concluir agora." }
+                  : error === "invalid"
+                    ? { kind: "error" as const, message: "Dados inválidos." }
+                    : error === "invalid_qr"
+                      ? { kind: "error" as const, message: "QR inválido." }
+                      : null;
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
@@ -178,8 +170,14 @@ export default async function GymCustomerPage({
         </div>
 
         {banner ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-            {banner}
+          <div
+            className={`rounded-lg border p-3 text-sm ${
+              banner.kind === "error"
+                ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+            }`}
+          >
+            {banner.message}
           </div>
         ) : null}
 
@@ -197,60 +195,8 @@ export default async function GymCustomerPage({
               {lastCheckin?.checkin_date ? ` • Último check-in: ${lastCheckin.checkin_date}` : ""}
             </p>
 
-            <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Pagamento</p>
-              {merchant?.payment_pix_key || merchant?.payment_card_url || merchant?.payment_cash_description ? (
-                <div className="mt-2 space-y-3">
-                  {merchant?.payment_pix_key ? (
-                    <div className="space-y-2">
-                      <p className="text-sm text-zinc-700 dark:text-zinc-200">
-                        PIX: <span className="font-semibold">{maskPix(merchant.payment_pix_key)}</span>
-                      </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 break-words">{merchant.payment_pix_key}</p>
-                      {merchant.payment_pix_description ? (
-                        <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_pix_description}</p>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  {merchant?.payment_card_url ? (
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Link (cartão/checkout)</p>
-                      {merchant.payment_card_description ? (
-                        <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_card_description}</p>
-                      ) : null}
-                      <a
-                        href={merchant.payment_card_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50 break-words"
-                      >
-                        {merchant.payment_card_url}
-                      </a>
-                    </div>
-                  ) : null}
-
-                  {merchant?.payment_cash_description ? (
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Dinheiro</p>
-                      <p className="text-sm text-zinc-600 dark:text-zinc-300">{merchant.payment_cash_description}</p>
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
-                  A academia ainda não configurou as formas de pagamento.
-                </p>
-              )}
-              {merchant?.payment_disclaimer ? (
-                <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">{merchant.payment_disclaimer}</p>
-              ) : null}
-            </div>
-
             <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-              {membership.last_paid_at
-                ? "Pagamento confirmado."
-                : "Se você acabou de pagar, aguarde a confirmação do atendente."}
+              {membership.last_paid_at ? "Pagamento confirmado." : "Pagamento é confirmado pelo atendente."}
             </p>
 
             <div className="mt-5 grid gap-3">
