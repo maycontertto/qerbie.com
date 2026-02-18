@@ -24,7 +24,15 @@ function makeSlug(base: string): string {
 export default async function ProdutosModulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; error?: string; q?: string; catq?: string; preset?: string }>;
+  searchParams: Promise<{
+    category?: string;
+    error?: string;
+    q?: string;
+    catq?: string;
+    preset?: string;
+    created?: string;
+    removed?: string;
+  }>;
 }) {
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
@@ -127,7 +135,7 @@ export default async function ProdutosModulePage({
     );
   }
 
-  const { category, error, q, catq, preset } = await searchParams;
+  const { category, error, q, catq, preset, created, removed } = await searchParams;
 
   const presetKey = (preset ?? "").trim().toLowerCase();
   const presetCategoryName =
@@ -226,7 +234,22 @@ export default async function ProdutosModulePage({
           ? "Falha ao criar categoria."
           : error === "product_create_failed"
             ? "Falha ao criar produto."
+            : error === "image_type"
+              ? "Arquivo inválido. Envie uma imagem (PNG/JPG/WebP)."
+              : error === "image_too_large"
+                ? "Imagem muito grande. Use um arquivo menor (até 12MB)."
             : null;
+
+  const successBanner =
+    created
+      ? "Item cadastrado. Pronto para cadastrar outro."
+      : removed
+        ? "Item removido."
+        : null;
+
+  const returnTo = `/dashboard/modulos/produtos?category=${encodeURIComponent(String(selectedCategoryId ?? ""))}`
+    + (itemQuery ? `&q=${encodeURIComponent(itemQuery)}` : "")
+    + (categorySearch ? `&catq=${encodeURIComponent(categorySearch)}` : "");
 
   return (
     <div className="min-h-screen">
@@ -261,6 +284,12 @@ export default async function ProdutosModulePage({
             {banner}
           </div>
         )}
+
+        {successBanner && !banner ? (
+          <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            {successBanner}
+          </div>
+        ) : null}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[280px_1fr]">
           {/* Sidebar */}
@@ -361,6 +390,8 @@ export default async function ProdutosModulePage({
                 className="mt-4 grid gap-3 sm:grid-cols-2"
               >
                 <input type="hidden" name="menu_id" value={menu.id} />
+                <input type="hidden" name="redirect_to" value="/dashboard/modulos/produtos" />
+                <input type="hidden" name="return_to" value={returnTo} />
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
@@ -563,16 +594,44 @@ export default async function ProdutosModulePage({
                               : ""}
                           </p>
                         </div>
-                        {p.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={p.image_url}
-                            alt={p.name}
-                            className="h-12 w-12 shrink-0 rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800"
-                          />
-                        ) : (
-                          <div className="h-12 w-12 shrink-0 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950" />
-                        )}
+
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`/dashboard/modulos/produtos/${encodeURIComponent(p.id)}`}
+                            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                          >
+                            Editar
+                          </a>
+
+                          {isOwner ? (
+                            <form action={deleteProduct}>
+                              <input type="hidden" name="product_id" value={p.id} />
+                              <input
+                                type="hidden"
+                                name="redirect_to"
+                                value="/dashboard/modulos/produtos"
+                              />
+                              <input type="hidden" name="return_to" value={returnTo} />
+                              <button
+                                type="submit"
+                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900/40"
+                              >
+                                Remover
+                              </button>
+                            </form>
+                          ) : null}
+
+                          {p.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={p.image_url}
+                              alt={p.name}
+                              className="h-12 w-12 shrink-0 rounded-lg border border-zinc-200 bg-white object-cover dark:border-zinc-800"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 shrink-0 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950" />
+                          )}
+                        </div>
                       </div>
                     </li>
                   ))}

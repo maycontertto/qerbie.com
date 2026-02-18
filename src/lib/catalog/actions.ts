@@ -42,6 +42,22 @@ function getRedirectBase(formData: FormData): "/dashboard/modulos/produtos" | "/
   return "/dashboard/modulos/produtos";
 }
 
+function getSafeReturnTo(formData: FormData): string {
+  const base = getRedirectBase(formData);
+  const raw = (formData.get("return_to") as string | null)?.trim() ?? "";
+  if (!raw) return base;
+
+  // Defense-in-depth: only allow internal same-module returns.
+  if (raw.startsWith(base)) return raw;
+  return base;
+}
+
+function withQueryParam(url: string, key: string, value: string): string {
+  const u = new URL(url, "http://local");
+  u.searchParams.set(key, value);
+  return `${u.pathname}${u.search}`;
+}
+
 async function requireProductsAccess() {
   const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
@@ -162,12 +178,23 @@ export async function createProduct(formData: FormData): Promise<void> {
   const trackStock = (formData.get("track_stock") as string | null) === "on";
   const stockQty = clampIntFromForm(formData.get("stock_quantity"), 0, 1_000_000);
 
+  const returnTo = getSafeReturnTo(formData);
   const redirectBase = getRedirectBase(formData);
 
   const { supabase, merchant, isOwner } = await requireProductsAccess();
 
   if (!menuId || name.length < 2) {
-    redirect(`${redirectBase}?error=invalid_product`);
+    redirect(withQueryParam(returnTo, "error", "invalid_product"));
+  }
+
+  // Validate optional image file early so we don't create the product if it's invalid.
+  if (imageFile instanceof File && imageFile.size > 0) {
+    if (!isProbablyImageFile(imageFile)) {
+      redirect(withQueryParam(returnTo, "error", "image_type"));
+    }
+    if (imageFile.size > MAX_PRODUCT_IMAGE_BYTES) {
+      redirect(withQueryParam(returnTo, "error", "image_too_large"));
+    }
   }
 
   const price = parsePriceBR(priceRaw || "0");
@@ -201,19 +228,11 @@ export async function createProduct(formData: FormData): Promise<void> {
     .maybeSingle();
 
   if (error || !data) {
-    redirect(`${redirectBase}?error=product_create_failed`);
+    redirect(withQueryParam(returnTo, "error", "product_create_failed"));
   }
 
   // Optional: if a file was provided, upload it and persist the public URL.
   if (imageFile instanceof File && imageFile.size > 0) {
-    if (!isProbablyImageFile(imageFile)) {
-      redirect(`${redirectBase}/${encodeURIComponent(data.id)}?error=image_type`);
-    }
-
-    if (imageFile.size > MAX_PRODUCT_IMAGE_BYTES) {
-      redirect(`${redirectBase}/${encodeURIComponent(data.id)}?error=image_too_large`);
-    }
-
     const ext = getFileExtension(imageFile);
     const path = `${merchant.id}/${data.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
 
@@ -240,7 +259,7 @@ export async function createProduct(formData: FormData): Promise<void> {
       .eq("merchant_id", merchant.id);
   }
 
-  redirect(`${redirectBase}/${encodeURIComponent(data.id)}`);
+  redirect(withQueryParam(returnTo, "created", "1"));
 }
 
 export async function updateProduct(formData: FormData): Promise<void> {
@@ -383,6 +402,7 @@ export async function uploadProductImage(formData: FormData): Promise<void> {
 export async function deleteProduct(formData: FormData): Promise<void> {
   const productId = (formData.get("product_id") as string | null)?.trim() ?? "";
   const redirectBase = getRedirectBase(formData);
+  const returnTo = getSafeReturnTo(formData);
   if (!productId) redirect(redirectBase);
 
   const { supabase, merchant, isOwner } = await requireProductsAccess();
@@ -391,5 +411,5 @@ export async function deleteProduct(formData: FormData): Promise<void> {
   }
 
   await supabase.from("products").delete().eq("id", productId).eq("merchant_id", merchant.id);
-  redirect(redirectBase);
+  redirect(withQueryParam(returnTo, "removed", "1"));
 }
