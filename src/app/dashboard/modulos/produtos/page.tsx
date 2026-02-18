@@ -4,10 +4,12 @@ import { redirect } from "next/navigation";
 import {
   createMenuCategory,
   createProduct,
+  deleteProduct,
   createSuggestedMenuCategories,
 } from "@/lib/catalog/actions";
 import { DEFAULT_MENU_NAME, DEFAULT_MENU_SLUG } from "@/lib/catalog/templates";
 import { CategorySelect } from "./CategorySelect";
+import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
 
 function makeSlug(base: string): string {
   const normalized = base
@@ -612,12 +614,12 @@ export default async function ProdutosModulePage({
                                 value="/dashboard/modulos/produtos"
                               />
                               <input type="hidden" name="return_to" value={returnTo} />
-                              <button
-                                type="submit"
+                              <ConfirmSubmitButton
+                                confirmMessage={`Remover "${p.name}"? Essa ação não pode ser desfeita.`}
                                 className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900/40"
                               >
                                 Remover
-                              </button>
+                              </ConfirmSubmitButton>
                             </form>
                           ) : null}
 
