@@ -155,6 +155,7 @@ export default async function GymCustomerPage({
             <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
               Status: <span className="font-semibold">{membership.status}</span>
               {membership.next_due_at ? ` • Vencimento: ${membership.next_due_at}` : ""}
+              {membership.last_paid_at ? ` • Pago em: ${membership.last_paid_at}` : ""}
             </p>
 
             <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
@@ -208,7 +209,9 @@ export default async function GymCustomerPage({
             </div>
 
             <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
-              Se você acabou de pagar, aguarde a confirmação do atendente.
+              {membership.last_paid_at
+                ? "Pagamento confirmado."
+                : "Se você acabou de pagar, aguarde a confirmação do atendente."}
             </p>
 
             <div className="mt-5 grid gap-3">
