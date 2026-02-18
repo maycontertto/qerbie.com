@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { gymChangePassword, gymSignIn, gymSignOut, gymSignUp } from "@/lib/gym/customerActions";
 import { buildMerchantBranding, getButtonStyle } from "@/lib/merchant/branding";
+import { cookies } from "next/headers";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { GYM_SESSION_COOKIE } from "@/lib/gym/constants";
 
 function maskPix(pix: string): string {
   const v = pix.trim();
@@ -76,16 +79,25 @@ export default async function GymCustomerPage({
 
   const button = getButtonStyle(branding.primaryColor);
 
-  // If logged in (cookie forwarded as x-gym-session-token), allow anon select on gym_students.
-  const { data: me } = await supabase
-    .from("gym_students")
-    .select("id, name")
-    .eq("merchant_id", qr.merchant_id)
-    .limit(1)
-    .maybeSingle();
+  // Identify the logged-in student by cookie session token.
+  // Use admin client so this works even when RLS blocks anon reads.
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(GYM_SESSION_COOKIE)?.value ?? "";
+  const admin = sessionToken ? createAdminClient() : null;
 
-  const { data: membership } = me
-    ? await supabase
+  const { data: me } = admin
+    ? await admin
+        .from("gym_students")
+        .select("id, name")
+        .eq("merchant_id", qr.merchant_id)
+        .eq("session_token", sessionToken)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
+  const { data: membership } = admin && me?.id
+    ? await admin
         .from("gym_memberships")
         .select("id, status, next_due_at, last_paid_at")
         .eq("merchant_id", qr.merchant_id)
