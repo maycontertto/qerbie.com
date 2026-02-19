@@ -202,16 +202,17 @@ export function CaixaClient() {
           return;
         }
 
-        const decodeFromStream = (codeReader as unknown as {
-          decodeFromStream?: (
-            stream: MediaStream,
-            video: HTMLVideoElement,
-            callbackFn: (result?: unknown, error?: unknown) => void,
-          ) => Promise<unknown>;
-        }).decodeFromStream;
+        const hasDecodeFromStream =
+          typeof (codeReader as unknown as { decodeFromStream?: unknown }).decodeFromStream === "function";
 
-        const controls = (decodeFromStream
-          ? ((await decodeFromStream(stream, video, (result) => onResult(result))) as unknown as ScannerControls)
+        const controls = (hasDecodeFromStream
+          ? ((await (codeReader as unknown as {
+              decodeFromStream: (
+                stream: MediaStream,
+                video: HTMLVideoElement,
+                callbackFn: (result?: unknown, error?: unknown) => void,
+              ) => Promise<unknown>;
+            }).decodeFromStream(stream, video, (result) => onResult(result))) as unknown as ScannerControls)
           : ((await codeReader.decodeFromVideoDevice(undefined, video, (result) => onResult(result))) as unknown as ScannerControls));
 
         if (cancelled) {
