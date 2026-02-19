@@ -226,11 +226,41 @@ export function CaixaClient() {
           message = String((err as { message: string }).message);
         }
 
+        const diag = (() => {
+          try {
+            const protocol = typeof window !== "undefined" ? window.location.protocol : "";
+            const secure = typeof window !== "undefined" ? String(window.isSecureContext) : "";
+            const mediaDevices = typeof navigator !== "undefined" ? String(Boolean(navigator.mediaDevices)) : "";
+            const gum =
+              typeof navigator !== "undefined" && navigator.mediaDevices
+                ? String(typeof navigator.mediaDevices.getUserMedia === "function")
+                : "";
+            return `Diagnóstico: protocol=${protocol} secure=${secure} mediaDevices=${mediaDevices} getUserMedia=${gum}`;
+          } catch {
+            return "";
+          }
+        })();
+
         const msgBase = "Não foi possível iniciar a câmera.";
         const msgHint =
           "Verifique permissão do navegador e use HTTPS. Se estiver dentro do WhatsApp/Instagram, abra no Chrome/Safari.";
         const detailBlock = [detail, message].filter(Boolean).join(" — ");
-        const msg = detailBlock ? `${msgBase} (${detailBlock}) ${msgHint}` : `${msgBase} ${msgHint}`;
+
+        const lowered = `${detailBlock}`.toLowerCase();
+        const looksLikeMissingMediaDevices =
+          lowered.includes("getusermedia") && lowered.includes("undefined") && lowered.includes("cannot read");
+
+        const msg = looksLikeMissingMediaDevices
+          ? [
+              "Este navegador não disponibiliza câmera aqui (mediaDevices/getUserMedia indisponível).",
+              "Abra no Chrome/Safari (fora do WhatsApp/Instagram) e em HTTPS.",
+              diag,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          : detailBlock
+            ? `${msgBase} (${detailBlock}) ${msgHint}${diag ? ` ${diag}` : ""}`
+            : `${msgBase} ${msgHint}${diag ? ` ${diag}` : ""}`;
 
         scannerControlsRef.current?.stop();
         scannerControlsRef.current = null;
