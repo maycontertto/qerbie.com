@@ -44,6 +44,11 @@ type LoadedOrder =
     }
   | { error: string; detail?: string };
 
+type ScannerControls = {
+  stop: () => void;
+  switchTorch?: (onOff: boolean) => Promise<void>;
+};
+
 function formatQty(qty: number): string {
   if (!Number.isFinite(qty)) return "0";
   const s = qty.toFixed(3);
@@ -59,7 +64,8 @@ export function CaixaClient() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const busyRef = useRef(false);
   const scannerOnRef = useRef(false);
-  const scannerControlsRef = useRef<{ stop: () => void } | null>(null);
+  const scannerTorchOnRef = useRef(false);
+  const scannerControlsRef = useRef<ScannerControls | null>(null);
   const lastScanRef = useRef<{ text: string; at: number } | null>(null);
   const addByBarcodeRef = useRef<(raw: string) => void>(() => {});
 
@@ -73,6 +79,9 @@ export function CaixaClient() {
   const [loadedOrder, setLoadedOrder] = useState<Extract<LoadedOrder, { ok: true }> | null>(null);
   const [scannerOn, setScannerOn] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
+  const [scannerTorchOn, setScannerTorchOn] = useState(false);
+  const [scannerTorchSupported, setScannerTorchSupported] = useState(false);
+  const [scannerLastRead, setScannerLastRead] = useState<string>("");
   const [status, setStatus] = useState<{ kind: "idle" | "error" | "success"; message?: string }>({
     kind: "idle",
   });
@@ -87,10 +96,21 @@ export function CaixaClient() {
   }, [scannerOn]);
 
   useEffect(() => {
+    scannerTorchOnRef.current = scannerTorchOn;
+  }, [scannerTorchOn]);
+
+  useEffect(() => {
     if (!scannerOn) {
-      scannerControlsRef.current?.stop();
+      const controls = scannerControlsRef.current;
+      if (controls?.switchTorch && scannerTorchOnRef.current) {
+        void controls.switchTorch(false);
+      }
+      controls?.stop();
       scannerControlsRef.current = null;
       setScannerError(null);
+      setScannerTorchOn(false);
+      setScannerTorchSupported(false);
+      setScannerLastRead("");
       return;
     }
 
@@ -103,15 +123,32 @@ export function CaixaClient() {
         const video = videoRef.current;
         if (!video) return;
 
-        const mod = await import("@zxing/browser");
-        const codeReader = new mod.BrowserMultiFormatReader();
+        const browser = await import("@zxing/browser");
+        const lib = await import("@zxing/library");
 
-        const controls = await codeReader.decodeFromVideoDevice(undefined, video, (result) => {
+        const hints = new Map();
+        hints.set(lib.DecodeHintType.POSSIBLE_FORMATS, [
+          lib.BarcodeFormat.EAN_13,
+          lib.BarcodeFormat.EAN_8,
+          lib.BarcodeFormat.CODE_128,
+        ]);
+        hints.set(lib.DecodeHintType.TRY_HARDER, true);
+
+        const codeReader = new browser.BrowserMultiFormatOneDReader(hints, {
+          delayBetweenScanAttempts: 120,
+          delayBetweenScanSuccess: 800,
+          tryPlayVideoTimeout: 5000,
+        });
+
+        const onResult = (result: unknown) => {
           if (!result) return;
           if (cancelled) return;
 
-          const text = String((result as { getText?: () => string }).getText?.() ?? "").trim();
+          const r = result as { getText?: () => string; text?: string };
+          const text = String(r.getText?.() ?? r.text ?? "").trim();
           if (!text) return;
+
+          setScannerLastRead(text);
 
           const now = Date.now();
           const last = lastScanRef.current;
@@ -120,7 +157,28 @@ export function CaixaClient() {
 
           if (busyRef.current) return;
           addByBarcodeRef.current(text);
-        });
+        };
+
+        const constraints: MediaStreamConstraints = {
+          audio: false,
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        };
+
+        const decodeFromConstraints = (codeReader as unknown as {
+          decodeFromConstraints?: (
+            constraints: MediaStreamConstraints,
+            video: HTMLVideoElement,
+            callbackFn: (result?: unknown, error?: unknown) => void,
+          ) => Promise<unknown>;
+        }).decodeFromConstraints;
+
+        const controls = (decodeFromConstraints
+          ? ((await decodeFromConstraints(constraints, video, (result) => onResult(result))) as unknown as ScannerControls)
+          : ((await codeReader.decodeFromVideoDevice(undefined, video, (result) => onResult(result))) as unknown as ScannerControls));
 
         if (cancelled) {
           controls.stop();
@@ -128,6 +186,15 @@ export function CaixaClient() {
         }
 
         scannerControlsRef.current = controls;
+        setScannerTorchSupported(Boolean(controls.switchTorch));
+
+        if (scannerTorchOnRef.current && controls.switchTorch) {
+          try {
+            await controls.switchTorch(true);
+          } catch {
+            // ignore
+          }
+        }
       } catch {
         setScannerError("Não foi possível acessar a câmera. Verifique permissão e use HTTPS.");
         setScannerOn(false);
@@ -142,6 +209,15 @@ export function CaixaClient() {
       scannerControlsRef.current = null;
     };
   }, [scannerOn]);
+
+  useEffect(() => {
+    if (!scannerOn) return;
+    const controls = scannerControlsRef.current;
+    if (!controls?.switchTorch) return;
+    void controls.switchTorch(scannerTorchOn).catch(() => {
+      // ignore
+    });
+  }, [scannerOn, scannerTorchOn]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -355,7 +431,9 @@ export function CaixaClient() {
       setStatus({ kind: "error", message: "Falha ao buscar item." });
     } finally {
       setBusy(false);
-      inputRef.current?.focus();
+      if (!scannerOnRef.current) {
+        inputRef.current?.focus();
+      }
     }
   }
 
@@ -527,13 +605,25 @@ export function CaixaClient() {
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                 Leitor por câmera
               </p>
-              <button
-                type="button"
-                onClick={() => setScannerOn(false)}
-                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                Parar
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {scannerTorchSupported ? (
+                  <button
+                    type="button"
+                    onClick={() => setScannerTorchOn((v) => !v)}
+                    className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  >
+                    {scannerTorchOn ? "Lanterna: ligada" : "Lanterna: desligada"}
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={() => setScannerOn(false)}
+                  className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Parar
+                </button>
+              </div>
             </div>
 
             {scannerError ? (
@@ -549,6 +639,10 @@ export function CaixaClient() {
               playsInline
               autoPlay
             />
+
+            <div className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+              <span className="font-semibold">Último lido:</span> {scannerLastRead ? scannerLastRead : "—"}
+            </div>
 
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
               Aponte para o código de barras. Ao ler, ele adiciona no carrinho automaticamente.
