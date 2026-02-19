@@ -188,16 +188,30 @@ export function CaixaClient() {
           },
         };
 
-        const decodeFromConstraints = (codeReader as unknown as {
-          decodeFromConstraints?: (
-            constraints: MediaStreamConstraints,
+        // Some environments throw TypeError inside the ZXing getUserMedia path.
+        // Obtaining the stream ourselves is more reliable and keeps the error messages actionable.
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (cancelled) {
+          for (const track of stream.getTracks()) {
+            try {
+              track.stop();
+            } catch {
+              // ignore
+            }
+          }
+          return;
+        }
+
+        const decodeFromStream = (codeReader as unknown as {
+          decodeFromStream?: (
+            stream: MediaStream,
             video: HTMLVideoElement,
             callbackFn: (result?: unknown, error?: unknown) => void,
           ) => Promise<unknown>;
-        }).decodeFromConstraints;
+        }).decodeFromStream;
 
-        const controls = (decodeFromConstraints
-          ? ((await decodeFromConstraints(constraints, video, (result) => onResult(result))) as unknown as ScannerControls)
+        const controls = (decodeFromStream
+          ? ((await decodeFromStream(stream, video, (result) => onResult(result))) as unknown as ScannerControls)
           : ((await codeReader.decodeFromVideoDevice(undefined, video, (result) => onResult(result))) as unknown as ScannerControls));
 
         if (cancelled) {
@@ -247,8 +261,13 @@ export function CaixaClient() {
         const detailBlock = [detail, message].filter(Boolean).join(" — ");
 
         const lowered = `${detailBlock}`.toLowerCase();
-        const looksLikeMissingMediaDevices =
+        const looksLikeMissingMediaDevicesText =
           lowered.includes("getusermedia") && lowered.includes("undefined") && lowered.includes("cannot read");
+        const actuallyMissingMediaDevices =
+          typeof navigator === "undefined" ||
+          !navigator.mediaDevices ||
+          typeof navigator.mediaDevices.getUserMedia !== "function";
+        const looksLikeMissingMediaDevices = looksLikeMissingMediaDevicesText && actuallyMissingMediaDevices;
 
         const msg = looksLikeMissingMediaDevices
           ? [
