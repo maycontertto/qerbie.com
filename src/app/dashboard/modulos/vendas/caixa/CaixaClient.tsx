@@ -123,6 +123,27 @@ export function CaixaClient() {
         const video = videoRef.current;
         if (!video) return;
 
+        const hasGetUserMedia =
+          typeof navigator !== "undefined" &&
+          !!navigator.mediaDevices &&
+          typeof navigator.mediaDevices.getUserMedia === "function";
+
+        const isSecure = typeof window !== "undefined" ? window.isSecureContext : false;
+
+        if (!hasGetUserMedia) {
+          setScannerTorchSupported(false);
+          setScannerError(
+            "Este navegador não disponibiliza câmera aqui (getUserMedia indisponível). Abra no Chrome/Safari fora de apps (Instagram/WhatsApp) e em HTTPS."
+          );
+          return;
+        }
+
+        if (!isSecure) {
+          setScannerTorchSupported(false);
+          setScannerError("A câmera só funciona em HTTPS (ou localhost). Abra a página usando HTTPS.");
+          return;
+        }
+
         const browser = await import("@zxing/browser");
         const lib = await import("@zxing/library");
 
