@@ -42,14 +42,15 @@ export function PwaInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [iosHintOpen, setIosHintOpen] = useState(false);
+  const [desktopHintOpen, setDesktopHintOpen] = useState(false);
   const [ready, setReady] = useState(false);
+  const [isMobile] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(max-width: 768px)").matches;
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    // Mobile-first: don't show on wide screens.
-    const mobile = window.matchMedia("(max-width: 768px)").matches;
-    if (!mobile) return;
-
     const key = "qerbie:pwa-dismissed-until";
     const raw = window.localStorage.getItem(key);
     const until = raw ? Number(raw) : 0;
@@ -62,6 +63,10 @@ export function PwaInstallPrompt() {
   const showIos = useMemo(() => {
     return !deferred && isIos() && !isStandalone();
   }, [deferred]);
+
+  const showDesktopHint = useMemo(() => {
+    return !deferred && !showIos && !isMobile && !isStandalone();
+  }, [deferred, showIos, isMobile]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -77,7 +82,7 @@ export function PwaInstallPrompt() {
 
   if (!ready) return null;
   if (dismissed) return null;
-  if (!deferred && !showIos) return null;
+  if (!deferred && !showIos && !showDesktopHint) return null;
 
   async function onInstall() {
     if (deferred) {
@@ -93,7 +98,13 @@ export function PwaInstallPrompt() {
     }
 
     // iOS: show inline hint
-    setIosHintOpen((v) => !v);
+    if (showIos) {
+      setIosHintOpen((v) => !v);
+      return;
+    }
+
+    // Desktop: show inline hint
+    setDesktopHintOpen((v) => !v);
   }
 
   function onDismiss() {
@@ -110,13 +121,18 @@ export function PwaInstallPrompt() {
       <div className="mx-auto max-w-xl rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Baixar app</p>
+            <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Instalar app</p>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Instale o Qerbie no seu celular para abrir mais rápido.
+              Instale o Qerbie para abrir mais rápido.
             </p>
             {showIos && iosHintOpen ? (
               <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
                 No iPhone: toque em “Compartilhar” e depois “Adicionar à Tela de Início”.
+              </p>
+            ) : null}
+            {showDesktopHint && desktopHintOpen ? (
+              <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
+                No Windows: use Edge/Chrome e clique em “Instalar” na barra de endereços ou no menu.
               </p>
             ) : null}
           </div>
