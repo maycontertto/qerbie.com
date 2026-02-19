@@ -7,9 +7,11 @@ function clampInt(value: FormDataEntryValue | null, min: number, max: number): n
   if (value == null) return null;
   const s = String(value).trim();
   if (!s) return null;
-  const n = Math.trunc(Number(s));
+  const normalized = s.replace(",", ".");
+  const n = Number(normalized);
   if (!Number.isFinite(n)) return null;
-  return Math.max(min, Math.min(max, n));
+  const clamped = Math.max(min, Math.min(max, n));
+  return Math.round(clamped * 1000) / 1000;
 }
 
 export async function saveProductStock(formData: FormData): Promise<void> {

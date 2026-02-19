@@ -39,6 +39,19 @@ export function getSuggestedCategories(
       return ["Feminino", "Masculino", "Infantil", "Acessórios", "Promoções"];
     case "loja_calcados":
       return ["Feminino", "Masculino", "Infantil", "Acessórios", "Promoções"];
+    case "material_construcao":
+      return [
+        "Cimento, Areia e Brita",
+        "Tijolos e Blocos",
+        "Ferramentas",
+        "Elétrica",
+        "Hidráulica",
+        "Tintas e Acessórios",
+        "Pisos e Revestimentos",
+        "Madeiras",
+        "EPI (Segurança)",
+        "Fixadores (Parafusos/Pregos)",
+      ];
     default:
       return ["Destaques", "Novidades"];
   }

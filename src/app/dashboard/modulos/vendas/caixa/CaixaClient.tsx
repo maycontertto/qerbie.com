@@ -7,7 +7,14 @@ type CartItem = {
   name: string;
   unitPrice: number;
   quantity: number;
+  unitLabel: string;
 };
+
+function formatQty(qty: number): string {
+  if (!Number.isFinite(qty)) return "0";
+  const s = qty.toFixed(3);
+  return s.replace(/\.?(0+)$/, "").replace(/\.$/, "");
+}
 
 function formatBrl(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -43,7 +50,7 @@ export function CaixaClient() {
     try {
       const res = await fetch(`/api/dashboard/caixa/lookup?barcode=${encodeURIComponent(code)}`);
       const json = (await res.json()) as
-        | { ok: true; product: { id: string; name: string; price: number } }
+        | { ok: true; product: { id: string; name: string; price: number; unitLabel: string } }
         | { error: string; detail?: string };
 
       if (!res.ok || !("ok" in json)) {
@@ -66,6 +73,7 @@ export function CaixaClient() {
             name: json.product.name,
             unitPrice: Number(json.product.price ?? 0),
             quantity: 1,
+            unitLabel: String(json.product.unitLabel ?? "un"),
           },
         ];
       });
@@ -230,11 +238,29 @@ export function CaixaClient() {
                 <div>
                   <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{item.name}</div>
                   <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {item.quantity} × {formatBrl(item.unitPrice)} = {formatBrl(item.unitPrice * item.quantity)}
+                    {formatQty(item.quantity)} {item.unitLabel} × {formatBrl(item.unitPrice)} = {formatBrl(item.unitPrice * item.quantity)}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0.001}
+                    step={0.001}
+                    value={String(item.quantity)}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      const n = Number(raw);
+                      const qty = Number.isFinite(n) ? Math.max(0.001, Math.round(n * 1000) / 1000) : 1;
+                      setCart((prev) =>
+                        prev.map((p) => (p.productId === item.productId ? { ...p, quantity: qty } : p)),
+                      );
+                    }}
+                    className="h-9 w-24 rounded-lg border border-zinc-300 bg-white px-2 text-sm text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                    aria-label={`Quantidade (${item.unitLabel})`}
+                  />
                   <button
                     type="button"
                     disabled={busy}
@@ -243,7 +269,7 @@ export function CaixaClient() {
                         const next = prev
                           .map((p) =>
                             p.productId === item.productId
-                              ? { ...p, quantity: Math.max(1, p.quantity - 1) }
+                              ? { ...p, quantity: Math.max(0.001, Math.round((p.quantity - 1) * 1000) / 1000) }
                               : p,
                           )
                           .filter(Boolean);

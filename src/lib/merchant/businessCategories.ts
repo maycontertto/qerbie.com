@@ -11,6 +11,7 @@ export type BusinessCategoryKey =
   | "farmacia"
   | "hoteis"
   | "lava_jato"
+  | "material_construcao"
   | "loja_calcados"
   | "loja_roupas"
   | "mercado"
@@ -34,6 +35,7 @@ export const BUSINESS_CATEGORIES: Array<{ key: BusinessCategoryKey; label: strin
   { key: "consultorio", label: "Consultório" },
   { key: "farmacia", label: "Farmácia" },
   { key: "hoteis", label: "Hotéis" },
+  { key: "material_construcao", label: "Material de Construção" },
   { key: "loja_calcados", label: "Loja de calçados" },
   { key: "loja_roupas", label: "Loja de roupas" },
   { key: "mercado", label: "Mercado" },

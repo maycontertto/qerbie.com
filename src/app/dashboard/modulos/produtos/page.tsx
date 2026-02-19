@@ -23,6 +23,19 @@ function makeSlug(base: string): string {
   return `${normalized || "menu"}-${suffix}`;
 }
 
+const UNIT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "un", label: "Unidade" },
+  { value: "kg", label: "Kg" },
+  { value: "g", label: "g" },
+  { value: "m", label: "Metro (m)" },
+  { value: "m2", label: "Metro² (m²)" },
+  { value: "m3", label: "Metro³ (m³)" },
+  { value: "l", label: "Litro (L)" },
+  { value: "saco", label: "Saco" },
+  { value: "caixa", label: "Caixa" },
+  { value: "pacote", label: "Pacote" },
+];
+
 export default async function ProdutosModulePage({
   searchParams,
 }: {
@@ -210,7 +223,7 @@ export default async function ProdutosModulePage({
 
   let productsQuery = supabase
     .from("products")
-    .select("id, name, price, image_url, is_active, track_stock, stock_quantity")
+    .select("id, name, price, unit_label, image_url, is_active, track_stock, stock_quantity")
     .eq("merchant_id", merchant.id)
     .eq("menu_id", menu.id);
 
@@ -447,6 +460,23 @@ export default async function ProdutosModulePage({
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                    Unidade de venda
+                  </label>
+                  <select
+                    name="unit_label"
+                    defaultValue="un"
+                    className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                  >
+                    {UNIT_OPTIONS.map((u) => (
+                      <option key={u.value} value={u.value}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
                     Descrição
@@ -590,7 +620,11 @@ export default async function ProdutosModulePage({
                             {p.name}
                           </a>
                           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                            R$ {Number(p.price ?? 0).toFixed(2)} • {p.is_active ? "Ativo" : "Inativo"}
+                            R$ {Number(p.price ?? 0).toFixed(2)}
+                            {typeof (p as { unit_label?: string | null }).unit_label === "string" &&
+                            (p as { unit_label?: string | null }).unit_label
+                              ? ` / ${(p as { unit_label?: string | null }).unit_label}`
+                              : ""} • {p.is_active ? "Ativo" : "Inativo"}
                             {Boolean((p as { track_stock?: boolean }).track_stock)
                               ? ` • Qtd: ${Number((p as { stock_quantity?: number }).stock_quantity ?? 0)}`
                               : ""}

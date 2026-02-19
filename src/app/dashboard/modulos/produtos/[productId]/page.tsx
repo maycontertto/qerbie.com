@@ -231,6 +231,31 @@ export default async function ProductEditPage({
 
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Unidade de venda
+              </label>
+              <select
+                name="unit_label"
+                defaultValue={String((product as { unit_label?: string | null }).unit_label ?? "un")}
+                className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+              >
+                <option value="un">Unidade</option>
+                <option value="kg">Kg</option>
+                <option value="g">g</option>
+                <option value="m">Metro (m)</option>
+                <option value="m2">Metro² (m²)</option>
+                <option value="m3">Metro³ (m³)</option>
+                <option value="l">Litro (L)</option>
+                <option value="saco">Saco</option>
+                <option value="caixa">Caixa</option>
+                <option value="pacote">Pacote</option>
+              </select>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Ex: &quot;kg&quot; para itens vendidos por peso.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Descrição
               </label>
               <textarea

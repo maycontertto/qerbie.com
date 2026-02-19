@@ -14,7 +14,7 @@ export async function GET(req: Request) {
 
   const { data: product, error } = await ctx.supabase
     .from("products")
-    .select("id, name, price, is_active")
+    .select("id, name, price, unit_label, is_active")
     .eq("merchant_id", ctx.merchant.id)
     .eq("barcode", barcode)
     .maybeSingle();
@@ -33,6 +33,7 @@ export async function GET(req: Request) {
       id: product.id,
       name: product.name,
       price: Number(product.price ?? 0),
+      unitLabel: String((product as { unit_label?: string | null }).unit_label ?? "un"),
     },
   });
 }

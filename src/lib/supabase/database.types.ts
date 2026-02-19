@@ -1756,6 +1756,7 @@ export interface Database {
           description: string | null;
           image_url: string | null;
           price: number;
+          unit_label: string;
           is_active: boolean;
           is_featured: boolean;
           requires_prescription: boolean;
@@ -1776,6 +1777,7 @@ export interface Database {
           description?: string | null;
           image_url?: string | null;
           price?: number;
+          unit_label?: string;
           is_active?: boolean;
           is_featured?: boolean;
           requires_prescription?: boolean;
@@ -1796,6 +1798,7 @@ export interface Database {
           description?: string | null;
           image_url?: string | null;
           price?: number;
+          unit_label?: string;
           is_active?: boolean;
           is_featured?: boolean;
           requires_prescription?: boolean;

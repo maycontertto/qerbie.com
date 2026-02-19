@@ -79,17 +79,28 @@ function parsePriceBR(input: string): number {
   return Math.round(value * 100) / 100;
 }
 
-function clampIntFromForm(
+function clampDecimalFromForm(
   value: FormDataEntryValue | null,
   min: number,
   max: number,
+  decimals: number,
 ): number | null {
   if (value == null) return null;
-  const s = String(value).trim();
-  if (!s) return null;
-  const n = Math.trunc(Number(s));
+  const raw = String(value).trim();
+  if (!raw) return null;
+  const normalized = raw.replace(",", ".");
+  const n = Number(normalized);
   if (!Number.isFinite(n)) return null;
-  return Math.max(min, Math.min(max, n));
+  const clamped = Math.max(min, Math.min(max, n));
+  const factor = 10 ** decimals;
+  return Math.round(clamped * factor) / factor;
+}
+
+function normalizeUnitLabel(raw: string): string {
+  const s = raw.trim().toLowerCase();
+  if (!s) return "un";
+  // Keep it flexible but avoid huge strings.
+  return s.slice(0, 12);
 }
 
 export async function createMenuCategory(formData: FormData): Promise<void> {
@@ -173,10 +184,11 @@ export async function createProduct(formData: FormData): Promise<void> {
   const imageFile = formData.get("image_file");
   const menuId = (formData.get("menu_id") as string | null)?.trim() ?? "";
   const categoryId = (formData.get("category_id") as string | null)?.trim() ?? "";
+  const unitLabelRaw = (formData.get("unit_label") as string | null)?.trim() ?? "";
   const requiresPrescription = (formData.get("requires_prescription") as string | null) === "on";
   const requiresDocument = (formData.get("requires_document") as string | null) === "on";
   const trackStock = (formData.get("track_stock") as string | null) === "on";
-  const stockQty = clampIntFromForm(formData.get("stock_quantity"), 0, 1_000_000);
+  const stockQty = clampDecimalFromForm(formData.get("stock_quantity"), 0, 1_000_000, 3);
 
   const returnTo = getSafeReturnTo(formData);
   const redirectBase = getRedirectBase(formData);
@@ -208,6 +220,7 @@ export async function createProduct(formData: FormData): Promise<void> {
     description: description || null,
     image_url: imageUrl || null,
     price,
+    unit_label: normalizeUnitLabel(unitLabelRaw),
     is_active: true,
     is_featured: false,
     requires_prescription: requiresPrescription,
@@ -270,12 +283,13 @@ export async function updateProduct(formData: FormData): Promise<void> {
   const priceRaw = (formData.get("price") as string | null)?.trim() ?? "";
   const imageUrl = (formData.get("image_url") as string | null)?.trim() ?? "";
   const categoryId = (formData.get("category_id") as string | null)?.trim() ?? "";
+  const unitLabelRaw = (formData.get("unit_label") as string | null)?.trim() ?? "";
   const isActive = (formData.get("is_active") as string | null) === "on";
   const isFeatured = (formData.get("is_featured") as string | null) === "on";
   const requiresPrescription = (formData.get("requires_prescription") as string | null) === "on";
   const requiresDocument = (formData.get("requires_document") as string | null) === "on";
   const trackStock = (formData.get("track_stock") as string | null) === "on";
-  const stockQty = clampIntFromForm(formData.get("stock_quantity"), 0, 1_000_000);
+  const stockQty = clampDecimalFromForm(formData.get("stock_quantity"), 0, 1_000_000, 3);
 
   const redirectBase = getRedirectBase(formData);
 
@@ -292,6 +306,7 @@ export async function updateProduct(formData: FormData): Promise<void> {
     description: description || null,
     price,
     image_url: imageUrl || null,
+    unit_label: unitLabelRaw ? normalizeUnitLabel(unitLabelRaw) : undefined,
     category_id: categoryId || null,
     barcode: barcode || null,
     is_active: isActive,

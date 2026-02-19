@@ -17,7 +17,8 @@ function asPaymentMethod(value: unknown): PaymentMethod | null {
 function clampInt(value: unknown, min: number, max: number): number {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return min;
-  return Math.max(min, Math.min(max, Math.trunc(n)));
+  const clamped = Math.max(min, Math.min(max, n));
+  return Math.round(clamped * 1000) / 1000;
 }
 
 function round2(n: number): number {
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     ? body.items
         .map((i) => ({
           productId: String((i as { productId?: unknown }).productId ?? "").trim(),
-          quantity: clampInt((i as { quantity?: unknown }).quantity, 1, 99),
+          quantity: clampInt((i as { quantity?: unknown }).quantity, 0.001, 999),
         }))
         .filter((i) => i.productId)
     : [];

@@ -337,6 +337,102 @@ const MERCADO_BASE: DashboardModules = {
   },
 };
 
+const MATERIAL_CONSTRUCAO_BASE: DashboardModules = {
+  headerNudge: "Produtos, estoque, vendas (caixa) e serviços do balcão.",
+  sections: {
+    catalogo: [
+      {
+        title: "Produtos",
+        description: "Itens por unidade/metro/kg e foto",
+        hint: "Agora",
+        href: "/dashboard/modulos/produtos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Serviços",
+        description: "Entrega, instalação, frete, corte, etc.",
+        hint: "Agora",
+        href: "/dashboard/modulos/servicos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Estoque",
+        description: "Controle rápido de disponibilidade",
+        hint: "Agora",
+        href: "/dashboard/modulos/estoque",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Equipe",
+        description: "Permissões de caixa/estoque/relatórios",
+        hint: "Agora",
+        href: "/dashboard/modulos/administracao",
+        ctaLabel: "Abrir",
+      },
+    ],
+    atendimento: [
+      {
+        title: "QR Code",
+        description: "Mostre um QR para o cliente escanear",
+        hint: "Agora",
+        href: "/dashboard/modulos/qr",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Pedidos",
+        description: "Recebido → Em separação → Pronto → Finalizado",
+        hint: "Agora",
+        href: "/dashboard/modulos/pedidos",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Retirada",
+        description: "Pedidos para retirada",
+        hint: "Agora",
+        href: "/dashboard/modulos/retirada",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Entrega",
+        description: "Pedidos para entrega e status",
+        hint: "Agora",
+        href: "/dashboard/modulos/entregas",
+        ctaLabel: "Abrir",
+      },
+    ],
+    vendas: [
+      {
+        title: "Caixa",
+        description: "Venda rápida com leitor de código de barras",
+        hint: "Agora",
+        href: "/dashboard/modulos/vendas/caixa",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Formas de pagamento",
+        description: "Pix/link/dinheiro e aviso pro cliente",
+        hint: "Agora",
+        href: "/dashboard/modulos/vendas",
+        ctaLabel: "Configurar",
+      },
+      {
+        title: "Histórico de Vendas",
+        description: "Pedidos finalizados e ticket médio",
+        hint: "Agora",
+        href: "/dashboard/modulos/historico",
+        ctaLabel: "Abrir",
+      },
+      {
+        title: "Trocas",
+        description: "Cancelamentos e devoluções (opcional)",
+        hint: "Agora",
+        href: "/dashboard/modulos/trocas",
+        ctaLabel: "Abrir",
+      },
+    ],
+  },
+};
+
 const BARBEARIA_BASE: DashboardModules = {
   headerNudge: "Serviços, equipe, agenda e fila da barbearia.",
   sections: {
@@ -1337,6 +1433,9 @@ export function getDashboardModules(
     case "casa_de_racao":
     case "casa_racao":
       modules = CASA_RACAO_BASE;
+      break;
+    case "material_construcao":
+      modules = MATERIAL_CONSTRUCAO_BASE;
       break;
     case "restaurante":
       modules = RESTAURANTE_BASE;
