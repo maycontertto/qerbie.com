@@ -56,6 +56,12 @@ function formatBrl(value: number): string {
 
 export function CaixaClient() {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const busyRef = useRef(false);
+  const scannerOnRef = useRef(false);
+  const scannerControlsRef = useRef<{ stop: () => void } | null>(null);
+  const lastScanRef = useRef<{ text: string; at: number } | null>(null);
+  const addByBarcodeRef = useRef<(raw: string) => void>(() => {});
 
   const [itemQuery, setItemQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -65,10 +71,77 @@ export function CaixaClient() {
   const [orderNumber, setOrderNumber] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [loadedOrder, setLoadedOrder] = useState<Extract<LoadedOrder, { ok: true }> | null>(null);
+  const [scannerOn, setScannerOn] = useState(false);
+  const [scannerError, setScannerError] = useState<string | null>(null);
   const [status, setStatus] = useState<{ kind: "idle" | "error" | "success"; message?: string }>({
     kind: "idle",
   });
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
+
+  useEffect(() => {
+    scannerOnRef.current = scannerOn;
+  }, [scannerOn]);
+
+  useEffect(() => {
+    if (!scannerOn) {
+      scannerControlsRef.current?.stop();
+      scannerControlsRef.current = null;
+      setScannerError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function start() {
+      setScannerError(null);
+
+      try {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const mod = await import("@zxing/browser");
+        const codeReader = new mod.BrowserMultiFormatReader();
+
+        const controls = await codeReader.decodeFromVideoDevice(undefined, video, (result) => {
+          if (!result) return;
+          if (cancelled) return;
+
+          const text = String((result as { getText?: () => string }).getText?.() ?? "").trim();
+          if (!text) return;
+
+          const now = Date.now();
+          const last = lastScanRef.current;
+          if (last && last.text === text && now - last.at < 2000) return;
+          lastScanRef.current = { text, at: now };
+
+          if (busyRef.current) return;
+          addByBarcodeRef.current(text);
+        });
+
+        if (cancelled) {
+          controls.stop();
+          return;
+        }
+
+        scannerControlsRef.current = controls;
+      } catch {
+        setScannerError("Não foi possível acessar a câmera. Verifique permissão e use HTTPS.");
+        setScannerOn(false);
+      }
+    }
+
+    void start();
+
+    return () => {
+      cancelled = true;
+      scannerControlsRef.current?.stop();
+      scannerControlsRef.current = null;
+    };
+  }, [scannerOn]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -131,7 +204,9 @@ export function CaixaClient() {
       setStatus({ kind: "error", message: "Falha ao buscar itens." });
     } finally {
       setBusy(false);
-      inputRef.current?.focus();
+      if (!scannerOnRef.current) {
+        inputRef.current?.focus();
+      }
     }
   }
 
@@ -284,6 +359,12 @@ export function CaixaClient() {
     }
   }
 
+  useEffect(() => {
+    addByBarcodeRef.current = (raw: string) => {
+      void addByBarcode(raw);
+    };
+  });
+
   async function finalizeSale() {
     if (cart.length === 0) return;
     setBusy(true);
@@ -370,22 +451,33 @@ export function CaixaClient() {
             />
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              const q = itemQuery.trim();
-              if (!q) return;
-              if (isLikelyBarcode(q)) {
-                void addByBarcode(q);
-              } else {
-                void searchProducts(q);
-              }
-            }}
-            disabled={busy || !itemQuery.trim()}
-            className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Buscar / adicionar
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                const q = itemQuery.trim();
+                if (!q) return;
+                if (isLikelyBarcode(q)) {
+                  void addByBarcode(q);
+                } else {
+                  void searchProducts(q);
+                }
+              }}
+              disabled={busy || !itemQuery.trim()}
+              className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Buscar / adicionar
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setScannerOn((v) => !v)}
+              disabled={busy}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+            >
+              {scannerOn ? "Parar câmera" : "Ler com câmera"}
+            </button>
+          </div>
         </div>
 
         {searchResults.length ? (
@@ -426,6 +518,41 @@ export function CaixaClient() {
                 </li>
               ))}
             </ul>
+          </div>
+        ) : null}
+
+        {scannerOn ? (
+          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Leitor por câmera
+              </p>
+              <button
+                type="button"
+                onClick={() => setScannerOn(false)}
+                className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                Parar
+              </button>
+            </div>
+
+            {scannerError ? (
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+                {scannerError}
+              </div>
+            ) : null}
+
+            <video
+              ref={videoRef}
+              className="mt-3 w-full rounded-xl border border-zinc-200 bg-zinc-950 dark:border-zinc-800"
+              muted
+              playsInline
+              autoPlay
+            />
+
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Aponte para o código de barras. Ao ler, ele adiciona no carrinho automaticamente.
+            </p>
           </div>
         ) : null}
 
