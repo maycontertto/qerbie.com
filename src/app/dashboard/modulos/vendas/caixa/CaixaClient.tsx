@@ -180,12 +180,11 @@ export function CaixaClient() {
           addByBarcodeRef.current(text);
         };
 
+        // Keep constraints very simple for maximum compatibility across mobile browsers/WebViews.
         const constraints: MediaStreamConstraints = {
           audio: false,
           video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
+            facingMode: "environment",
           },
         };
 
@@ -222,9 +221,16 @@ export function CaixaClient() {
           detail = String((err as { name: string }).name);
         }
 
+        let message = "";
+        if (err && typeof err === "object" && "message" in err && typeof (err as { message?: unknown }).message === "string") {
+          message = String((err as { message: string }).message);
+        }
+
         const msgBase = "Não foi possível iniciar a câmera.";
-        const msgHint = "Verifique permissão do navegador e use HTTPS.";
-        const msg = detail ? `${msgBase} (${detail}) ${msgHint}` : `${msgBase} ${msgHint}`;
+        const msgHint =
+          "Verifique permissão do navegador e use HTTPS. Se estiver dentro do WhatsApp/Instagram, abra no Chrome/Safari.";
+        const detailBlock = [detail, message].filter(Boolean).join(" — ");
+        const msg = detailBlock ? `${msgBase} (${detailBlock}) ${msgHint}` : `${msgBase} ${msgHint}`;
 
         scannerControlsRef.current?.stop();
         scannerControlsRef.current = null;
