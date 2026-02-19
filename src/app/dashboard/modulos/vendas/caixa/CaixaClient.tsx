@@ -195,9 +195,20 @@ export function CaixaClient() {
             // ignore
           }
         }
-      } catch {
-        setScannerError("Não foi possível acessar a câmera. Verifique permissão e use HTTPS.");
-        setScannerOn(false);
+      } catch (err) {
+        let detail = "";
+        if (err && typeof err === "object" && "name" in err && typeof (err as { name?: unknown }).name === "string") {
+          detail = String((err as { name: string }).name);
+        }
+
+        const msgBase = "Não foi possível iniciar a câmera.";
+        const msgHint = "Verifique permissão do navegador e use HTTPS.";
+        const msg = detail ? `${msgBase} (${detail}) ${msgHint}` : `${msgBase} ${msgHint}`;
+
+        scannerControlsRef.current?.stop();
+        scannerControlsRef.current = null;
+        setScannerTorchSupported(false);
+        setScannerError(msg);
       }
     }
 
