@@ -35,7 +35,7 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-zinc-50 to-white px-4 dark:from-zinc-950 dark:to-zinc-900">
+    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-linear-to-b from-zinc-50 to-white px-4 dark:from-zinc-950 dark:to-zinc-900">
       {/* Background Effects */}
       <div
         aria-hidden
@@ -43,7 +43,7 @@ export default async function HomePage() {
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-28 right-[-4rem] h-80 w-80 rounded-full bg-brand/10 blur-3xl dark:bg-brand/10"
+        className="pointer-events-none absolute -bottom-28 -right-16 h-80 w-80 rounded-full bg-brand/10 blur-3xl dark:bg-brand/10"
       />
       <div
         aria-hidden
@@ -51,7 +51,7 @@ export default async function HomePage() {
         style={{ backgroundImage: 'url("/qerbie fundo.png")' }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-3xl py-16 sm:py-20 text-center">
+      <div className="relative z-10 mx-auto w-full max-w-4xl py-16 sm:py-20 text-center">
 
         {/* Logo */}
         <div className="text-4xl font-extrabold tracking-tight text-brand sm:text-5xl">
@@ -72,6 +72,38 @@ export default async function HomePage() {
         <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-300">
           Organize atendimento, pedidos e operação em um único painel simples e intuitivo.
         </p>
+
+        {/* Video */}
+        <div
+          id="video-apresentacao"
+          className="mt-10 rounded-2xl border border-zinc-200 bg-white/70 p-3 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/50"
+        >
+          <div className="aspect-video overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+            <video
+              className="h-full w-full"
+              controls
+              preload="metadata"
+              playsInline
+              aria-label="Vídeo de apresentação do Qerbie"
+            >
+              <source
+                src="/pagina%20inicial/qerbie%20finalizado%20app.mp4"
+                type="video/mp4"
+              />
+              Seu navegador não suporta vídeo HTML5.
+            </video>
+          </div>
+
+          <div className="mt-4">
+            <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
+              Assista e entenda em poucos segundos
+            </p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+              Uma visão rápida de como o Qerbie ajuda seu comércio a reduzir erros,
+              ganhar agilidade e ter mais controle no atendimento e nos pedidos.
+            </p>
+          </div>
+        </div>
 
         {/* Benefits */}
         <div className="mt-10 space-y-3 text-base text-zinc-700 dark:text-zinc-300">
@@ -95,6 +127,15 @@ export default async function HomePage() {
           >
             Já tenho conta
           </Link>
+        </div>
+
+        <div className="mt-4">
+          <a
+            href="#video-apresentacao"
+            className="text-sm font-semibold text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-200"
+          >
+            Saiba mais (assista ao vídeo)
+          </a>
         </div>
 
         {/* Risk Reversal */}
