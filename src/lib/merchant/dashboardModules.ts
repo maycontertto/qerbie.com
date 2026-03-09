@@ -35,6 +35,14 @@ const PRODUCTS_CARD: DashboardCardModel = {
   ctaLabel: "Abrir",
 };
 
+const PURCHASES_CARD: DashboardCardModel = {
+  title: "Compras",
+  description: "Entrada de nota e reposição em lote",
+  hint: "Agora",
+  href: "/dashboard/modulos/compras",
+  ctaLabel: "Abrir",
+};
+
 function withStockInCatalog(modules: DashboardModules): DashboardModules {
   const catalog = modules.sections.catalogo ?? [];
   const alreadyHasStock = catalog.some(
@@ -265,6 +273,7 @@ const MERCADO_BASE: DashboardModules = {
         href: "/dashboard/modulos/estoque",
         ctaLabel: "Abrir",
       },
+      PURCHASES_CARD,
       {
         title: "Equipe",
         description: "Cadastre atendentes/funcionários e controle acessos",

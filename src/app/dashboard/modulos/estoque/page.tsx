@@ -75,12 +75,22 @@ export default async function EstoqueModulePage({
             </p>
           </div>
 
-          <Link
-            href="/dashboard/modulos/produtos"
-            className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-          >
-            Ir para Produtos
-          </Link>
+          <div className="flex flex-wrap gap-3 text-sm">
+            {merchant.business_category === "mercado" ? (
+              <Link
+                href="/dashboard/modulos/compras"
+                className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+              >
+                Lançar compra
+              </Link>
+            ) : null}
+            <Link
+              href="/dashboard/modulos/produtos"
+              className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+            >
+              Ir para Produtos
+            </Link>
+          </div>
         </div>
 
         {banner && (

@@ -1648,6 +1648,238 @@ export interface Database {
         ];
       };
 
+      merchant_suppliers: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          phone: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          phone?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          name?: string;
+          phone?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "merchant_suppliers_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      purchase_entries: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          supplier_id: string | null;
+          supplier_name: string | null;
+          invoice_number: string;
+          issue_date: string | null;
+          entry_date: string;
+          notes: string | null;
+          item_count: number;
+          total_amount: number;
+          created_by_user_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          supplier_id?: string | null;
+          supplier_name?: string | null;
+          invoice_number: string;
+          issue_date?: string | null;
+          entry_date?: string;
+          notes?: string | null;
+          item_count?: number;
+          total_amount?: number;
+          created_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          supplier_id?: string | null;
+          supplier_name?: string | null;
+          invoice_number?: string;
+          issue_date?: string | null;
+          entry_date?: string;
+          notes?: string | null;
+          item_count?: number;
+          total_amount?: number;
+          created_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "purchase_entries_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchase_entries_supplier_id_fkey";
+            columns: ["supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "merchant_suppliers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      purchase_entry_items: {
+        Row: {
+          id: string;
+          purchase_entry_id: string;
+          merchant_id: string;
+          product_id: string;
+          product_name: string;
+          barcode_snapshot: string | null;
+          unit_label: string;
+          quantity: number;
+          unit_cost: number;
+          line_total: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          purchase_entry_id: string;
+          merchant_id: string;
+          product_id: string;
+          product_name: string;
+          barcode_snapshot?: string | null;
+          unit_label?: string;
+          quantity: number;
+          unit_cost: number;
+          line_total: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          purchase_entry_id?: string;
+          merchant_id?: string;
+          product_id?: string;
+          product_name?: string;
+          barcode_snapshot?: string | null;
+          unit_label?: string;
+          quantity?: number;
+          unit_cost?: number;
+          line_total?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "purchase_entry_items_purchase_entry_id_fkey";
+            columns: ["purchase_entry_id"];
+            isOneToOne: false;
+            referencedRelation: "purchase_entries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchase_entry_items_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "purchase_entry_items_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      stock_movements: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          product_id: string;
+          movement_type: string;
+          source_type: string | null;
+          source_id: string | null;
+          quantity_delta: number;
+          before_quantity: number;
+          after_quantity: number;
+          unit_cost: number | null;
+          notes: string | null;
+          created_by_user_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          product_id: string;
+          movement_type: string;
+          source_type?: string | null;
+          source_id?: string | null;
+          quantity_delta: number;
+          before_quantity?: number;
+          after_quantity?: number;
+          unit_cost?: number | null;
+          notes?: string | null;
+          created_by_user_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          product_id?: string;
+          movement_type?: string;
+          source_type?: string | null;
+          source_id?: string | null;
+          quantity_delta?: number;
+          before_quantity?: number;
+          after_quantity?: number;
+          unit_cost?: number | null;
+          notes?: string | null;
+          created_by_user_id?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
       menus: {
         Row: {
           id: string;
@@ -1751,11 +1983,16 @@ export interface Database {
           merchant_id: string;
           menu_id: string;
           category_id: string | null;
+          internal_code: string | null;
           barcode: string | null;
           name: string;
           description: string | null;
           image_url: string | null;
           price: number;
+          cost_price: number;
+          avg_cost: number;
+          margin_percent: number | null;
+          supplier_id: string | null;
           unit_label: string;
           is_active: boolean;
           is_featured: boolean;
@@ -1763,6 +2000,7 @@ export interface Database {
           requires_document: boolean;
           track_stock: boolean;
           stock_quantity: number;
+          stock_min_quantity: number;
           display_order: number;
           created_at: string;
           updated_at: string;
@@ -1772,11 +2010,16 @@ export interface Database {
           merchant_id: string;
           menu_id: string;
           category_id?: string | null;
+          internal_code?: string | null;
           barcode?: string | null;
           name: string;
           description?: string | null;
           image_url?: string | null;
           price?: number;
+          cost_price?: number;
+          avg_cost?: number;
+          margin_percent?: number | null;
+          supplier_id?: string | null;
           unit_label?: string;
           is_active?: boolean;
           is_featured?: boolean;
@@ -1784,6 +2027,7 @@ export interface Database {
           requires_document?: boolean;
           track_stock?: boolean;
           stock_quantity?: number;
+          stock_min_quantity?: number;
           display_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -1793,11 +2037,16 @@ export interface Database {
           merchant_id?: string;
           menu_id?: string;
           category_id?: string | null;
+          internal_code?: string | null;
           barcode?: string | null;
           name?: string;
           description?: string | null;
           image_url?: string | null;
           price?: number;
+          cost_price?: number;
+          avg_cost?: number;
+          margin_percent?: number | null;
+          supplier_id?: string | null;
           unit_label?: string;
           is_active?: boolean;
           is_featured?: boolean;
@@ -1805,6 +2054,7 @@ export interface Database {
           requires_document?: boolean;
           track_stock?: boolean;
           stock_quantity?: number;
+          stock_min_quantity?: number;
           display_order?: number;
           created_at?: string;
           updated_at?: string;
@@ -1829,6 +2079,13 @@ export interface Database {
             columns: ["category_id"];
             isOneToOne: false;
             referencedRelation: "menu_categories";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey";
+            columns: ["supplier_id"];
+            isOneToOne: false;
+            referencedRelation: "merchant_suppliers";
             referencedColumns: ["id"];
           },
         ];
@@ -2769,6 +3026,19 @@ export interface Database {
       has_member_permission: {
         Args: { p_merchant_id: string; p_perm: string };
         Returns: boolean;
+      };
+      record_purchase_entry: {
+        Args: {
+          p_merchant_id: string;
+          p_supplier_id?: string | null;
+          p_supplier_name?: string | null;
+          p_invoice_number?: string | null;
+          p_issue_date?: string | null;
+          p_entry_date?: string | null;
+          p_notes?: string | null;
+          p_items?: Json;
+        };
+        Returns: string;
       };
     };
 

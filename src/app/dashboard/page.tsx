@@ -160,6 +160,7 @@ export default async function DashboardPage({
       if (c.href.startsWith("/dashboard/modulos/produtos")) return can("dashboard_products");
       if (c.href.startsWith("/dashboard/modulos/servicos")) return can("dashboard_products");
       if (c.href.startsWith("/dashboard/modulos/variacoes")) return can("dashboard_products");
+      if (c.href.startsWith("/dashboard/modulos/compras")) return isOwner;
       if (c.href.startsWith("/dashboard/modulos/mesas"))
         return can("dashboard_orders") || can("dashboard_products");
       if (c.href.startsWith("/dashboard/modulos/quartos")) return can("dashboard_products");
