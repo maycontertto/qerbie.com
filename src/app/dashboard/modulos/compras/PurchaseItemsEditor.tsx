@@ -1,24 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
-type ProductOption = {
+export type ProductOption = {
   id: string;
   name: string;
   barcode: string | null;
+  internalCode?: string | null;
   unitLabel: string;
   stockQuantity: number;
   costPrice: number;
 };
 
-type RowState = {
+export type PurchaseRowState = {
   key: string;
   productId: string;
   quantity: string;
   unitCost: string;
+  importedName?: string;
+  importedBarcode?: string | null;
+  importedInternalCode?: string | null;
 };
 
-function newRow(): RowState {
+export function createEmptyPurchaseRow(): PurchaseRowState {
   return {
     key: Math.random().toString(36).slice(2, 10),
     productId: "",
@@ -27,7 +31,7 @@ function newRow(): RowState {
   };
 }
 
-function parseLooseNumber(value: string): number {
+export function parseLooseNumber(value: string): number {
   const raw = value.trim();
   if (!raw) return 0;
   const normalized = raw.replace(/\./g, "").replace(",", ".");
@@ -35,27 +39,23 @@ function parseLooseNumber(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function formatNumber(value: number, decimals: number): string {
+export function formatNumber(value: number, decimals: number): string {
   return value.toLocaleString("pt-BR", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
 }
 
-export function PurchaseItemsEditor({ products }: { products: ProductOption[] }) {
-  const [rows, setRows] = useState<RowState[]>([newRow(), newRow(), newRow()]);
-
+export function PurchaseItemsEditor({
+  products,
+  rows,
+  onRowsChange,
+}: {
+  products: ProductOption[];
+  rows: PurchaseRowState[];
+  onRowsChange: (rows: PurchaseRowState[]) => void;
+}) {
   const productMap = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
-
-  const payload = JSON.stringify(
-    rows
-      .filter((row) => row.productId || row.quantity.trim() || row.unitCost.trim())
-      .map((row) => ({
-        product_id: row.productId,
-        quantity: row.quantity,
-        unit_cost: row.unitCost,
-      })),
-  );
 
   const total = rows.reduce((sum, row) => {
     const qty = parseLooseNumber(row.quantity);
@@ -74,14 +74,12 @@ export function PurchaseItemsEditor({ products }: { products: ProductOption[] })
         </div>
         <button
           type="button"
-          onClick={() => setRows((current) => [...current, newRow()])}
+          onClick={() => onRowsChange([...rows, createEmptyPurchaseRow()])}
           className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
         >
           + Adicionar item
         </button>
       </div>
-
-      <input type="hidden" name="items_json" value={payload} />
 
       <div className="mt-5 space-y-3">
         {rows.map((row, index) => {
@@ -105,8 +103,8 @@ export function PurchaseItemsEditor({ products }: { products: ProductOption[] })
                     onChange={(event) => {
                       const nextProductId = event.target.value;
                       const nextProduct = productMap.get(nextProductId);
-                      setRows((current) =>
-                        current.map((item) =>
+                      onRowsChange(
+                        rows.map((item) =>
                           item.key === row.key
                             ? {
                                 ...item,
@@ -130,6 +128,14 @@ export function PurchaseItemsEditor({ products }: { products: ProductOption[] })
                       </option>
                     ))}
                   </select>
+                  {row.importedName && !product ? (
+                    <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                      <p className="font-semibold">Item importado sem vínculo</p>
+                      <p className="mt-1">XML: {row.importedName}</p>
+                      {row.importedBarcode ? <p>Cód. barras: {row.importedBarcode}</p> : null}
+                      {row.importedInternalCode ? <p>Cód. interno: {row.importedInternalCode}</p> : null}
+                    </div>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-500 dark:text-zinc-400">
                     <span>Unidade: {product?.unitLabel ?? "—"}</span>
                     <span>Estoque atual: {product ? formatNumber(product.stockQuantity, 3) : "—"}</span>
@@ -145,7 +151,7 @@ export function PurchaseItemsEditor({ products }: { products: ProductOption[] })
                     value={row.quantity}
                     onChange={(event) => {
                       const nextValue = event.target.value;
-                      setRows((current) => current.map((item) => (item.key === row.key ? { ...item, quantity: nextValue } : item)));
+                      onRowsChange(rows.map((item) => (item.key === row.key ? { ...item, quantity: nextValue } : item)));
                     }}
                     placeholder="0,000"
                     inputMode="decimal"
@@ -161,7 +167,7 @@ export function PurchaseItemsEditor({ products }: { products: ProductOption[] })
                     value={row.unitCost}
                     onChange={(event) => {
                       const nextValue = event.target.value;
-                      setRows((current) => current.map((item) => (item.key === row.key ? { ...item, unitCost: nextValue } : item)));
+                      onRowsChange(rows.map((item) => (item.key === row.key ? { ...item, unitCost: nextValue } : item)));
                     }}
                     placeholder="0,00"
                     inputMode="decimal"
@@ -180,7 +186,7 @@ export function PurchaseItemsEditor({ products }: { products: ProductOption[] })
                   </div>
                   <button
                     type="button"
-                    onClick={() => setRows((current) => (current.length > 1 ? current.filter((item) => item.key !== row.key) : current))}
+                    onClick={() => onRowsChange(rows.length > 1 ? rows.filter((item) => item.key !== row.key) : rows)}
                     className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 dark:border-red-900 dark:bg-red-950 dark:text-red-200 dark:hover:bg-red-900/70"
                   >
                     Remover

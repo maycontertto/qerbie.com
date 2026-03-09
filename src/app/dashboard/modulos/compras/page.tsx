@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
-import { createPurchaseEntry } from "@/lib/merchant/purchaseActions";
-import { PurchaseItemsEditor } from "./PurchaseItemsEditor";
+import { PurchaseEntryForm } from "./PurchaseEntryForm";
 
 function formatBrl(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -59,7 +58,7 @@ export default async function ComprasModulePage({
   const [{ data: products }, { data: suppliers }, { data: recentEntries }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, barcode, unit_label, stock_quantity, cost_price, is_active")
+      .select("id, name, barcode, internal_code, unit_label, stock_quantity, cost_price, is_active")
       .eq("merchant_id", merchant.id)
       .eq("is_active", true)
       .order("name", { ascending: true }),
@@ -149,124 +148,19 @@ export default async function ComprasModulePage({
         </div>
 
         {products?.length ? (
-          <form action={createPurchaseEntry} className="mt-8 space-y-6">
-            <div className="grid gap-6 xl:grid-cols-[340px_1fr]">
-              <div className="space-y-6">
-                <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-                  <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Dados da nota</h2>
-
-                  <div className="mt-4 space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Fornecedor existente</label>
-                      <select
-                        name="supplier_id"
-                        defaultValue=""
-                        className="mt-1 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                      >
-                        <option value="">Selecionar depois / usar nome abaixo</option>
-                        {(suppliers ?? []).map((supplier) => (
-                          <option key={supplier.id} value={supplier.id}>{supplier.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Novo fornecedor (opcional)</label>
-                      <input
-                        name="supplier_name"
-                        type="text"
-                        placeholder="Ex: Distribuidora Central"
-                        className="mt-1 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                      />
-                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        Se preencher e o fornecedor não existir, ele será criado automaticamente.
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Número da nota / referência</label>
-                      <input
-                        name="invoice_number"
-                        type="text"
-                        required
-                        placeholder="Ex: 15482"
-                        className="mt-1 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                      />
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Data de emissão</label>
-                        <input
-                          name="issue_date"
-                          type="date"
-                          className="mt-1 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Data de entrada</label>
-                        <input
-                          name="entry_date"
-                          type="date"
-                          defaultValue={today}
-                          className="mt-1 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Observações</label>
-                      <textarea
-                        name="notes"
-                        rows={4}
-                        placeholder="Observações da compra, vencimento, condição, conferência etc."
-                        className="mt-1 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 text-sm text-zinc-600 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
-                  <p className="font-semibold text-zinc-900 dark:text-zinc-50">Como esse lançamento funciona</p>
-                  <ul className="mt-3 space-y-2">
-                    <li>• soma a quantidade ao estoque atual</li>
-                    <li>• ativa controle de estoque no produto, se necessário</li>
-                    <li>• atualiza o custo da última compra</li>
-                    <li>• recalcula o custo médio</li>
-                    <li>• registra histórico da entrada</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <PurchaseItemsEditor
-                  products={(products ?? []).map((product) => ({
-                    id: product.id,
-                    name: product.name,
-                    barcode: (product as { barcode?: string | null }).barcode ?? null,
-                    unitLabel: String((product as { unit_label?: string | null }).unit_label ?? "un"),
-                    stockQuantity: Number((product as { stock_quantity?: number | null }).stock_quantity ?? 0),
-                    costPrice: Number((product as { cost_price?: number | null }).cost_price ?? 0),
-                  }))}
-                />
-
-                <div className="flex flex-wrap justify-end gap-3">
-                  <Link
-                    href="/dashboard/modulos/estoque"
-                    className="rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                  >
-                    Voltar ao estoque
-                  </Link>
-                  <button
-                    type="submit"
-                    className="rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  >
-                    Confirmar entrada da compra
-                  </button>
-                </div>
-              </div>
-            </div>
-          </form>
+          <PurchaseEntryForm
+            today={today}
+            suppliers={(suppliers ?? []).map((supplier) => ({ id: supplier.id, name: supplier.name }))}
+            products={(products ?? []).map((product) => ({
+              id: product.id,
+              name: product.name,
+              barcode: (product as { barcode?: string | null }).barcode ?? null,
+              internalCode: (product as { internal_code?: string | null }).internal_code ?? null,
+              unitLabel: String((product as { unit_label?: string | null }).unit_label ?? "un"),
+              stockQuantity: Number((product as { stock_quantity?: number | null }).stock_quantity ?? 0),
+              costPrice: Number((product as { cost_price?: number | null }).cost_price ?? 0),
+            }))}
+          />
         ) : (
           <div className="mt-8 rounded-2xl border border-zinc-200 bg-white/70 p-8 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Cadastre produtos primeiro</h2>
