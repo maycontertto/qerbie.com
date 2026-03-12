@@ -212,6 +212,7 @@ export default async function DashboardPage({
     if (!subscription) return null;
 
     const now = new Date();
+    const status = String(subscription.status ?? "trialing");
     const trialEndsAt = new Date(subscription.trial_ends_at);
     const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end) : trialEndsAt;
     const graceUntil = subscription.grace_until
@@ -222,7 +223,7 @@ export default async function DashboardPage({
     const daysToTrialEnd = Math.ceil((trialEndsAt.getTime() - now.getTime()) / msDay);
     const daysToGraceEnd = Math.ceil((graceUntil.getTime() - now.getTime()) / msDay);
 
-    if (now > graceUntil) {
+    if (status === "suspended" || now > graceUntil) {
       return {
         kind: "error" as const,
         message:
@@ -230,14 +231,18 @@ export default async function DashboardPage({
       };
     }
 
-    if (now >= periodEnd) {
+    if (status === "active" && now < periodEnd) {
+      return null;
+    }
+
+    if (status === "past_due" || now >= periodEnd) {
       return {
         kind: "error" as const,
         message: `Assinatura vencida. Carência: ${Math.max(0, daysToGraceEnd)} dia(s).`,
       };
     }
 
-    if (now < trialEndsAt && daysToTrialEnd <= 7) {
+    if (status === "trialing" && now < trialEndsAt && daysToTrialEnd <= 7) {
       return {
         kind: "success" as const,
         message: `Teste grátis termina em ${Math.max(0, daysToTrialEnd)} dia(s).`,
@@ -248,14 +253,14 @@ export default async function DashboardPage({
   })();
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
+    <div className="relative min-h-screen overflow-hidden bg-linear-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-zinc-200/50 blur-3xl dark:bg-zinc-800/40"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-28 right-[-4rem] h-96 w-96 rounded-full bg-zinc-200/40 blur-3xl dark:bg-zinc-800/30"
+        className="pointer-events-none absolute -bottom-28 -right-16 h-96 w-96 rounded-full bg-zinc-200/40 blur-3xl dark:bg-zinc-800/30"
       />
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">

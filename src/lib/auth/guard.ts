@@ -167,6 +167,7 @@ export async function getDashboardUserOrRedirect(options?: { allowSuspended?: bo
       .maybeSingle();
 
     if (!sub) return;
+    if (sub.status === "active") return;
 
     const now = new Date();
     const trialEndsAt = new Date(sub.trial_ends_at);
@@ -175,7 +176,7 @@ export async function getDashboardUserOrRedirect(options?: { allowSuspended?: bo
       ? new Date(sub.grace_until)
       : new Date(periodEnd.getTime() + 3 * 24 * 60 * 60 * 1000);
 
-    const isSuspended = now > graceUntil;
+    const isSuspended = sub.status === "suspended" || now > graceUntil;
     if (isSuspended && !options?.allowSuspended) {
       redirect("/dashboard/pagamento");
     }

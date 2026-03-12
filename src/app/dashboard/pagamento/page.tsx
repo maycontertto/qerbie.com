@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { BILLING_PLAN, formatBrlFromCents } from "@/lib/billing/constants";
 import { createOrGetMonthlyInvoice } from "@/lib/billing/actions";
+import { syncMercadoPagoApprovedPayment } from "@/lib/billing/sync";
 
 function addDays(date: Date, days: number): Date {
   return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
@@ -14,10 +15,16 @@ function formatDatePtBr(date: Date): string {
 export default async function PagamentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pay?: string; mode?: string; error?: string; status?: string }>;
+  searchParams: Promise<{ pay?: string; mode?: string; error?: string; status?: string; payment_id?: string; collection_id?: string }>;
 }) {
   const { supabase, user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
-  const { pay, mode, error, status } = await searchParams;
+  const { pay, mode, error, status, payment_id, collection_id } = await searchParams;
+
+  const callbackPaymentId = String(payment_id ?? collection_id ?? "").trim();
+  const syncResult =
+    status === "success" && callbackPaymentId
+      ? await syncMercadoPagoApprovedPayment(callbackPaymentId)
+      : null;
 
   const isOwner = user.id === merchant.owner_user_id;
 
@@ -37,8 +44,9 @@ export default async function PagamentoPage({
   const graceUntil = sub?.grace_until ? new Date(sub.grace_until) : addDays(periodEnd, BILLING_PLAN.graceDays);
 
   const now = new Date();
-  const isTrial = now < trialEndsAt;
-  const isPastDue = now >= periodEnd;
+  const isTrial = (sub?.status ?? "trialing") === "trialing" && now < trialEndsAt;
+  const isActive = sub?.status === "active" && now < periodEnd;
+  const isPastDue = sub?.status === "past_due" || (sub?.status !== "active" && now >= periodEnd);
 
   const banner =
     error === "missing_billing_env"
@@ -54,7 +62,10 @@ export default async function PagamentoPage({
           : status === "success"
             ? {
                 kind: "success" as const,
-                message: "Pagamento aprovado. Pode levar alguns segundos para liberar automaticamente.",
+                message:
+                  syncResult?.ok
+                    ? "Pagamento aprovado e assinatura atualizada com sucesso."
+                    : "Pagamento aprovado. Pode levar alguns segundos para liberar automaticamente.",
               }
             : status === "failure"
               ? { kind: "error" as const, message: "Pagamento não aprovado." }
@@ -115,11 +126,15 @@ export default async function PagamentoPage({
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-zinc-600 dark:text-zinc-300">Carência</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">até {formatDatePtBr(graceUntil)}</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{isActive ? "não aplicável" : `até ${formatDatePtBr(graceUntil)}`}</span>
             </div>
             {isTrial ? (
               <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
                 Você está no teste grátis. O pagamento só é exigido após {formatDatePtBr(trialEndsAt)}.
+              </p>
+            ) : isActive ? (
+              <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                Sua assinatura está em dia e já está liberada na plataforma.
               </p>
             ) : isPastDue ? (
               <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
