@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { BILLING_PLAN, formatBrlFromCents } from "@/lib/billing/constants";
-import { createOrGetMonthlyInvoice } from "@/lib/billing/actions";
+import { createOrGetMonthlyInvoice, retryLatestPaymentSync } from "@/lib/billing/actions";
 import { syncMercadoPagoApprovedPayment } from "@/lib/billing/sync";
 
 function addDays(date: Date, days: number): Date {
@@ -15,10 +15,18 @@ function formatDatePtBr(date: Date): string {
 export default async function PagamentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pay?: string; mode?: string; error?: string; status?: string; payment_id?: string; collection_id?: string }>;
+  searchParams: Promise<{
+    pay?: string;
+    mode?: string;
+    error?: string;
+    status?: string;
+    payment_id?: string;
+    collection_id?: string;
+    recheck?: string;
+  }>;
 }) {
   const { supabase, user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
-  const { pay, mode, error, status, payment_id, collection_id } = await searchParams;
+  const { pay, mode, error, status, payment_id, collection_id, recheck } = await searchParams;
 
   const callbackPaymentId = String(payment_id ?? collection_id ?? "").trim();
   const syncResult =
@@ -59,6 +67,38 @@ export default async function PagamentoPage({
         ? { kind: "error" as const, message: "Não foi possível gerar o link de pagamento agora." }
         : error === "invoice_create_failed"
           ? { kind: "error" as const, message: "Não foi possível criar a cobrança agora." }
+            : recheck === "applied"
+              ? {
+                  kind: "success" as const,
+                  message: "Pagamento localizado e assinatura atualizada agora." }
+              : recheck === "updated"
+                ? {
+                    kind: "success" as const,
+                    message: "Assinatura reparada com base no último pagamento já registrado." }
+                : recheck === "approved_payment_not_found"
+                  ? {
+                      kind: "error" as const,
+                      message: "Ainda não foi encontrado pagamento aprovado para a última cobrança." }
+                  : recheck === "manual_payment_link"
+                    ? {
+                        kind: "error" as const,
+                        message: "Esse pagamento foi gerado por link manual e não dá para reconciliar automaticamente aqui." }
+                    : recheck === "invoice_not_found"
+                      ? {
+                          kind: "error" as const,
+                          message: "Nenhuma cobrança recente foi encontrada para reconciliação." }
+                      : recheck === "missing_access_token"
+                        ? {
+                            kind: "error" as const,
+                            message: "A integração do Mercado Pago não está configurada para revalidar pagamentos agora." }
+                        : recheck === "no_external_reference"
+                          ? {
+                              kind: "error" as const,
+                              message: "A última cobrança não tem identificador para reconsulta automática." }
+                          : recheck === "invoice_paid_without_date"
+                            ? {
+                                kind: "error" as const,
+                                message: "A cobrança está marcada como paga, mas sem data válida para reparar a assinatura." }
           : status === "success"
             ? {
                 kind: "success" as const,
@@ -160,20 +200,39 @@ export default async function PagamentoPage({
             ) : null}
 
             {isOwner ? (
-              <form action={createOrGetMonthlyInvoice}>
-                <button
-                  type="submit"
-                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                >
-                  Gerar link de pagamento
-                </button>
-              </form>
+              <>
+                <form action={createOrGetMonthlyInvoice}>
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                  >
+                    Gerar link de pagamento
+                  </button>
+                </form>
+
+                {!isActive ? (
+                  <form action={retryLatestPaymentSync}>
+                    <button
+                      type="submit"
+                      className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900"
+                    >
+                      Já paguei, atualizar agora
+                    </button>
+                  </form>
+                ) : null}
+              </>
             ) : (
               <span className="text-xs text-zinc-500 dark:text-zinc-400">
                 Apenas o proprietário pode gerar a cobrança.
               </span>
             )}
           </div>
+
+          {!isActive ? (
+            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+              Se o pagamento já foi feito antes desta correção, use <span className="font-semibold">Já paguei, atualizar agora</span>.
+            </p>
+          ) : null}
 
           <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
             Se você já tem um link fixo do Mercado Pago, ele pode ser usado como fallback em

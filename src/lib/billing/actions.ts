@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { BILLING_PLAN } from "@/lib/billing/constants";
 import { createMercadoPagoCheckoutPreference } from "@/lib/billing/mercadopago";
+import { syncLatestMercadoPagoInvoiceForMerchant } from "@/lib/billing/sync";
 
 function randomId(): string {
   // Node/Next runtime
@@ -165,4 +166,20 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
 
     redirect("/dashboard/pagamento?error=payment_provider_failed");
   }
+}
+
+export async function retryLatestPaymentSync(): Promise<void> {
+  const { user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
+  const isOwner = user.id === merchant.owner_user_id;
+  if (!isOwner) {
+    redirect("/dashboard?error=not_owner");
+  }
+
+  const result = await syncLatestMercadoPagoInvoiceForMerchant(merchant.id);
+
+  if (!result.ok) {
+    redirect(`/dashboard/pagamento?recheck=${encodeURIComponent(result.reason)}`);
+  }
+
+  redirect(`/dashboard/pagamento?recheck=${result.applied ? "applied" : "updated"}`);
 }

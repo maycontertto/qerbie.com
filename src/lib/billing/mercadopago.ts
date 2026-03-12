@@ -77,6 +77,10 @@ type MercadoPagoPayment = {
   date_approved?: string | null;
 };
 
+type MercadoPagoPaymentSearchResponse = {
+  results?: MercadoPagoPayment[] | null;
+};
+
 export async function fetchMercadoPagoPayment(input: {
   accessToken: string;
   paymentId: string;
@@ -94,4 +98,40 @@ export async function fetchMercadoPagoPayment(input: {
   }
 
   return (await res.json()) as MercadoPagoPayment;
+}
+
+export async function searchApprovedMercadoPagoPaymentByExternalReference(input: {
+  accessToken: string;
+  externalReference: string;
+}): Promise<MercadoPagoPayment | null> {
+  const params = new URLSearchParams({
+    external_reference: input.externalReference,
+    status: "approved",
+    sort: "date_approved",
+    criteria: "desc",
+    limit: "1",
+  });
+
+  const res = await fetch(`https://api.mercadopago.com/v1/payments/search?${params.toString()}`,
+    {
+      headers: { Authorization: `Bearer ${input.accessToken}` },
+      cache: "no-store",
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Mercado Pago payment search failed: ${res.status} ${text}`);
+  }
+
+  const data = (await res.json()) as MercadoPagoPaymentSearchResponse;
+  const results = Array.isArray(data.results) ? data.results : [];
+
+  return (
+    results.find(
+      (payment) =>
+        payment.status === "approved" &&
+        String(payment.external_reference ?? "").trim() === input.externalReference,
+    ) ?? null
+  );
 }
