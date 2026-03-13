@@ -1,4 +1,5 @@
 import { getMerchantMemberOrRedirect } from "@/lib/auth/guard";
+import { signOut } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
 import { uploadMyAvatar } from "@/lib/merchant/attendantsActions";
 
@@ -45,9 +46,19 @@ export default async function AtendenteHomePage({
               {merchant.name}
             </span>
           </div>
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">
-            {user.email}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-zinc-500 dark:text-zinc-400">
+              {user.email}
+            </span>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Sair
+              </button>
+            </form>
+          </div>
         </div>
       </header>
 

@@ -1,4 +1,5 @@
 import { getMerchantMemberOrRedirect } from "@/lib/auth/guard";
+import { signOut } from "@/lib/auth/actions";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -18,19 +19,30 @@ export default async function TirarPedidoPage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <div>
-          <a
-            href="/atendente"
-            className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-          >
-            ← Voltar
-          </a>
-          <h1 className="mt-3 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-            Tirar pedido
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Escolha a mesa para abrir o cardápio.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <a
+              href="/atendente"
+              className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+            >
+              ← Voltar
+            </a>
+            <h1 className="mt-3 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+              Tirar pedido
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Escolha a mesa para abrir o cardápio.
+            </p>
+          </div>
+
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Sair
+            </button>
+          </form>
         </div>
 
         <div className="mt-6 space-y-3">
