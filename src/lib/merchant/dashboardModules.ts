@@ -1070,6 +1070,7 @@ const FARMACIA_BASE: DashboardModules = {
         href: "/dashboard/modulos/estoque",
         ctaLabel: "Abrir",
       },
+      PURCHASES_CARD,
       {
         title: "Categorias",
         description: "Organize por linha/necessidade",
