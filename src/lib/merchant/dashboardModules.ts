@@ -183,6 +183,7 @@ const RESTAURANTE_BASE: DashboardModules = {
         href: "/dashboard/modulos/estoque",
         ctaLabel: "Abrir",
       },
+      PURCHASES_CARD,
       {
         title: "Opcionais",
         description: "Borda, tamanho, adicionais",
