@@ -882,6 +882,7 @@ const ACAITERIA_SORVETERIA_BASE: DashboardModules = {
         ctaLabel: "Abrir",
       },
       STOCK_CARD,
+      PURCHASES_CARD,
       {
         title: "Relatórios",
         description: "Resumo e indicadores de vendas",

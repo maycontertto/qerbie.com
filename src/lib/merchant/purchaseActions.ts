@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
+import { supportsPurchaseEntries } from "@/lib/merchant/purchaseCategories";
 
 const PURCHASES_BASE = "/dashboard/modulos/compras";
 
@@ -68,7 +69,7 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
     redirect(PURCHASES_BASE + "?error=not_owner");
   }
 
-  if (merchant.business_category !== "mercado") {
+  if (!supportsPurchaseEntries(merchant.business_category)) {
     redirect(PURCHASES_BASE + "?error=unsupported_category");
   }
 

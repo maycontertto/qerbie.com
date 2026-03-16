@@ -1,4 +1,5 @@
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
+import { supportsPurchaseEntries } from "@/lib/merchant/purchaseCategories";
 import { createClient } from "@/lib/supabase/server";
 import { saveProductStock } from "@/lib/merchant/stockActions";
 import Link from "next/link";
@@ -76,7 +77,7 @@ export default async function EstoqueModulePage({
           </div>
 
           <div className="flex flex-wrap gap-3 text-sm">
-            {merchant.business_category === "mercado" ? (
+            {supportsPurchaseEntries(merchant.business_category) ? (
               <Link
                 href="/dashboard/modulos/compras"
                 className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"

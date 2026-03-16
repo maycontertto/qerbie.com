@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
+import { supportsPurchaseEntries } from "@/lib/merchant/purchaseCategories";
 import { PurchaseEntryForm } from "./PurchaseEntryForm";
 
 function formatBrl(value: number): string {
@@ -34,7 +35,7 @@ export default async function ComprasModulePage({
     );
   }
 
-  if (merchant.business_category !== "mercado") {
+  if (!supportsPurchaseEntries(merchant.business_category)) {
     return (
       <div className="min-h-screen">
         <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
@@ -44,7 +45,7 @@ export default async function ComprasModulePage({
             </Link>
             <h1 className="mt-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Compras</h1>
             <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Este módulo foi liberado primeiro para mercados. Depois podemos expandir para outros segmentos.
+              Este módulo está disponível para mercados e açaíterias/sorveterias. Depois podemos expandir para outros segmentos.
             </p>
           </div>
         </main>
@@ -178,7 +179,7 @@ export default async function ComprasModulePage({
             <div>
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Últimas compras lançadas</h2>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Histórico rápido das entradas registradas neste mercado.
+                Histórico rápido das entradas registradas no seu negócio.
               </p>
             </div>
           </div>
