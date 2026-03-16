@@ -1520,6 +1520,8 @@ export function getDashboardModules(
               href: "/dashboard/modulos/produtos?preset=combos",
               ctaLabel: "Cadastrar",
             },
+            STOCK_CARD,
+            PURCHASES_CARD,
           ],
           vendas: [
             {
