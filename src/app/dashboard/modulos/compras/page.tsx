@@ -56,7 +56,15 @@ export default async function ComprasModulePage({
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
 
-  const [{ data: products }, { data: suppliers }, { data: recentEntries }] = await Promise.all([
+  const [{ data: primaryMenu }, { data: products }, { data: suppliers }, { data: recentEntries }] = await Promise.all([
+    supabase
+      .from("menus")
+      .select("id")
+      .eq("merchant_id", merchant.id)
+      .order("display_order", { ascending: true })
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
     supabase
       .from("products")
       .select("id, name, barcode, internal_code, unit_label, stock_quantity, cost_price, is_active")
@@ -75,6 +83,16 @@ export default async function ComprasModulePage({
       .order("created_at", { ascending: false })
       .limit(8),
   ]);
+
+  const { data: categories } = primaryMenu?.id
+    ? await supabase
+        .from("menu_categories")
+        .select("id, name")
+        .eq("merchant_id", merchant.id)
+        .eq("menu_id", primaryMenu.id)
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true })
+    : { data: [] as Array<{ id: string; name: string }> };
 
   const banner =
     saved === "1"
@@ -151,6 +169,7 @@ export default async function ComprasModulePage({
         {products?.length ? (
           <PurchaseEntryForm
             today={today}
+            categories={(categories ?? []).map((category) => ({ id: category.id, name: category.name }))}
             suppliers={(suppliers ?? []).map((supplier) => ({ id: supplier.id, name: supplier.name }))}
             products={(products ?? []).map((product) => ({
               id: product.id,

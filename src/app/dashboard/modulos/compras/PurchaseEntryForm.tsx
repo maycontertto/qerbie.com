@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { BarcodeScannerField } from "@/app/dashboard/modulos/produtos/BarcodeScannerField";
 import {
   PurchaseItemsEditor,
   createEmptyPurchaseRow,
@@ -10,12 +11,40 @@ import {
   type ProductOption,
   type PurchaseRowState,
 } from "./PurchaseItemsEditor";
-import { createPurchaseEntry } from "@/lib/merchant/purchaseActions";
+import { createPurchaseEntry, createQuickPurchaseProduct } from "@/lib/merchant/purchaseActions";
+
+type CategoryOption = {
+  id: string;
+  name: string;
+};
 
 type SupplierOption = {
   id: string;
   name: string;
 };
+
+type QuickCreateDraft = {
+  name: string;
+  barcode: string;
+  internalCode: string;
+  categoryId: string;
+  unitLabel: string;
+  price: string;
+  costPrice: string;
+};
+
+const UNIT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "un", label: "Unidade" },
+  { value: "kg", label: "Kg" },
+  { value: "g", label: "g" },
+  { value: "m", label: "Metro (m)" },
+  { value: "m2", label: "Metro² (m²)" },
+  { value: "m3", label: "Metro³ (m³)" },
+  { value: "l", label: "Litro (L)" },
+  { value: "saco", label: "Saco" },
+  { value: "caixa", label: "Caixa" },
+  { value: "pacote", label: "Pacote" },
+];
 
 type ImportedNfeItem = {
   productName: string;
@@ -196,13 +225,16 @@ function buildItemsJson(rows: PurchaseRowState[]): string {
 
 export function PurchaseEntryForm({
   products,
+  categories,
   suppliers,
   today,
 }: {
   products: ProductOption[];
+  categories: CategoryOption[];
   suppliers: SupplierOption[];
   today: string;
 }) {
+  const [productOptions, setProductOptions] = useState<ProductOption[]>(products);
   const [rows, setRows] = useState<PurchaseRowState[]>([
     createEmptyPurchaseRow(),
     createEmptyPurchaseRow(),
@@ -215,7 +247,13 @@ export function PurchaseEntryForm({
   const [entryDate, setEntryDate] = useState(today);
   const [notes, setNotes] = useState("");
   const [xmlBanner, setXmlBanner] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [quickCreateBanner, setQuickCreateBanner] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
   const [xmlSummary, setXmlSummary] = useState<{ supplierName: string | null; invoiceNumber: string; itemCount: number } | null>(null);
+  const [quickCreateDrafts, setQuickCreateDrafts] = useState<Record<string, QuickCreateDraft>>({});
+  const [savingRowKey, setSavingRowKey] = useState<string | null>(null);
 
   const itemsJson = useMemo(() => buildItemsJson(rows), [rows]);
   const total = useMemo(
@@ -228,10 +266,41 @@ export function PurchaseEntryForm({
     return hasContent && !row.productId;
   });
 
+  const importedUnresolvedRows = rows.filter((row) => row.importedName && !row.productId);
+
+  function getInitialDraft(row: PurchaseRowState): QuickCreateDraft {
+    return {
+      name: row.importedName ?? "",
+      barcode: row.importedBarcode ?? "",
+      internalCode: row.importedInternalCode ?? "",
+      categoryId: "",
+      unitLabel: "un",
+      price: "",
+      costPrice: row.unitCost || "0,00",
+    };
+  }
+
+  function getDraft(row: PurchaseRowState): QuickCreateDraft {
+    return quickCreateDrafts[row.key] ?? getInitialDraft(row);
+  }
+
+  function updateDraft(rowKey: string, patch: Partial<QuickCreateDraft>): void {
+    setQuickCreateDrafts((current) => {
+      const existing = current[rowKey] ?? getInitialDraft(rows.find((row) => row.key === rowKey) ?? createEmptyPurchaseRow());
+      return {
+        ...current,
+        [rowKey]: {
+          ...existing,
+          ...patch,
+        },
+      };
+    });
+  }
+
   async function handleXmlImport(file: File): Promise<void> {
     const xmlText = await file.text();
     const imported = parseNfeXml(xmlText);
-    const importedRows = buildImportedRows(imported.items, products);
+    const importedRows = buildImportedRows(imported.items, productOptions);
     const normalizedSupplier = normalizeText(imported.supplierName ?? "");
     const matchedSupplier = suppliers.find((supplier) => normalizeText(supplier.name) === normalizedSupplier);
 
@@ -259,6 +328,63 @@ export function PurchaseEntryForm({
             message: "XML importado com sucesso. Nota, fornecedor e itens foram preenchidos automaticamente.",
           },
     );
+    setQuickCreateBanner(null);
+  }
+
+  async function handleQuickCreate(rowKey: string): Promise<void> {
+    const row = rows.find((item) => item.key === rowKey);
+    if (!row) return;
+
+    const draft = getDraft(row);
+    setSavingRowKey(rowKey);
+    setQuickCreateBanner(null);
+
+    try {
+      const result = await createQuickPurchaseProduct({
+        name: draft.name,
+        barcode: draft.barcode,
+        internalCode: draft.internalCode,
+        categoryId: draft.categoryId,
+        unitLabel: draft.unitLabel,
+        price: draft.price,
+        costPrice: draft.costPrice || row.unitCost,
+      });
+
+      if (!result.ok) {
+        setQuickCreateBanner({ kind: "error", message: result.message });
+        return;
+      }
+
+      setProductOptions((current) =>
+        [...current.filter((product) => product.id !== result.product.id), result.product].sort((a, b) =>
+          a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
+        ),
+      );
+      setRows((current) =>
+        current.map((item) =>
+          item.key === rowKey
+            ? {
+                ...item,
+                productId: result.product.id,
+                unitCost: item.unitCost || formatNumber(result.product.costPrice || 0, 2),
+              }
+            : item,
+        ),
+      );
+      setQuickCreateDrafts((current) => {
+        const next = { ...current };
+        delete next[rowKey];
+        return next;
+      });
+      setQuickCreateBanner({ kind: "success", message: result.message });
+    } catch {
+      setQuickCreateBanner({
+        kind: "error",
+        message: "Não foi possível criar o produto agora. Tente novamente.",
+      });
+    } finally {
+      setSavingRowKey(null);
+    }
   }
 
   return (
@@ -417,11 +543,172 @@ export function PurchaseEntryForm({
         <div className="space-y-6">
           <input type="hidden" name="items_json" value={itemsJson} />
 
-          <PurchaseItemsEditor products={products} rows={rows} onRowsChange={setRows} />
+          <PurchaseItemsEditor products={productOptions} rows={rows} onRowsChange={setRows} />
+
+          {quickCreateBanner ? (
+            <div
+              className={`rounded-2xl border px-4 py-3 text-sm ${
+                quickCreateBanner.kind === "error"
+                  ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+              }`}
+            >
+              {quickCreateBanner.message}
+            </div>
+          ) : null}
+
+          {importedUnresolvedRows.length > 0 ? (
+            <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                    Criar produtos faltantes da NF-e
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    Para cada item sem vínculo, você pode criar o produto agora mesmo e continuar a entrada da nota sem sair desta tela.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                  {importedUnresolvedRows.length} item(ns) pendente(s)
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-4">
+                {importedUnresolvedRows.map((row) => {
+                  const draft = getDraft(row);
+
+                  return (
+                    <div
+                      key={`quick-create-${row.key}`}
+                      className="rounded-2xl border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-950/60"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                            {row.importedName}
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
+                            {row.importedBarcode ? <span>Cód. barras: {row.importedBarcode}</span> : null}
+                            {row.importedInternalCode ? <span>Cód. interno: {row.importedInternalCode}</span> : null}
+                            <span>Qtd.: {row.quantity || "0"}</span>
+                            <span>Custo na nota: R$ {row.unitCost || "0,00"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="xl:col-span-2">
+                          <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Nome do produto
+                          </label>
+                          <input
+                            value={draft.name}
+                            onChange={(event) => updateDraft(row.key, { name: event.target.value })}
+                            className="mt-2 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Categoria
+                          </label>
+                          <select
+                            value={draft.categoryId}
+                            onChange={(event) => updateDraft(row.key, { categoryId: event.target.value })}
+                            className="mt-2 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                          >
+                            <option value="">Sem categoria por enquanto</option>
+                            {categories.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <BarcodeScannerField
+                            label="Código de barras"
+                            value={draft.barcode}
+                            onValueChange={(nextValue) => updateDraft(row.key, { barcode: nextValue })}
+                            helperText="Pode digitar ou ler pela câmera antes de criar o item."
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Código interno
+                          </label>
+                          <input
+                            value={draft.internalCode}
+                            onChange={(event) => updateDraft(row.key, { internalCode: event.target.value })}
+                            className="mt-2 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Unidade
+                          </label>
+                          <select
+                            value={draft.unitLabel}
+                            onChange={(event) => updateDraft(row.key, { unitLabel: event.target.value })}
+                            className="mt-2 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                          >
+                            {UNIT_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Preço de venda
+                          </label>
+                          <input
+                            value={draft.price}
+                            onChange={(event) => updateDraft(row.key, { price: event.target.value })}
+                            placeholder="Opcional agora"
+                            inputMode="decimal"
+                            className="mt-2 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                            Custo inicial
+                          </label>
+                          <input
+                            value={draft.costPrice}
+                            onChange={(event) => updateDraft(row.key, { costPrice: event.target.value })}
+                            inputMode="decimal"
+                            className="mt-2 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickCreate(row.key)}
+                          disabled={savingRowKey === row.key}
+                          className="rounded-xl bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                        >
+                          {savingRowKey === row.key ? "Criando..." : "Criar e vincular produto"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
 
           {unresolvedRows.length > 0 ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-              Existem {unresolvedRows.length} item(ns) sem produto vinculado. Selecione o produto correto antes de confirmar a entrada.
+              Existem {unresolvedRows.length} item(ns) sem produto vinculado. Você pode selecionar um item existente ou criar os faltantes acima antes de confirmar a entrada.
             </div>
           ) : null}
 

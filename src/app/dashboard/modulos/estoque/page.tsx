@@ -3,13 +3,14 @@ import { supportsPurchaseEntries } from "@/lib/merchant/purchaseCategories";
 import { createClient } from "@/lib/supabase/server";
 import { saveProductStock } from "@/lib/merchant/stockActions";
 import Link from "next/link";
+import { EstoqueBulkEditor } from "./EstoqueBulkEditor";
 
 export default async function EstoqueModulePage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; count?: string }>;
 }) {
-  const { saved, error } = await searchParams;
+  const { saved, error, count } = await searchParams;
   const { user, merchant } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
   const canProducts = isOwner;
@@ -41,18 +42,24 @@ export default async function EstoqueModulePage({
 
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, is_active, track_stock, stock_quantity, updated_at")
+    .select("id, name, barcode, is_active, track_stock, stock_quantity, price, cost_price, updated_at")
     .eq("merchant_id", merchant.id)
-    .eq("track_stock", true)
     .order("is_active", { ascending: false })
     .order("updated_at", { ascending: false })
     .limit(200);
 
   const banner =
-    saved === "1"
+    saved === "batch"
+      ? {
+          kind: "success" as const,
+          message: `${Number(count ?? 0) || products?.length || 0} item(ns) atualizado(s) em lote.`,
+        }
+      : saved === "1"
       ? { kind: "success" as const, message: "Estoque salvo." }
       : error === "invalid_product"
         ? { kind: "error" as const, message: "Produto inválido." }
+        : error === "invalid_batch"
+          ? { kind: "error" as const, message: "Revise os dados da edição em lote antes de salvar." }
         : error === "save_failed"
           ? { kind: "error" as const, message: "Não foi possível salvar agora. Tente novamente." }
           : null;
@@ -106,7 +113,23 @@ export default async function EstoqueModulePage({
           </div>
         )}
 
-        <div className="mt-8 space-y-3">
+        <div className="mt-8 space-y-6">
+          {products?.length ? (
+            <EstoqueBulkEditor
+              products={(products ?? []).map((product) => ({
+                id: product.id,
+                name: product.name,
+                barcode: (product as { barcode?: string | null }).barcode ?? null,
+                isActive: Boolean(product.is_active),
+                trackStock: Boolean((product as { track_stock?: boolean | null }).track_stock),
+                stockQuantity: Number((product as { stock_quantity?: number | null }).stock_quantity ?? 0),
+                price: Number((product as { price?: number | null }).price ?? 0),
+                costPrice: Number((product as { cost_price?: number | null }).cost_price ?? 0),
+              }))}
+            />
+          ) : null}
+
+          <div className="space-y-3">
           {products?.length ? (
             products.map((p) => {
               const active = Boolean(p.is_active);
@@ -136,6 +159,8 @@ export default async function EstoqueModulePage({
                       </div>
                       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                         Quantidade: <span className="font-semibold">{track ? qty : "—"}</span>
+                        {` · Preço: R$ ${Number((p as { price?: number | null }).price ?? 0).toFixed(2)}`}
+                        {` · Custo: R$ ${Number((p as { cost_price?: number | null }).cost_price ?? 0).toFixed(2)}`}
                       </p>
                     </div>
                   </div>
@@ -181,10 +206,11 @@ export default async function EstoqueModulePage({
             })
           ) : (
             <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-              Nenhum item com controle de estoque.
-              Ative em <Link className="underline" href="/dashboard/modulos/produtos">Produtos</Link> marcando “Controlar estoque”.
+              Nenhum item cadastrado ainda.
+              Comece em <Link className="underline" href="/dashboard/modulos/produtos">Produtos</Link> criando os itens do negócio.
             </div>
           )}
+          </div>
         </div>
       </main>
     </div>

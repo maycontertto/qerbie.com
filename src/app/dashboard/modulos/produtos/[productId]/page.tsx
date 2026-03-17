@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { deleteProduct, updateProduct } from "@/lib/catalog/actions";
 import { ProductImageUploader } from "@/app/dashboard/modulos/produtos/ProductImageUploader";
 import Link from "next/link";
+import { BarcodeScannerField } from "../BarcodeScannerField";
 import { CategorySelect } from "../CategorySelect";
 
 export default async function ProductEditPage({
@@ -187,20 +188,13 @@ export default async function ProductEditPage({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Código de barras
-              </label>
-              <input
+              <BarcodeScannerField
                 name="barcode"
-                type="text"
-                inputMode="numeric"
+                label="Código de barras"
                 defaultValue={String((product as { barcode?: string | null }).barcode ?? "")}
                 placeholder="Opcional (para usar no Caixa)"
-                className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                helperText="Use o mesmo número que sai no leitor/etiqueta ou leia pela câmera."
               />
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Use o mesmo número que sai no leitor/etiqueta.
-              </p>
             </div>
 
             <div>
