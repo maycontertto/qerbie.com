@@ -63,14 +63,36 @@ export default async function HomePage() {
           ✔ Teste grátis por 30 dias
         </div>
 
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
+            Mercado
+          </span>
+          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
+            Farmácia
+          </span>
+          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
+            Restaurante
+          </span>
+          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
+            Hotel
+          </span>
+          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
+            Salão e mais
+          </span>
+        </div>
+
         {/* Headline */}
         <h1 className="mt-8 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-          Pare de perder dinheiro por desorganização.
+          Controle vendas, estoque e operação do seu negócio em um só lugar.
         </h1>
 
         {/* Subheadline */}
         <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-300">
-          Organize atendimento, pedidos e operação em um único painel simples e intuitivo.
+          Cadastre produtos rápido, registre compras, acompanhe pedidos e organize a rotina da empresa sem planilhas confusas nem retrabalho.
+        </p>
+
+        <p className="mt-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">
+          Feito para quem precisa começar rápido e ter mais controle desde o primeiro acesso.
         </p>
 
         {/* Video */}
@@ -106,10 +128,19 @@ export default async function HomePage() {
         </div>
 
         {/* Benefits */}
-        <div className="mt-10 space-y-3 text-base text-zinc-700 dark:text-zinc-300">
-          <p>✔ Mais controle do seu negócio</p>
-          <p>✔ Menos erros no atendimento</p>
-          <p>✔ Processo simples e rápido</p>
+        <div className="mt-10 grid gap-3 text-left sm:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Cadastro mais rápido</p>
+            <p className="mt-2">Produto manual, planilha, NF-e e leitor de código de barras no mesmo fluxo.</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Mais controle diário</p>
+            <p className="mt-2">Estoque, pedidos, compras e operação organizados em telas simples para usar no celular ou computador.</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
+            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Aprendizado guiado</p>
+            <p className="mt-2">Vídeos explicativos e suporte para ajudar seu negócio a começar sem complicação.</p>
+          </div>
         </div>
 
         {/* CTA Buttons */}
@@ -142,6 +173,82 @@ export default async function HomePage() {
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
           30 dias gratuitos. Sem cartão. Sem contrato. Sem risco.
         </p>
+
+        <section className="mt-14 rounded-3xl border border-zinc-200 bg-white/75 p-6 text-left shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+                Como funciona
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+                Crie sua conta e comece a operar em poucos passos.
+              </h2>
+            </div>
+            <Link
+              href="/auth/sign-up"
+              className="rounded-xl bg-brand px-5 py-3 text-sm font-semibold text-white transition hover:bg-brandHover"
+            >
+              Começar agora
+            </Link>
+          </div>
+
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950/60">
+              <p className="text-sm font-semibold text-brand">1. Crie sua conta</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                Entre grátis e escolha o tipo de negócio para começar com a estrutura certa.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950/60">
+              <p className="text-sm font-semibold text-brand">2. Cadastre ou importe</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                Use cadastro rápido, planilha, nota fiscal ou leitor para colocar a operação dentro da plataforma.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950/60">
+              <p className="text-sm font-semibold text-brand">3. Use no dia a dia</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                Acompanhe vendas, estoque, compras e tarefas com mais clareza e menos erro.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-3xl border border-zinc-200 bg-white/75 p-6 text-left shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+            Por que criar conta agora
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/40">
+              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+                Você já encontra o vídeo comercial e vai ter aulas práticas para aprender a usar.
+              </p>
+              <p className="mt-2 text-sm text-emerald-800 dark:text-emerald-200">
+                Isso reduz o medo de começar e acelera a implantação no seu negócio.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950/60">
+              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                Comece sem compromisso e veja se faz sentido para a sua rotina.
+              </p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                Teste grátis por 30 dias, sem cartão, com acesso imediato e suporte por WhatsApp.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Se o seu objetivo é organizar a empresa e ganhar agilidade, a melhor forma de avaliar é criando sua conta agora.
+            </p>
+            <Link
+              href="/auth/sign-up"
+              className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brandHover"
+            >
+              Criar conta grátis
+            </Link>
+          </div>
+        </section>
 
       </div>
 
