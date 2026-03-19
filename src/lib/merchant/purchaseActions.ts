@@ -186,6 +186,14 @@ function normalizeItems(raw: string): Array<{ product_id: string; quantity: numb
   }));
 }
 
+function normalizeInvoiceAccessKey(value: string | null | undefined): string | null {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 44) return digits;
+  const match = digits.match(/\d{44}/);
+  return match?.[0] ?? null;
+}
+
 export async function createPurchaseEntry(formData: FormData): Promise<void> {
   const { supabase, user, merchant } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
@@ -201,13 +209,19 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
   const supplierId = String(formData.get("supplier_id") ?? "").trim() || null;
   const supplierName = String(formData.get("supplier_name") ?? "").trim() || null;
   const invoiceNumber = String(formData.get("invoice_number") ?? "").trim();
+  const rawInvoiceAccessKey = String(formData.get("invoice_access_key") ?? "").trim();
   const issueDate = String(formData.get("issue_date") ?? "").trim() || null;
   const entryDate = String(formData.get("entry_date") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const itemsJson = String(formData.get("items_json") ?? "").trim();
+  const invoiceAccessKey = rawInvoiceAccessKey ? normalizeInvoiceAccessKey(rawInvoiceAccessKey) : null;
 
   if (!invoiceNumber) {
     redirect(PURCHASES_BASE + "?error=invalid_invoice_number");
+  }
+
+  if (rawInvoiceAccessKey && !invoiceAccessKey) {
+    redirect(PURCHASES_BASE + "?error=invalid_invoice_access_key");
   }
 
   const items = normalizeItems(itemsJson);
@@ -220,6 +234,7 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
     p_supplier_id: supplierId,
     p_supplier_name: supplierName,
     p_invoice_number: invoiceNumber,
+    p_invoice_access_key: invoiceAccessKey,
     p_issue_date: issueDate,
     p_entry_date: entryDate,
     p_notes: notes,

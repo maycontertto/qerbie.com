@@ -61,6 +61,11 @@ type ImportedNfePayload = {
   items: ImportedNfeItem[];
 };
 
+type InlineBanner = {
+  kind: "success" | "error";
+  message: string;
+};
+
 function normalizeText(value: string): string {
   return value
     .normalize("NFD")
@@ -75,6 +80,28 @@ function normalizeCode(value: string | null | undefined): string {
 
 function normalizeLooseCode(value: string | null | undefined): string {
   return String(value ?? "").trim().toLowerCase();
+}
+
+function normalizeNfeAccessKey(value: string | null | undefined): string {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 44) return digits;
+  const match = digits.match(/\d{44}/);
+  return match?.[0] ?? "";
+}
+
+function extractInvoiceNumberFromAccessKey(accessKey: string): string {
+  if (accessKey.length !== 44) return "";
+  const rawNumber = accessKey.slice(25, 34);
+  const normalized = rawNumber.replace(/^0+/, "");
+  return normalized || rawNumber;
+}
+
+function extractInvoiceSeriesFromAccessKey(accessKey: string): string {
+  if (accessKey.length !== 44) return "";
+  const rawSeries = accessKey.slice(22, 25);
+  const normalized = rawSeries.replace(/^0+/, "");
+  return normalized || rawSeries;
 }
 
 function getFirstDescendantByLocalName(root: Element, localName: string): Element | null {
@@ -243,10 +270,12 @@ export function PurchaseEntryForm({
   const [supplierId, setSupplierId] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [invoiceAccessKey, setInvoiceAccessKey] = useState("");
   const [issueDate, setIssueDate] = useState("");
   const [entryDate, setEntryDate] = useState(today);
   const [notes, setNotes] = useState("");
-  const [xmlBanner, setXmlBanner] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [xmlBanner, setXmlBanner] = useState<InlineBanner | null>(null);
+  const [invoiceScanBanner, setInvoiceScanBanner] = useState<InlineBanner | null>(null);
   const [quickCreateBanner, setQuickCreateBanner] = useState<{
     kind: "success" | "error";
     message: string;
@@ -256,6 +285,7 @@ export function PurchaseEntryForm({
   const [savingRowKey, setSavingRowKey] = useState<string | null>(null);
 
   const itemsJson = useMemo(() => buildItemsJson(rows), [rows]);
+  const normalizedInvoiceAccessKey = useMemo(() => normalizeNfeAccessKey(invoiceAccessKey), [invoiceAccessKey]);
   const total = useMemo(
     () => rows.reduce((sum, row) => sum + parseLooseNumber(row.quantity) * parseLooseNumber(row.unitCost), 0),
     [rows],
@@ -329,6 +359,40 @@ export function PurchaseEntryForm({
           },
     );
     setQuickCreateBanner(null);
+  }
+
+  function handleInvoiceAccessKeyChange(nextValue: string): void {
+    setInvoiceScanBanner(null);
+
+    if (!nextValue.trim()) {
+      setInvoiceAccessKey("");
+      return;
+    }
+
+    const normalizedAccessKey = normalizeNfeAccessKey(nextValue);
+    if (!normalizedAccessKey) {
+      setInvoiceAccessKey(nextValue.replace(/\D/g, ""));
+      setInvoiceScanBanner({
+        kind: "error",
+        message: "Não foi possível identificar uma chave NF-e válida. Tente ler novamente ou digite os 44 números.",
+      });
+      return;
+    }
+
+    const invoiceFromAccessKey = extractInvoiceNumberFromAccessKey(normalizedAccessKey);
+    const seriesFromAccessKey = extractInvoiceSeriesFromAccessKey(normalizedAccessKey);
+
+    setInvoiceAccessKey(normalizedAccessKey);
+    if (invoiceFromAccessKey) {
+      setInvoiceNumber(invoiceFromAccessKey);
+    }
+
+    setInvoiceScanBanner({
+      kind: "success",
+      message: invoiceFromAccessKey
+        ? `Chave da NF-e lida com sucesso. A nota ${invoiceFromAccessKey}${seriesFromAccessKey ? `, série ${seriesFromAccessKey},` : ""} foi preenchida como referência.`
+        : "Chave da NF-e lida com sucesso. Agora você pode importar o XML ou lançar os itens manualmente.",
+    });
   }
 
   async function handleQuickCreate(rowKey: string): Promise<void> {
@@ -419,6 +483,34 @@ export function PurchaseEntryForm({
                 }}
                 className="block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 dark:file:bg-zinc-100 dark:file:text-zinc-900"
               />
+
+              <div className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-950/50">
+                <BarcodeScannerField
+                  label="Ler código de barras da nota"
+                  value={invoiceAccessKey}
+                  onValueChange={handleInvoiceAccessKeyChange}
+                  placeholder="Leia ou digite a chave de acesso da NF-e"
+                  helperText="Essa leitura captura a chave da NF-e para preencher a referência mais rápido. Para carregar os itens automaticamente, continue usando o XML."
+                />
+
+                {invoiceScanBanner ? (
+                  <div
+                    className={`mt-3 rounded-xl border px-4 py-3 text-sm ${
+                      invoiceScanBanner.kind === "error"
+                        ? "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
+                    }`}
+                  >
+                    {invoiceScanBanner.message}
+                  </div>
+                ) : null}
+
+                {normalizedInvoiceAccessKey ? (
+                  <p className="mt-3 break-all text-xs text-zinc-500 dark:text-zinc-400">
+                    Chave capturada: {normalizedInvoiceAccessKey}
+                  </p>
+                ) : null}
+              </div>
 
               {xmlBanner ? (
                 <div
@@ -525,6 +617,11 @@ export function PurchaseEntryForm({
                   placeholder="Observações da compra, vencimento, condição, conferência etc."
                   className="mt-1 block w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
                 />
+                {normalizedInvoiceAccessKey ? (
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    A chave da NF-e será salva separadamente nesta compra para facilitar buscas e integrações futuras.
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -533,6 +630,7 @@ export function PurchaseEntryForm({
             <p className="font-semibold text-zinc-900 dark:text-zinc-50">Como essa importação funciona</p>
             <ul className="mt-3 space-y-2">
               <li>• lê XML da NF-e no navegador, sem depender de cola manual</li>
+              <li>• permite ler o código de barras do DANFE para capturar a chave de acesso da nota</li>
               <li>• tenta vincular itens por código de barras, código interno e nome</li>
               <li>• deixa você revisar itens sem vínculo antes de confirmar</li>
               <li>• ao salvar, atualiza estoque, custo da última compra e custo médio</li>
@@ -542,6 +640,7 @@ export function PurchaseEntryForm({
 
         <div className="space-y-6">
           <input type="hidden" name="items_json" value={itemsJson} />
+          <input type="hidden" name="invoice_access_key" value={normalizedInvoiceAccessKey} />
 
           <PurchaseItemsEditor products={productOptions} rows={rows} onRowsChange={setRows} />
 

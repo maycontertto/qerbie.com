@@ -1694,6 +1694,7 @@ export interface Database {
           supplier_id: string | null;
           supplier_name: string | null;
           invoice_number: string;
+          invoice_access_key: string | null;
           issue_date: string | null;
           entry_date: string;
           notes: string | null;
@@ -1709,6 +1710,7 @@ export interface Database {
           supplier_id?: string | null;
           supplier_name?: string | null;
           invoice_number: string;
+          invoice_access_key?: string | null;
           issue_date?: string | null;
           entry_date?: string;
           notes?: string | null;
@@ -1724,6 +1726,7 @@ export interface Database {
           supplier_id?: string | null;
           supplier_name?: string | null;
           invoice_number?: string;
+          invoice_access_key?: string | null;
           issue_date?: string | null;
           entry_date?: string;
           notes?: string | null;
@@ -3033,6 +3036,7 @@ export interface Database {
           p_supplier_id?: string | null;
           p_supplier_name?: string | null;
           p_invoice_number?: string | null;
+          p_invoice_access_key?: string | null;
           p_issue_date?: string | null;
           p_entry_date?: string | null;
           p_notes?: string | null;

@@ -78,7 +78,7 @@ export default async function ComprasModulePage({
       .order("name", { ascending: true }),
     supabase
       .from("purchase_entries")
-      .select("id, invoice_number, supplier_name, entry_date, item_count, total_amount, created_at")
+      .select("id, invoice_number, invoice_access_key, supplier_name, entry_date, item_count, total_amount, created_at")
       .eq("merchant_id", merchant.id)
       .order("created_at", { ascending: false })
       .limit(8),
@@ -101,6 +101,8 @@ export default async function ComprasModulePage({
         ? { kind: "error" as const, message: "Confira os itens da nota. Cada linha precisa ter produto, quantidade e custo." }
         : error === "invalid_invoice_number"
           ? { kind: "error" as const, message: "Informe o número da nota ou uma referência da compra." }
+          : error === "invalid_invoice_access_key"
+            ? { kind: "error" as const, message: "A chave de acesso da NF-e deve ter 44 números válidos." }
           : error === "invalid_supplier"
             ? { kind: "error" as const, message: "Fornecedor inválido." }
             : error === "invalid_product"
@@ -219,6 +221,11 @@ export default async function ComprasModulePage({
                       Entrada em {entry.entry_date ? new Date(entry.entry_date).toLocaleDateString("pt-BR") : "—"}
                       {` · ${entry.item_count ?? 0} item(ns)`}
                     </p>
+                    {entry.invoice_access_key ? (
+                      <p className="mt-1 break-all text-[11px] text-zinc-400 dark:text-zinc-500">
+                        Chave NF-e: {entry.invoice_access_key}
+                      </p>
+                    ) : null}
                   </div>
                   <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                     {formatBrl(Number(entry.total_amount ?? 0))}
