@@ -161,12 +161,20 @@ export default async function HomePage() {
         </div>
 
         <div className="mt-4">
-          <a
-            href="#video-apresentacao"
-            className="text-sm font-semibold text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-200"
-          >
-            Saiba mais (assista ao vídeo)
-          </a>
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+            <a
+              href="#video-apresentacao"
+              className="font-semibold text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-200"
+            >
+              Saiba mais (assista ao vídeo)
+            </a>
+            <Link
+              href="/aulas"
+              className="font-semibold text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-200"
+            >
+              Ver aulas de uso
+            </Link>
+          </div>
         </div>
 
         {/* Risk Reversal */}
@@ -278,6 +286,10 @@ export default async function HomePage() {
           <span className="mx-2 text-zinc-300 dark:text-zinc-700">·</span>
           <Link href="/avisos-legais" className="font-medium hover:underline">
             Avisos
+          </Link>
+          <span className="mx-2 text-zinc-300 dark:text-zinc-700">·</span>
+          <Link href="/aulas" className="font-medium hover:underline">
+            Aulas
           </Link>
         </div>
       </footer>
