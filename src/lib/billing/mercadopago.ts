@@ -19,6 +19,7 @@ export async function createMercadoPagoCheckoutPreference(input: {
   const body: Record<string, unknown> = {
     items: [
       {
+        id: input.externalReference, // ID único do item (obrigatório)
         title: input.title,
         quantity: 1,
         currency_id: "BRL",
@@ -27,10 +28,13 @@ export async function createMercadoPagoCheckoutPreference(input: {
     ],
     external_reference: input.externalReference,
     statement_descriptor: "QERBIE",
+    payer: {
+      email: input.payerEmail || "noreply@qerbie.com",
+    },
   };
 
   if (input.payerEmail) {
-    body.payer = { email: input.payerEmail };
+    (body.payer as any).email = input.payerEmail;
   }
 
   if (input.notificationUrl) {
