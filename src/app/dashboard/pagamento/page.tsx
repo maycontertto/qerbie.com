@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { BILLING_PLAN, formatBrlFromCents } from "@/lib/billing/constants";
-import { createOrGetMonthlyInvoice, retryLatestPaymentSync } from "@/lib/billing/actions";
+import { createOrGetMonthlyInvoice, retryLatestPaymentSync, markLatestInvoiceAsPaidManually } from "@/lib/billing/actions";
 import { syncMercadoPagoApprovedPayment } from "@/lib/billing/sync";
 
 function addDays(date: Date, days: number): Date {
@@ -67,6 +67,8 @@ export default async function PagamentoPage({
         ? { kind: "error" as const, message: "Não foi possível gerar o link de pagamento agora." }
         : error === "invoice_create_failed"
           ? { kind: "error" as const, message: "Não foi possível criar a cobrança agora." }
+          : error === "no_pending_invoice"
+            ? { kind: "error" as const, message: "Nenhuma cobrança pendente foi encontrada para confirmar manualmente." }
             : recheck === "applied"
               ? {
                   kind: "success" as const,
@@ -109,6 +111,11 @@ export default async function PagamentoPage({
               }
             : status === "failure"
               ? { kind: "error" as const, message: "Pagamento não aprovado." }
+              : searchParams.manual_payment === "success"
+                ? {
+                    kind: "success" as const,
+                    message: "Pagamento confirmado manualmente e assinatura liberada com sucesso.",
+                  }
               : null;
 
   return (
@@ -211,14 +218,25 @@ export default async function PagamentoPage({
                 </form>
 
                 {!isActive ? (
-                  <form action={retryLatestPaymentSync}>
-                    <button
-                      type="submit"
-                      className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900"
-                    >
-                      Já paguei, atualizar agora
-                    </button>
-                  </form>
+                  <>
+                    <form action={retryLatestPaymentSync}>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 dark:hover:bg-emerald-900"
+                      >
+                        Já paguei, atualizar agora
+                      </button>
+                    </form>
+
+                    <form action={markLatestInvoiceAsPaidManually}>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                      >
+                        Confirmar pagamento manual
+                      </button>
+                    </form>
+                  </>
                 ) : null}
               </>
             ) : (
@@ -231,6 +249,8 @@ export default async function PagamentoPage({
           {!isActive ? (
             <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
               Se o pagamento já foi feito antes desta correção, use <span className="font-semibold">Já paguei, atualizar agora</span>.
+              <br />
+              Se o pagamento foi recebido fora do sistema (PIX, transferência, etc) e não aparece automaticamente, use <span className="font-semibold">Confirmar pagamento manual</span>.
             </p>
           ) : null}
 

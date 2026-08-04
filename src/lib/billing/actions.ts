@@ -183,3 +183,57 @@ export async function retryLatestPaymentSync(): Promise<void> {
 
   redirect(`/dashboard/pagamento?recheck=${result.applied ? "applied" : "updated"}`);
 }
+
+export async function markLatestInvoiceAsPaidManually(): Promise<void> {
+  const { supabase, user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
+  const isOwner = user.id === merchant.owner_user_id;
+  if (!isOwner) {
+    redirect("/dashboard?error=not_owner");
+  }
+
+  const { data: invoice } = await supabase
+    .from("billing_invoices")
+    .select("id,merchant_id,status")
+    .eq("merchant_id", merchant.id)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!invoice) {
+    redirect("/dashboard/pagamento?error=no_pending_invoice");
+  }
+
+  const now = new Date();
+  await supabase
+    .from("billing_invoices")
+    .update({ status: "paid", paid_at: now.toISOString() })
+    .eq("id", invoice.id);
+
+  const { data: sub } = await supabase
+    .from("merchant_subscriptions")
+    .select("trial_ends_at,current_period_end")
+    .eq("merchant_id", merchant.id)
+    .maybeSingle();
+
+  const trialEndsAt = sub?.trial_ends_at ? new Date(sub.trial_ends_at) : now;
+  const currentPeriodEnd = sub?.current_period_end ? new Date(sub.current_period_end) : null;
+  const baseStart = currentPeriodEnd && currentPeriodEnd > now ? currentPeriodEnd : now;
+  const periodStart = now > trialEndsAt ? now : baseStart;
+  const periodEnd = addDays(periodStart, 30);
+
+  await supabase
+    .from("merchant_subscriptions")
+    .update({
+      status: "active",
+      current_period_start: periodStart.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      grace_until: null,
+      last_payment_at: now.toISOString(),
+      last_notice_stage: null,
+      last_notice_at: null,
+    })
+    .eq("merchant_id", merchant.id);
+
+  redirect("/dashboard/pagamento?manual_payment=success");
+}
