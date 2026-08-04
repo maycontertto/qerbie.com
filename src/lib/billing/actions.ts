@@ -5,6 +5,7 @@ import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { BILLING_PLAN } from "@/lib/billing/constants";
 import { createMercadoPagoCheckoutPreference } from "@/lib/billing/mercadopago";
 import { syncLatestMercadoPagoInvoiceForMerchant } from "@/lib/billing/sync";
+import { isPlatformDemoUser } from "@/lib/billing/demo";
 
 function randomId(): string {
   // Node/Next runtime
@@ -236,18 +237,6 @@ export async function markLatestInvoiceAsPaidManually(): Promise<void> {
     .eq("merchant_id", merchant.id);
 
   redirect("/dashboard/pagamento?manual_payment=success");
-}
-
-function getDemoEmails(): string[] {
-  return (process.env.PLATFORM_DEMO_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-export function isPlatformDemoUser(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return getDemoEmails().includes(email.toLowerCase());
 }
 
 /**

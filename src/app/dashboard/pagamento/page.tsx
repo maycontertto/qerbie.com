@@ -6,8 +6,8 @@ import {
   retryLatestPaymentSync,
   markLatestInvoiceAsPaidManually,
   grantLifetimeDemoAccess,
-  isPlatformDemoUser,
 } from "@/lib/billing/actions";
+import { isPlatformDemoUser } from "@/lib/billing/demo";
 import { syncMercadoPagoApprovedPayment } from "@/lib/billing/sync";
 
 function addDays(date: Date, days: number): Date {
