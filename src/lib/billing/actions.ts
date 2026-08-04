@@ -6,6 +6,7 @@ import { BILLING_PLAN } from "@/lib/billing/constants";
 import { createMercadoPagoCheckoutPreference } from "@/lib/billing/mercadopago";
 import { syncLatestMercadoPagoInvoiceForMerchant } from "@/lib/billing/sync";
 import { isPlatformDemoUser } from "@/lib/billing/demo";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function randomId(): string {
   // Node/Next runtime
@@ -67,7 +68,8 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
 
     // Se for invoice de fallback e o link mudou, atualiza para evitar ficar preso em links antigos.
     if (!isProviderInvoice && hasFallbackPaymentUrl && existing.payment_url !== fallbackPaymentUrl) {
-      const { error: updErr } = await supabase
+      const admin = createAdminClient();
+      const { error: updErr } = await admin
         .from("billing_invoices")
         .update({ payment_url: fallbackPaymentUrl })
         .eq("id", existing.id)
@@ -205,13 +207,14 @@ export async function markLatestInvoiceAsPaidManually(): Promise<void> {
     redirect("/dashboard/pagamento?error=no_pending_invoice");
   }
 
+  const admin = createAdminClient();
   const now = new Date();
-  await supabase
+  await admin
     .from("billing_invoices")
     .update({ status: "paid", paid_at: now.toISOString() })
     .eq("id", invoice.id);
 
-  const { data: sub } = await supabase
+  const { data: sub } = await admin
     .from("merchant_subscriptions")
     .select("trial_ends_at,current_period_end")
     .eq("merchant_id", merchant.id)
@@ -223,7 +226,7 @@ export async function markLatestInvoiceAsPaidManually(): Promise<void> {
   const periodStart = now > trialEndsAt ? now : baseStart;
   const periodEnd = addDays(periodStart, 30);
 
-  await supabase
+  await admin
     .from("merchant_subscriptions")
     .update({
       status: "active",
@@ -244,16 +247,17 @@ export async function markLatestInvoiceAsPaidManually(): Promise<void> {
  * Usado apenas para contas de demonstração do próprio dono da plataforma.
  */
 export async function grantLifetimeDemoAccess(): Promise<void> {
-  const { supabase, user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
+  const { user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
 
   if (user.id !== merchant.owner_user_id || !isPlatformDemoUser(user.email)) {
     redirect("/dashboard/pagamento?error=demo_access_denied");
   }
 
+  const admin = createAdminClient();
   const now = new Date();
   const farFuture = new Date(now.getFullYear() + 100, now.getMonth(), now.getDate());
 
-  await supabase
+  await admin
     .from("merchant_subscriptions")
     .update({
       status: "active",
