@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { BILLING_PLAN, formatBrlFromCents } from "@/lib/billing/constants";
-import { createOrGetMonthlyInvoice, retryLatestPaymentSync, markLatestInvoiceAsPaidManually } from "@/lib/billing/actions";
+import {
+  createOrGetMonthlyInvoice,
+  retryLatestPaymentSync,
+  markLatestInvoiceAsPaidManually,
+  grantLifetimeDemoAccess,
+  isPlatformDemoUser,
+} from "@/lib/billing/actions";
 import { syncMercadoPagoApprovedPayment } from "@/lib/billing/sync";
 
 function addDays(date: Date, days: number): Date {
@@ -134,8 +140,8 @@ export default async function PagamentoPage({
         : error === "invoice_create_failed"
           ? { kind: "error" as const, message: "Não foi possível criar a cobrança agora." }
           : error === "no_pending_invoice"
-            ? { kind: "error" as const, message: "Nenhuma cobrança pendente foi encontrada para confirmar manualmente." }
-            : recheck === "applied"
+            ? { kind: "error" as const, message: "Nenhuma cobrança pendente foi encontrada para confirmar manualmente." }              : error === "demo_access_denied"
+                ? { kind: "error" as const, message: "Esta conta não tem permissão para liberar acesso de demonstração." }            : recheck === "applied"
               ? {
                   kind: "success" as const,
                   message: "Pagamento localizado e assinatura atualizada agora." }
@@ -329,6 +335,17 @@ export default async function PagamentoPage({
                         Confirmar pagamento manual
                       </button>
                     </form>
+
+                    {isPlatformDemoUser(user.email) ? (
+                      <form action={grantLifetimeDemoAccess}>
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-300 dark:hover:bg-purple-900"
+                        >
+                          Liberar acesso demonstração (100 anos)
+                        </button>
+                      </form>
+                    ) : null}
                   </>
                 ) : null}
               </>

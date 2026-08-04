@@ -237,3 +237,45 @@ export async function markLatestInvoiceAsPaidManually(): Promise<void> {
 
   redirect("/dashboard/pagamento?manual_payment=success");
 }
+
+function getDemoEmails(): string[] {
+  return (process.env.PLATFORM_DEMO_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isPlatformDemoUser(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return getDemoEmails().includes(email.toLowerCase());
+}
+
+/**
+ * Libera acesso gratuito por 100 anos, restrito a e-mails definidos em PLATFORM_DEMO_EMAILS.
+ * Usado apenas para contas de demonstração do próprio dono da plataforma.
+ */
+export async function grantLifetimeDemoAccess(): Promise<void> {
+  const { supabase, user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
+
+  if (user.id !== merchant.owner_user_id || !isPlatformDemoUser(user.email)) {
+    redirect("/dashboard/pagamento?error=demo_access_denied");
+  }
+
+  const now = new Date();
+  const farFuture = new Date(now.getFullYear() + 100, now.getMonth(), now.getDate());
+
+  await supabase
+    .from("merchant_subscriptions")
+    .update({
+      status: "active",
+      current_period_start: now.toISOString(),
+      current_period_end: farFuture.toISOString(),
+      grace_until: null,
+      last_payment_at: now.toISOString(),
+      last_notice_stage: null,
+      last_notice_at: null,
+    })
+    .eq("merchant_id", merchant.id);
+
+  redirect("/dashboard/pagamento?manual_payment=success");
+}
