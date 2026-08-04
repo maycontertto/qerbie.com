@@ -12,6 +12,61 @@ function formatDatePtBr(date: Date): string {
   return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(date);
 }
 
+function formatDateTimePtBr(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium", timeStyle: "short" }).format(date);
+}
+
+const INVOICE_STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  paid: {
+    label: "Pago",
+    className:
+      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
+  },
+  pending: {
+    label: "Pendente",
+    className:
+      "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
+  },
+  expired: {
+    label: "Expirado",
+    className:
+      "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800",
+  },
+  cancelled: {
+    label: "Cancelado",
+    className:
+      "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
+  },
+};
+
+const SUBSCRIPTION_STATUS_LABEL: Record<string, { label: string; className: string }> = {
+  trialing: {
+    label: "Teste grátis",
+    className:
+      "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
+  },
+  active: {
+    label: "Ativa",
+    className:
+      "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
+  },
+  past_due: {
+    label: "Vencida",
+    className:
+      "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
+  },
+  suspended: {
+    label: "Suspensa",
+    className:
+      "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-800",
+  },
+  cancelled: {
+    label: "Cancelada",
+    className:
+      "bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:border-zinc-700",
+  },
+};
+
 export default async function PagamentoPage({
   searchParams,
 }: {
@@ -55,6 +110,17 @@ export default async function PagamentoPage({
   const isTrial = (sub?.status ?? "trialing") === "trialing" && now < trialEndsAt;
   const isActive = sub?.status === "active" && now < periodEnd;
   const isPastDue = sub?.status === "past_due" || (sub?.status !== "active" && now >= periodEnd);
+
+  const { data: invoices } = await supabase
+    .from("billing_invoices")
+    .select("id,amount_cents,currency,status,due_at,paid_at,provider,created_at,payment_url")
+    .eq("merchant_id", merchant.id)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  const paidInvoices = (invoices ?? []).filter((inv) => inv.status === "paid");
+  const totalPaidCents = paidInvoices.reduce((acc, inv) => acc + Number(inv.amount_cents ?? 0), 0);
+  const lastPaidInvoice = paidInvoices[0] ?? null;
 
   const banner =
     error === "missing_billing_env"
@@ -120,7 +186,7 @@ export default async function PagamentoPage({
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
         <div className="rounded-2xl border border-zinc-200 bg-white/70 p-8 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
           <div>
             <Link
@@ -158,23 +224,50 @@ export default async function PagamentoPage({
             </div>
           ) : null}
 
-          <div className="mt-6 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-zinc-600 dark:text-zinc-300">Status</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{sub?.status ?? "trialing"}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-zinc-600 dark:text-zinc-300">Fim do teste grátis</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{formatDatePtBr(trialEndsAt)}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-zinc-600 dark:text-zinc-300">Vencimento</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{formatDatePtBr(periodEnd)}</span>
-            </div>
+          {(() => {
+            const statusKey = sub?.status ?? "trialing";
+            const statusInfo = SUBSCRIPTION_STATUS_LABEL[statusKey] ?? SUBSCRIPTION_STATUS_LABEL.trialing;
+            return (
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Status da assinatura</p>
+                  <span
+                    className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusInfo.className}`}
+                  >
+                    {statusInfo.label}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {isTrial ? "Fim do teste grátis" : "Vencimento"}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    {formatDatePtBr(isTrial ? trialEndsAt : periodEnd)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Total pago até hoje</p>
+                  <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                    {formatBrlFromCents(totalPaidCents)}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          <div className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between gap-3">
               <span className="text-zinc-600 dark:text-zinc-300">Carência</span>
               <span className="font-semibold text-zinc-900 dark:text-zinc-50">{isActive ? "não aplicável" : `até ${formatDatePtBr(graceUntil)}`}</span>
             </div>
+            {lastPaidInvoice ? (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-zinc-600 dark:text-zinc-300">Último pagamento</span>
+                <span className="font-semibold text-zinc-900 dark:text-zinc-50">
+                  {lastPaidInvoice.paid_at ? formatDatePtBr(new Date(lastPaidInvoice.paid_at)) : "—"}
+                </span>
+              </div>
+            ) : null}
             {isTrial ? (
               <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
                 Você está no teste grátis. O pagamento só é exigido após {formatDatePtBr(trialEndsAt)}.
@@ -258,6 +351,64 @@ export default async function PagamentoPage({
             Se você já tem um link fixo do Mercado Pago, ele pode ser usado como fallback em
             <span className="font-semibold"> NEXT_PUBLIC_BILLING_FALLBACK_PAYMENT_URL</span>.
           </p>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white/70 p-8 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Histórico de pagamentos</h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Últimas cobranças geradas para esta conta.
+          </p>
+
+          {invoices && invoices.length > 0 ? (
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-140 border-collapse text-left text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    <th className="py-2 pr-4 font-medium">Criada em</th>
+                    <th className="py-2 pr-4 font-medium">Valor</th>
+                    <th className="py-2 pr-4 font-medium">Vencimento</th>
+                    <th className="py-2 pr-4 font-medium">Pago em</th>
+                    <th className="py-2 pr-4 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => {
+                    const statusInfo = INVOICE_STATUS_LABEL[inv.status] ?? INVOICE_STATUS_LABEL.pending;
+                    return (
+                      <tr
+                        key={inv.id}
+                        className="border-b border-zinc-100 last:border-0 dark:border-zinc-900"
+                      >
+                        <td className="py-2.5 pr-4 text-zinc-700 dark:text-zinc-300">
+                          {formatDateTimePtBr(new Date(inv.created_at))}
+                        </td>
+                        <td className="py-2.5 pr-4 font-semibold text-zinc-900 dark:text-zinc-50">
+                          {formatBrlFromCents(Number(inv.amount_cents ?? 0))}
+                        </td>
+                        <td className="py-2.5 pr-4 text-zinc-700 dark:text-zinc-300">
+                          {formatDatePtBr(new Date(inv.due_at))}
+                        </td>
+                        <td className="py-2.5 pr-4 text-zinc-700 dark:text-zinc-300">
+                          {inv.paid_at ? formatDatePtBr(new Date(inv.paid_at)) : "—"}
+                        </td>
+                        <td className="py-2.5 pr-4">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusInfo.className}`}
+                          >
+                            {statusInfo.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+              Nenhuma cobrança gerada ainda. Use o botão "Gerar link de pagamento" acima para criar a primeira.
+            </p>
+          )}
         </div>
       </main>
     </div>
