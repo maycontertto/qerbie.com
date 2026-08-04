@@ -52,7 +52,7 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
   const externalReference = invoiceId;
 
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  const appUrl = process.env.APP_URL;
+  const appUrl = process.env.APP_URL?.replace(/\/+$/, "");
 
   // Fallback: user-provided payment link (manual)
   const fallbackPaymentUrl =

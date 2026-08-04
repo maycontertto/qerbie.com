@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const amount = searchParams.get("amount") || "99.90";
 
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  const appUrl = process.env.APP_URL;
+  const appUrl = process.env.APP_URL?.replace(/\/+$/, "");
 
   if (!accessToken || !appUrl) {
     return NextResponse.json(

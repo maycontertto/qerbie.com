@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = process.env.APP_URL ?? "https://www.qerbie.com";
+  const base = (process.env.APP_URL ?? "https://www.qerbie.com").replace(/\/+$/, "");
   const siteUrl = base.replace(/\/$/, "");
   const lastModified = new Date();
 

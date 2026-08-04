@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { PwaInstallPrompt, PwaServiceWorkerRegister } from "./PwaClient";
 
-const SITE_URL = process.env.APP_URL ?? "https://www.qerbie.com";
+const SITE_URL = (process.env.APP_URL ?? "https://www.qerbie.com").replace(/\/+$/, "");
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
