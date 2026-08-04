@@ -14,6 +14,8 @@ import { BarcodeScannerField } from "./BarcodeScannerField";
 import { CategorySelect } from "./CategorySelect";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
 
+export const dynamic = "force-dynamic";
+
 function makeSlug(base: string): string {
   const normalized = base
     .toLowerCase()

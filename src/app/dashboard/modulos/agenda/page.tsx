@@ -8,6 +8,8 @@ import {
   declineAppointmentRequest,
 } from "@/lib/merchant/agendaActions";
 
+export const dynamic = "force-dynamic";
+
 type SlotStatus = "available" | "pending" | "booked" | "cancelled";
 type RequestStatus = "pending" | "confirmed" | "declined" | "cancelled";
 
