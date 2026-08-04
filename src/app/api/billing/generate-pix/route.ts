@@ -1,6 +1,5 @@
-import { Database } from "@/types/database.types";
 import { createClient } from "@/lib/supabase/server";
-import { getDashboardUserOrRedirect } from "@/lib/auth/server";
+import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 
 export async function POST(req: Request) {
   try {
