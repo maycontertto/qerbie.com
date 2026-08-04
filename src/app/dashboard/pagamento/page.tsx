@@ -201,17 +201,17 @@ export default async function PagamentoPage({
             >
               ← Voltar ao painel
             </Link>
-            <h1 className="mt-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
+            <h1 className="mt-4 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               Assinatura
             </h1>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="mt-2 text-base text-zinc-600 dark:text-zinc-300">
               Plano mensal: {formatBrlFromCents(amountCents)} • 30 dias grátis no cadastro
             </p>
           </div>
 
           {banner && (
             <div
-              className={`mt-6 rounded-lg border p-3 text-sm ${
+              className={`mt-6 rounded-lg border p-4 text-sm ${
                 banner.kind === "error"
                   ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300"
                   : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
@@ -235,25 +235,25 @@ export default async function PagamentoPage({
             const statusInfo = SUBSCRIPTION_STATUS_LABEL[statusKey] ?? SUBSCRIPTION_STATUS_LABEL.trialing;
             return (
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Status da assinatura</p>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Status da assinatura</p>
                   <span
-                    className={`mt-2 inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusInfo.className}`}
+                    className={`mt-2 inline-flex items-center rounded-full border px-3 py-1 text-sm font-semibold ${statusInfo.className}`}
                   >
                     {statusInfo.label}
                   </span>
                 </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
                     {isTrial ? "Fim do teste grátis" : "Vencimento"}
                   </p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  <p className="mt-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
                     {formatDatePtBr(isTrial ? trialEndsAt : periodEnd)}
                   </p>
                 </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Total pago até hoje</p>
-                  <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Total pago até hoje</p>
+                  <p className="mt-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
                     {formatBrlFromCents(totalPaidCents)}
                   </p>
                 </div>
@@ -261,7 +261,7 @@ export default async function PagamentoPage({
             );
           })()}
 
-          <div className="mt-3 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="mt-3 space-y-2.5 rounded-xl border border-zinc-200 bg-zinc-50 p-5 text-sm dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between gap-3">
               <span className="text-zinc-600 dark:text-zinc-300">Carência</span>
               <span className="font-semibold text-zinc-900 dark:text-zinc-50">{isActive ? "não aplicável" : `até ${formatDatePtBr(graceUntil)}`}</span>
@@ -275,19 +275,19 @@ export default async function PagamentoPage({
               </div>
             ) : null}
             {isTrial ? (
-              <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="pt-2 text-sm text-zinc-500 dark:text-zinc-400">
                 Você está no teste grátis. O pagamento só é exigido após {formatDatePtBr(trialEndsAt)}.
               </p>
             ) : isActive ? (
-              <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="pt-2 text-sm text-zinc-500 dark:text-zinc-400">
                 Sua assinatura está em dia e já está liberada na plataforma.
               </p>
             ) : isPastDue ? (
-              <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="pt-2 text-sm text-zinc-500 dark:text-zinc-400">
                 Sua assinatura está vencida. Após a carência, o acesso funcional é bloqueado até a regularização.
               </p>
             ) : (
-              <p className="pt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="pt-2 text-sm text-zinc-500 dark:text-zinc-400">
                 Sua assinatura está em dia.
               </p>
             )}
@@ -350,28 +350,28 @@ export default async function PagamentoPage({
                 ) : null}
               </>
             ) : (
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="text-sm text-zinc-500 dark:text-zinc-400">
                 Apenas o proprietário pode gerar a cobrança.
               </span>
             )}
           </div>
 
           {!isActive ? (
-            <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
               Se o pagamento já foi feito antes desta correção, use <span className="font-semibold">Já paguei, atualizar agora</span>.
               <br />
               Se o pagamento foi recebido fora do sistema (PIX, transferência, etc) e não aparece automaticamente, use <span className="font-semibold">Confirmar pagamento manual</span>.
             </p>
           ) : null}
 
-          <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
             Se você já tem um link fixo do Mercado Pago, ele pode ser usado como fallback em
             <span className="font-semibold"> NEXT_PUBLIC_BILLING_FALLBACK_PAYMENT_URL</span>.
           </p>
         </div>
 
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white/70 p-8 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Histórico de pagamentos</h2>
+          <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Histórico de pagamentos</h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             Últimas cobranças geradas para esta conta.
           </p>
