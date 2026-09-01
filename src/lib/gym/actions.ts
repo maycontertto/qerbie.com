@@ -482,6 +482,230 @@ export async function recordGymPayment(formData: FormData): Promise<void> {
   redirect(`${returnTo}?saved=1`);
 }
 
+export async function registerGymFaceProfile(formData: FormData): Promise<void> {
+  const studentId = (formData.get("student_id") as string | null)?.trim() ?? "";
+  const faceLabel = (formData.get("face_label") as string | null)?.trim() || "principal";
+  const imageUrl = (formData.get("image_url") as string | null)?.trim() || null;
+  const imageStoragePath = (formData.get("image_storage_path") as string | null)?.trim() || null;
+  const recognitionScore = Number((formData.get("recognition_score") as string | null) ?? "0");
+  const qualityScore = Number((formData.get("quality_score") as string | null) ?? "0");
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_alunos",
+  ]);
+
+  if (!studentId) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant } = await requireGymAccess();
+
+  const { data: student, error: studentError } = await supabase
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", merchant.id)
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (studentError || !student?.id) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { error } = await supabase.from("gym_face_profiles").upsert(
+    {
+      merchant_id: merchant.id,
+      student_id: student.id,
+      face_label: faceLabel,
+      image_url: imageUrl,
+      image_storage_path: imageStoragePath,
+      recognition_score: Number.isFinite(recognitionScore) ? Math.max(0, Math.min(1, recognitionScore)) : 0,
+      quality_score: Number.isFinite(qualityScore) ? Math.max(0, Math.min(100, qualityScore)) : 0,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "merchant_id,student_id,face_label" },
+  );
+
+  if (error) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  redirect(`${returnTo}?saved=1`);
+}
+
+export async function registerGymFingerprintTemplate(formData: FormData): Promise<void> {
+  const studentId = (formData.get("student_id") as string | null)?.trim() ?? "";
+  const fingerName = (formData.get("finger_name") as string | null)?.trim() || "indicador";
+  const templateText = (formData.get("template_text") as string | null)?.trim() ?? "";
+  const templateHash = (formData.get("template_hash") as string | null)?.trim() || null;
+  const qualityScore = Number((formData.get("quality_score") as string | null) ?? "0");
+  const deviceName = (formData.get("device_name") as string | null)?.trim() || null;
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_alunos",
+  ]);
+
+  if (!studentId || !templateText) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant } = await requireGymAccess();
+
+  const { data: student, error: studentError } = await supabase
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", merchant.id)
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (studentError || !student?.id) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { error } = await supabase.from("gym_fingerprint_templates").upsert(
+    {
+      merchant_id: merchant.id,
+      student_id: student.id,
+      finger_name: fingerName,
+      template_text: templateText,
+      template_hash: templateHash,
+      quality_score: Number.isFinite(qualityScore) ? Math.max(0, Math.min(100, qualityScore)) : 0,
+      device_name: deviceName,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "merchant_id,student_id,finger_name" },
+  );
+
+  if (error) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  redirect(`${returnTo}?saved=1`);
+}
+
+export async function logGymAccessEvent(formData: FormData): Promise<void> {
+  const studentId = (formData.get("student_id") as string | null)?.trim() ?? "";
+  const checkinId = (formData.get("checkin_id") as string | null)?.trim() || null;
+  const method = (formData.get("method") as string | null)?.trim() || "manual";
+  const result = (formData.get("result") as string | null)?.trim() || "accepted";
+  const confidence = Number((formData.get("confidence") as string | null) ?? "0");
+  const deviceName = (formData.get("device_name") as string | null)?.trim() || null;
+  const notes = (formData.get("notes") as string | null)?.trim() || null;
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_alunos",
+  ]);
+
+  const allowedMethods = ["manual", "qr", "facial", "fingerprint"];
+  const allowedResults = ["accepted", "denied", "expired", "manual_override"];
+
+  if (!studentId || !allowedMethods.includes(method) || !allowedResults.includes(result)) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant } = await requireGymAccess();
+
+  const { data: student, error: studentError } = await supabase
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", merchant.id)
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (studentError || !student?.id) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { error } = await supabase.from("gym_access_logs").insert({
+    merchant_id: merchant.id,
+    student_id: student.id,
+    checkin_id: checkinId,
+    method,
+    result,
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0,
+    device_name: deviceName,
+    notes,
+  });
+
+  if (error) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  redirect(`${returnTo}?saved=1`);
+}
+
+export async function registerGymAccessCheckin(formData: FormData): Promise<void> {
+  const studentId = (formData.get("student_id") as string | null)?.trim() ?? "";
+  const method = (formData.get("method") as string | null)?.trim() || "manual";
+  const confidence = Number((formData.get("confidence") as string | null) ?? "1");
+  const deviceName = (formData.get("device_name") as string | null)?.trim() || "front_desk";
+  const notes = (formData.get("notes") as string | null)?.trim() || null;
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_presenca",
+  ]);
+
+  if (!studentId) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant } = await requireGymAccess();
+
+  const { data: student, error: studentError } = await supabase
+    .from("gym_students")
+    .select("id")
+    .eq("merchant_id", merchant.id)
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (studentError || !student?.id) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const today = todayIsoDate();
+  const entry = {
+    merchant_id: merchant.id,
+    student_id: student.id,
+    checkin_date: today,
+    verification_method: method,
+    verification_confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 1,
+    verified_by: "dashboard",
+  };
+
+  const { error: checkinError } = await supabase.from("gym_checkins").insert(entry);
+
+  if (checkinError) {
+    if ("code" in checkinError && checkinError.code === "23505") {
+      redirect(`${returnTo}?already_checked=1`);
+    }
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  const { data: createdCheckin } = await supabase
+    .from("gym_checkins")
+    .select("id")
+    .eq("merchant_id", merchant.id)
+    .eq("student_id", student.id)
+    .eq("checkin_date", today)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error: logError } = await supabase.from("gym_access_logs").insert({
+    merchant_id: merchant.id,
+    student_id: student.id,
+    checkin_id: createdCheckin?.id ?? null,
+    method,
+    result: "accepted",
+    confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 1,
+    device_name: deviceName || "front_desk",
+    notes,
+  });
+
+  if (logError) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  redirect(`${returnTo}?saved=1`);
+}
+
 export async function createGymQrToken(formData: FormData): Promise<void> {
   const label = (formData.get("label") as string | null)?.trim() ?? "Academia";
   const returnTo = safeReturnTo(formData.get("return_to"), [

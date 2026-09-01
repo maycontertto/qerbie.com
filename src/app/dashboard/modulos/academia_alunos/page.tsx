@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
-import { createGymStudent, recordGymPayment, resetGymStudentPassword, setGymMembershipDueDate } from "@/lib/gym/actions";
+import {
+  createGymStudent,
+  logGymAccessEvent,
+  recordGymPayment,
+  registerGymFaceProfile,
+  registerGymFingerprintTemplate,
+  resetGymStudentPassword,
+  setGymMembershipDueDate,
+} from "@/lib/gym/actions";
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -114,6 +122,34 @@ export default async function AcademiaAlunosPage({
     if (!lastCheckinByStudent.has(c.student_id)) lastCheckinByStudent.set(c.student_id, c.checkin_date);
   }
 
+  let accessLogs: Array<{
+    id: string;
+    student_id: string;
+    method: string;
+    result: string;
+    confidence: number | null;
+    device_name: string | null;
+    notes: string | null;
+    created_at: string;
+  }> = [];
+
+  if (studentIds.length) {
+    const { data } = await supabase
+      .from("gym_access_logs")
+      .select("id, student_id, method, result, confidence, device_name, notes, created_at")
+      .eq("merchant_id", merchant.id)
+      .in("student_id", studentIds)
+      .order("created_at", { ascending: false })
+      .limit(30);
+
+    accessLogs = (data ?? []) as typeof accessLogs;
+  }
+
+  const studentNameById = new Map<string, string>();
+  for (const student of students ?? []) {
+    studentNameById.set(student.id, student.name);
+  }
+
   const planById = new Map<string, PlanRow>();
   for (const p of planRows) planById.set(p.id, p);
 
@@ -207,22 +243,90 @@ export default async function AcademiaAlunosPage({
             </form>
           </aside>
 
-          <section className="space-y-3">
-            {students?.length ? (
-              students.map((s) => {
-                const m = membershipByStudent.get(s.id) ?? null;
-                const p = m?.plan_id ? planById.get(m.plan_id) ?? null : null;
-                const overdue = isOverdue(m?.next_due_at);
+          <section className="space-y-4">
+            <div className="rounded-2xl border border-zinc-200 bg-white/70 p-4 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Últimos acessos da academia</h2>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Histórico de entrada, biometria e QR.</p>
+                </div>
+                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                  {accessLogs.length} registros
+                </span>
+              </div>
 
-                return (
-                  <div
-                    key={s.id}
-                    className={`rounded-2xl border bg-white/70 p-5 shadow-sm backdrop-blur dark:bg-zinc-900/60 ${
-                      overdue
-                        ? "border-red-200 dark:border-red-900/60"
-                        : "border-zinc-200 dark:border-zinc-800"
-                    }`}
-                  >
+              {accessLogs.length ? (
+                <div className="mt-4 overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="max-h-80 overflow-auto">
+                    <table className="min-w-full divide-y divide-zinc-200 text-left text-sm dark:divide-zinc-800">
+                      <thead className="bg-zinc-50 dark:bg-zinc-950/60">
+                        <tr>
+                          <th className="px-3 py-2 font-medium text-zinc-600 dark:text-zinc-300">Aluno</th>
+                          <th className="px-3 py-2 font-medium text-zinc-600 dark:text-zinc-300">Método</th>
+                          <th className="px-3 py-2 font-medium text-zinc-600 dark:text-zinc-300">Resultado</th>
+                          <th className="px-3 py-2 font-medium text-zinc-600 dark:text-zinc-300">Confiança</th>
+                          <th className="px-3 py-2 font-medium text-zinc-600 dark:text-zinc-300">Data</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900/40">
+                        {accessLogs.map((log) => (
+                          <tr key={log.id}>
+                            <td className="px-3 py-2 text-zinc-800 dark:text-zinc-100">{studentNameById.get(log.student_id) ?? "Aluno"}</td>
+                            <td className="px-3 py-2 capitalize text-zinc-700 dark:text-zinc-200">{log.method}</td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                                  log.result === "accepted"
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200"
+                                    : log.result === "denied"
+                                      ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
+                                      : log.result === "manual_override"
+                                        ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200"
+                                        : "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                                }`}
+                              >
+                                {log.result}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                              {log.confidence == null ? "-" : `${Number(log.confidence).toFixed(2)}`}
+                            </td>
+                            <td className="px-3 py-2 text-zinc-700 dark:text-zinc-200">
+                              {new Date(log.created_at).toLocaleString("pt-BR", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">Ainda não há registros de acesso.</p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              {students?.length ? (
+                students.map((s) => {
+                  const m = membershipByStudent.get(s.id) ?? null;
+                  const p = m?.plan_id ? planById.get(m.plan_id) ?? null : null;
+                  const overdue = isOverdue(m?.next_due_at);
+
+                  return (
+                    <div
+                      key={s.id}
+                      className={`rounded-2xl border bg-white/70 p-5 shadow-sm backdrop-blur dark:bg-zinc-900/60 ${
+                        overdue
+                          ? "border-red-200 dark:border-red-900/60"
+                          : "border-zinc-200 dark:border-zinc-800"
+                      }`}
+                    >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
@@ -312,6 +416,71 @@ export default async function AcademiaAlunosPage({
                         Sem mensalidade associada ainda.
                       </p>
                     )}
+
+                    <div className="mt-5 rounded-2xl border border-violet-200 bg-violet-50/80 p-4 dark:border-violet-900/60 dark:bg-violet-950/30">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Biometria opcional</h4>
+                        <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-800 dark:bg-violet-900 dark:text-violet-200">
+                          acesso profissional
+                        </span>
+                      </div>
+
+                      <div className="grid gap-3 xl:grid-cols-3">
+                        <form action={registerGymFaceProfile} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                          <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
+                          <input type="hidden" name="student_id" value={s.id} />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Rosto</p>
+                          <input name="face_label" defaultValue="principal" placeholder="Ex: principal" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <input name="image_url" placeholder="URL da foto (opcional)" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <div className="mt-2 grid grid-cols-2 gap-2">
+                            <input name="recognition_score" type="number" step="0.01" min="0" max="1" placeholder="0.95" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                            <input name="quality_score" type="number" min="0" max="100" placeholder="90" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          </div>
+                          <button type="submit" className="mt-2 w-full rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">
+                            Salvar rosto
+                          </button>
+                        </form>
+
+                        <form action={registerGymFingerprintTemplate} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                          <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
+                          <input type="hidden" name="student_id" value={s.id} />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Digital</p>
+                          <input name="finger_name" defaultValue="indicador" placeholder="Dedo" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <textarea name="template_text" rows={3} placeholder="Template biométrico" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <div className="mt-2 grid grid-cols-2 gap-2">
+                            <input name="quality_score" type="number" min="0" max="100" placeholder="90" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                            <input name="device_name" placeholder="Leitor" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          </div>
+                          <button type="submit" className="mt-2 w-full rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">
+                            Salvar digital
+                          </button>
+                        </form>
+
+                        <form action={logGymAccessEvent} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                          <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
+                          <input type="hidden" name="student_id" value={s.id} />
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Entrada</p>
+                          <select name="method" defaultValue="facial" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="manual">Manual</option>
+                            <option value="qr">QR</option>
+                            <option value="facial">Face</option>
+                            <option value="fingerprint">Digital</option>
+                          </select>
+                          <select name="result" defaultValue="accepted" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
+                            <option value="accepted">Aceito</option>
+                            <option value="denied">Negado</option>
+                            <option value="expired">Expirado</option>
+                            <option value="manual_override">Override manual</option>
+                          </select>
+                          <input name="confidence" type="number" step="0.01" min="0" max="1" placeholder="0.98" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <input name="device_name" placeholder="Dispositivo" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <input name="notes" placeholder="Observação" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <button type="submit" className="mt-2 w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
+                            Registrar entrada
+                          </button>
+                        </form>
+                      </div>
+                    </div>
                   </div>
                 );
               })
@@ -320,6 +489,7 @@ export default async function AcademiaAlunosPage({
                 Nenhum aluno cadastrado ainda.
               </div>
             )}
+            </div>
           </section>
         </div>
       </main>

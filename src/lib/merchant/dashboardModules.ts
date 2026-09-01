@@ -1018,6 +1018,13 @@ const ACADEMIAS_BASE: DashboardModules = {
         ctaLabel: "Abrir",
       },
       {
+        title: "Presença e acesso",
+        description: "Entrada do aluno por recepção, QR ou biometria",
+        hint: "Agora",
+        href: "/dashboard/modulos/academia_presenca",
+        ctaLabel: "Abrir",
+      },
+      {
         title: "Renovações",
         description: "Quem está vencendo/vencido",
         hint: "Agora",
