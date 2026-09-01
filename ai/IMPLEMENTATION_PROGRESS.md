@@ -58,28 +58,53 @@ Documento vivo. Atualizar a cada sprint concluído.
 - Não existe tabela central de clientes para a maioria dos verticais (padrão
   de `session_token` anônimo); só Academias (`gym_students`) tem login real.
 
-## Sprint 2 — Provider + wiring (bloqueado)
+## Sprint 2 — Provider + wiring (concluído)
 
-**Decisão pendente do lojista (repetindo o que já foi perguntado no plano do
-Sprint 0):** a Vercel é serverless (sem GPU/processo persistente), então não
-dá para rodar Ollama dentro do próprio deploy do Qerbie. Escolher uma opção
-antes de iniciar este sprint:
+**Decisão do lojista:** Ollama auto-hospedado, começando pela **Oracle Cloud
+Free Tier** (VM ARM grátis para sempre) por ser gratuita e mais confiável que
+rodar num PC de casa. A abstração `AIProvider` foi construída para trocar de
+provedor depois (API paga) sem reescrever nada além de variáveis de ambiente.
 
-1. Hospedar um servidor Ollama próprio, acessível via HTTPS (custo de
-   infraestrutura + manutenção).
-2. Usar uma API externa paga (ex.: Groq, DeepSeek, OpenAI) como provedor
-   principal desde já.
-3. Deixar a IA "desligada" (ferramentas prontas, sem provedor) até decidir.
+- [x] `ai/providers/openaiCompatible.ts` — cliente genérico para qualquer
+      provedor compatível com a API de chat da OpenAI (Ollama expõe isso
+      nativamente em `/v1`, assim como Groq/DeepSeek/OpenAI). Faz a conversão
+      de `ToolDefinition`/`AIChatMessage` para o formato `tools`/`messages` da
+      OpenAI, incluindo o ciclo `tool_calls` → resultado da ferramenta.
+- [x] `ai/providers/index.ts` — `getConfiguredProvider()` real, lida por
+      variável de ambiente `AI_PROVIDER`:
+  - `AI_PROVIDER=ollama` + `OLLAMA_BASE_URL` (ex.: `https://ollama.seu-dominio.com/v1`)
+    + `OLLAMA_MODEL` (ex.: `llama3.1:8b`) + `OLLAMA_API_KEY` (opcional, se você
+    colocar autenticação no proxy reverso na frente do Ollama).
+  - `AI_PROVIDER=openai|groq|deepseek` (troca futura) + `AI_PROVIDER_API_KEY`
+    + `AI_PROVIDER_MODEL` — usa os endpoints públicos já conhecidos dessas APIs.
+- [x] `ai/core/prompt.ts` — `buildSystemPrompt()`: regras anti-alucinação
+      (só responder com dados reais das ferramentas, nunca inventar números).
+- [x] `src/app/api/ai/chat/route.ts` (Node runtime) — `POST` que:
+  1. resolve `AssistantContext` pela sessão (401 se não autenticado);
+  2. cria ou reaproveita uma `ai_conversations` do próprio merchant;
+  3. carrega até 30 mensagens de histórico + insere a mensagem do usuário;
+  4. roda um loop de até 4 chamadas ao provedor, executando `tool_calls` via
+     `toolRegistry.execute()` e devolvendo o resultado ao modelo;
+  5. grava cada chamada de ferramenta e o resultado final em `ai_usage_logs`;
+  6. persiste a resposta final em `ai_messages` e retorna `{ conversationId, reply }`.
+- [x] Validado com `get_errors`, `npx eslint` e `npm run build` (todos limpos).
 
-Enquanto não houver resposta, **não criar** `ai/providers/ollama.ts`,
-`ai/providers/openai.ts` nem `src/app/api/ai/chat/route.ts`.
+### Pendências operacionais (fora do código, ação do lojista)
 
-## Sprint 3+ (planejado, não iniciado)
+- [ ] Criar a VM na Oracle Cloud Free Tier, instalar o Ollama, baixar um
+      modelo (ex.: `ollama pull llama3.1:8b`) e publicar a porta do Ollama
+      atrás de HTTPS (proxy reverso, ex.: Caddy/Nginx com certificado
+      automático) — o Ollama sozinho não tem HTTPS nem autenticação.
+- [ ] Definir no Vercel: `AI_PROVIDER=ollama`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`
+      (e `OLLAMA_API_KEY` se configurar autenticação no proxy).
+- [ ] Testar `POST /api/ai/chat` (`{ "message": "quanto vendi hoje?" }`) com
+      o usuário logado antes de construir a UI do painel.
 
-- `/api/ai/chat` (Node runtime) usando `getConfiguredProvider()` +
-  `toolRegistry` + persistência em `ai_conversations`/`ai_messages`.
-- Registro de uso/custo em `ai_usage_logs`.
-- Painel de UI no dashboard (`src/components/ai/AssistantPanel.tsx` ou
-  similar).
-- Ferramentas de escrita (com confirmação explícita do usuário antes de
-  executar qualquer ação que altere dados).
+## Sprint 3 — UI do painel (planejado, não iniciado)
+
+- Componente de chat no dashboard (ex.: `src/components/ai/AssistantPanel.tsx`)
+  consumindo `POST /api/ai/chat`, mantendo `conversationId` em estado local.
+- Ferramentas de escrita (ex.: ajustar estoque, confirmar agendamento) — só
+  depois de definir o fluxo de confirmação explícita do usuário antes de
+  executar qualquer ação que altere dados.
+

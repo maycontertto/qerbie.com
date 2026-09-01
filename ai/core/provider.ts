@@ -15,6 +15,8 @@ export interface AIChatMessage {
   toolName?: string;
   /** Presente quando `role === "tool"`: id da chamada de ferramenta correspondente. */
   toolCallId?: string;
+  /** Presente quando `role === "assistant"` pediu chamadas de ferramenta nesta resposta. */
+  toolCalls?: AIToolCallRequest[];
 }
 
 export interface AIToolCallRequest {
