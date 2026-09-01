@@ -39,26 +39,66 @@ export function FaceAccessScanner({ students }: { students: Array<{ id: string; 
     }
 
     if (!window.isSecureContext && location.hostname !== "localhost") {
-      setError("A câmera só funciona em HTTPS ou localhost.");
+      setError("A câmera só funciona em HTTPS ou localhost. Abra o site em https://www.qerbie.com.");
       return;
     }
 
-    try {
-      setError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
+    const constraintsList = [
+      {
+        video: {
+          facingMode: { ideal: "user" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         audio: false,
-      });
-      streamRef.current = stream;
-      setCameraOpen(true);
+      },
+      {
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      },
+      { video: true, audio: false },
+    ];
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+    for (const constraints of constraintsList) {
+      try {
+        setError(null);
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        streamRef.current = stream;
+        setCameraOpen(true);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = true;
+          videoRef.current.playsInline = true;
+          await videoRef.current.play();
+        }
+        return;
+      } catch {
+        // tenta o próximo fallback de câmera do dispositivo
       }
-    } catch {
-      setError("Não foi possível abrir a câmera. Permita o acesso e tente novamente.");
     }
+
+    setError("Não foi possível abrir a câmera. Verifique a permissão do navegador e tente novamente.");
+  };
+
+  const handleSelectedFile = (file: File | null | undefined) => {
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : null;
+      if (!dataUrl) {
+        setError("Não foi possível ler a imagem selecionada.");
+        return;
+      }
+      setPreview(dataUrl);
+      setError(null);
+    };
+    reader.readAsDataURL(file);
   };
 
   const capturePhoto = () => {
@@ -135,7 +175,15 @@ export function FaceAccessScanner({ students }: { students: Array<{ id: string; 
 
       {cameraOpen ? <video ref={videoRef} autoPlay playsInline muted className="h-48 w-full rounded-xl object-cover" /> : null}
 
-      <input ref={fileInputRef} name="image" type="file" accept="image/*" capture="user" className="hidden" />
+      <input
+        ref={fileInputRef}
+        name="image"
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="hidden"
+        onChange={(event) => handleSelectedFile(event.target.files?.[0])}
+      />
       <input name="device_name" placeholder="Dispositivo / celular / terminal" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
       <input name="notes" placeholder="Observação (opcional)" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
 
@@ -149,13 +197,21 @@ export function FaceAccessScanner({ students }: { students: Array<{ id: string; 
         </button>
         <button
           type="button"
-          onClick={capturePhoto}
-          disabled={!cameraOpen}
-          className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+          onClick={() => fileInputRef.current?.click()}
+          className="rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
         >
-          Capturar rosto
+          Enviar foto
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={capturePhoto}
+        disabled={!cameraOpen}
+        className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+      >
+        Capturar rosto
+      </button>
 
       {error ? <p className="text-xs text-red-600 dark:text-red-300">{error}</p> : null}
 
