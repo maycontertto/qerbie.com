@@ -487,6 +487,7 @@ export async function registerGymFaceProfile(formData: FormData): Promise<void> 
   const faceLabel = (formData.get("face_label") as string | null)?.trim() || "principal";
   const imageUrl = (formData.get("image_url") as string | null)?.trim() || null;
   const imageStoragePath = (formData.get("image_storage_path") as string | null)?.trim() || null;
+  const imageFile = formData.get("image") as File | null;
   const recognitionScore = Number((formData.get("recognition_score") as string | null) ?? "0");
   const qualityScore = Number((formData.get("quality_score") as string | null) ?? "0");
   const returnTo = safeReturnTo(formData.get("return_to"), [
@@ -510,13 +511,39 @@ export async function registerGymFaceProfile(formData: FormData): Promise<void> 
     redirect(`${returnTo}?error=invalid`);
   }
 
+  let nextImageUrl = imageUrl;
+  let nextStoragePath = imageStoragePath;
+
+  if (imageFile && imageFile.size > 0) {
+    if (!imageFile.type.startsWith("image/")) {
+      redirect(`${returnTo}?error=invalid`);
+    }
+
+    const ext = imageFile.name.split(".").pop()?.toLowerCase() || "png";
+    const safeExt = ext.replace(/[^a-z0-9]/g, "") || "png";
+    const path = `${merchant.id}/${student.id}/${Date.now()}-${crypto.randomUUID()}.${safeExt}`;
+
+    const { error: uploadError, data } = await supabase.storage.from("member-avatars").upload(path, imageFile, {
+      contentType: imageFile.type,
+      upsert: false,
+    });
+
+    if (uploadError || !data?.path) {
+      redirect(`${returnTo}?error=save_failed`);
+    }
+
+    const { data: publicUrl } = supabase.storage.from("member-avatars").getPublicUrl(data.path);
+    nextImageUrl = publicUrl?.publicUrl ?? nextImageUrl;
+    nextStoragePath = data.path ?? nextStoragePath;
+  }
+
   const { error } = await supabase.from("gym_face_profiles").upsert(
     {
       merchant_id: merchant.id,
       student_id: student.id,
       face_label: faceLabel,
-      image_url: imageUrl,
-      image_storage_path: imageStoragePath,
+      image_url: nextImageUrl,
+      image_storage_path: nextStoragePath,
       recognition_score: Number.isFinite(recognitionScore) ? Math.max(0, Math.min(1, recognitionScore)) : 0,
       quality_score: Number.isFinite(qualityScore) ? Math.max(0, Math.min(100, qualityScore)) : 0,
       is_active: true,

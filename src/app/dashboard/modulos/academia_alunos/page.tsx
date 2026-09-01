@@ -10,6 +10,7 @@ import {
   resetGymStudentPassword,
   setGymMembershipDueDate,
 } from "@/lib/gym/actions";
+import { FaceCaptureField } from "./FaceCaptureField";
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -426,12 +427,12 @@ export default async function AcademiaAlunosPage({
                       </div>
 
                       <div className="grid gap-3 xl:grid-cols-3">
-                        <form action={registerGymFaceProfile} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                        <form action={registerGymFaceProfile} encType="multipart/form-data" className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                           <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
                           <input type="hidden" name="student_id" value={s.id} />
                           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Rosto</p>
                           <input name="face_label" defaultValue="principal" placeholder="Ex: principal" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
-                          <input name="image_url" placeholder="URL da foto (opcional)" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <FaceCaptureField />
                           <div className="mt-2 grid grid-cols-2 gap-2">
                             <input name="recognition_score" type="number" step="0.01" min="0" max="1" placeholder="0.95" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
                             <input name="quality_score" type="number" min="0" max="100" placeholder="90" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
