@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
 import { registerGymAccessCheckin } from "@/lib/gym/actions";
+import { FaceAccessScanner } from "./FaceAccessScanner";
 
 export default async function AcademiaPresencaPage({
   searchParams,
@@ -81,53 +82,7 @@ export default async function AcademiaPresencaPage({
         <section className="mt-8 grid gap-6 lg:grid-cols-[420px_1fr]">
           <aside className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Registrar entrada</h2>
-            <form action={registerGymAccessCheckin} className="mt-4 space-y-3">
-              <input type="hidden" name="return_to" value="/dashboard/modulos/academia_presenca" />
-              <select name="student_id" required className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
-                <option value="">Selecione o aluno</option>
-                {(students ?? []).map((student) => (
-                  <option key={student.id} value={student.id}>
-                    {student.name} • {student.login}
-                  </option>
-                ))}
-              </select>
-
-              <select name="method" defaultValue="facial" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
-                <option value="manual">Manual</option>
-                <option value="qr">QR</option>
-                <option value="facial">Face</option>
-                <option value="fingerprint">Digital</option>
-              </select>
-
-              <input
-                name="confidence"
-                type="number"
-                step="0.01"
-                min="0"
-                max="1"
-                placeholder="Confiança (0.98)"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-              />
-
-              <input
-                name="device_name"
-                placeholder="Dispositivo / ponto de acesso"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-              />
-
-              <input
-                name="notes"
-                placeholder="Observação (opcional)"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-              />
-
-              <button
-                type="submit"
-                className="w-full rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                Confirmar entrada
-              </button>
-            </form>
+            <FaceAccessScanner students={students ?? []} />
           </aside>
 
           <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">

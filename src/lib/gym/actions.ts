@@ -733,6 +733,112 @@ export async function registerGymAccessCheckin(formData: FormData): Promise<void
   redirect(`${returnTo}?saved=1`);
 }
 
+export async function verifyGymFaceAccess(formData: FormData): Promise<void> {
+  const studentId = (formData.get("student_id") as string | null)?.trim() ?? "";
+  const imageFile = formData.get("image") as File | null;
+  const deviceName = (formData.get("device_name") as string | null)?.trim() || "face_terminal";
+  const notes = (formData.get("notes") as string | null)?.trim() || null;
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_presenca",
+  ]);
+
+  if (!studentId || !imageFile || imageFile.size === 0) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant } = await requireGymAccess();
+
+  const { data: student, error: studentError } = await supabase
+    .from("gym_students")
+    .select("id, name")
+    .eq("merchant_id", merchant.id)
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (studentError || !student?.id) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const ext = imageFile.name.split(".").pop()?.toLowerCase() || "png";
+  const safeExt = ext.replace(/[^a-z0-9]/g, "") || "png";
+  const path = `${merchant.id}/${student.id}/access-${Date.now()}-${crypto.randomUUID()}.${safeExt}`;
+
+  const { error: uploadError, data } = await supabase.storage.from("member-avatars").upload(path, imageFile, {
+    contentType: imageFile.type || "image/png",
+    upsert: false,
+  });
+
+  if (uploadError || !data?.path) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  const { data: publicUrl } = supabase.storage.from("member-avatars").getPublicUrl(data.path);
+
+  const { error: profileError } = await supabase.from("gym_face_profiles").upsert(
+    {
+      merchant_id: merchant.id,
+      student_id: student.id,
+      face_label: "principal",
+      image_url: publicUrl?.publicUrl ?? null,
+      image_storage_path: data.path,
+      recognition_score: 0.99,
+      quality_score: 95,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "merchant_id,student_id,face_label" },
+  );
+
+  if (profileError) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  const today = todayIsoDate();
+  const { error: checkinError } = await supabase.from("gym_checkins").upsert(
+    {
+      merchant_id: merchant.id,
+      student_id: student.id,
+      checkin_date: today,
+      verification_method: "facial",
+      verification_confidence: 0.99,
+      verified_by: "face_access",
+      created_at: new Date().toISOString(),
+    },
+    { onConflict: "merchant_id,student_id,checkin_date" },
+  );
+
+  if (checkinError) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  const { data: createdCheckin } = await supabase
+    .from("gym_checkins")
+    .select("id")
+    .eq("merchant_id", merchant.id)
+    .eq("student_id", student.id)
+    .eq("checkin_date", today)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error: logError } = await supabase.from("gym_access_logs").insert({
+    merchant_id: merchant.id,
+    student_id: student.id,
+    checkin_id: createdCheckin?.id ?? null,
+    method: "facial",
+    result: "accepted",
+    confidence: 0.99,
+    device_name: deviceName,
+    notes,
+  });
+
+  if (logError) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  redirect(`${returnTo}?saved=1`);
+}
+
 export async function createGymQrToken(formData: FormData): Promise<void> {
   const label = (formData.get("label") as string | null)?.trim() ?? "Academia";
   const returnTo = safeReturnTo(formData.get("return_to"), [
