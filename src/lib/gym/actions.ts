@@ -411,6 +411,9 @@ export async function createGymStudent(formData: FormData): Promise<void> {
   const loginRaw = (formData.get("login") as string | null)?.trim() ?? "";
   const login = loginRaw.toLowerCase();
   const password = (formData.get("password") as string | null)?.trim() ?? "";
+  const nameRaw = (formData.get("name") as string | null)?.trim() ?? "";
+  const phone = (formData.get("phone") as string | null)?.trim() || null;
+  const address = (formData.get("address") as string | null)?.trim() || null;
   const planId = (formData.get("plan_id") as string | null)?.trim() ?? "";
   const nextDueAt = parseDateOrNull(formData.get("next_due_at"));
   const returnTo = safeReturnTo(formData.get("return_to"), [
@@ -426,13 +429,15 @@ export async function createGymStudent(formData: FormData): Promise<void> {
 
   const passwordHash = hashPassword(password);
   const sessionToken = randomBytes(24).toString("base64url");
-  const name = loginRaw || login;
+  const name = nameRaw || loginRaw || login;
 
   const { data: student, error: studentError } = await supabase
     .from("gym_students")
     .insert({
       merchant_id: merchant.id,
       name,
+      phone,
+      address,
       login,
       password_hash: passwordHash,
       session_token: sessionToken,
@@ -460,6 +465,39 @@ export async function createGymStudent(formData: FormData): Promise<void> {
   });
 
   if (membershipError) {
+    redirect(`${returnTo}?error=save_failed`);
+  }
+
+  redirect(`${returnTo}?saved=1`);
+}
+
+export async function updateGymStudentProfile(formData: FormData): Promise<void> {
+  const studentId = (formData.get("student_id") as string | null)?.trim() ?? "";
+  const nameRaw = (formData.get("name") as string | null)?.trim() ?? "";
+  const phone = (formData.get("phone") as string | null)?.trim() || null;
+  const address = (formData.get("address") as string | null)?.trim() || null;
+  const returnTo = safeReturnTo(formData.get("return_to"), [
+    "/dashboard/modulos/academia_alunos",
+  ]);
+
+  if (!studentId || nameRaw.length < 2) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { supabase, merchant } = await requireGymAccess();
+
+  const { error } = await supabase
+    .from("gym_students")
+    .update({
+      name: nameRaw,
+      phone,
+      address,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("merchant_id", merchant.id)
+    .eq("id", studentId);
+
+  if (error) {
     redirect(`${returnTo}?error=save_failed`);
   }
 
@@ -612,8 +650,6 @@ export async function registerGymFaceProfile(formData: FormData): Promise<void> 
   const imageUrl = (formData.get("image_url") as string | null)?.trim() || null;
   const imageStoragePath = (formData.get("image_storage_path") as string | null)?.trim() || null;
   const imageFile = formData.get("image") as File | null;
-  const recognitionScore = Number((formData.get("recognition_score") as string | null) ?? "0");
-  const qualityScore = Number((formData.get("quality_score") as string | null) ?? "0");
   const returnTo = safeReturnTo(formData.get("return_to"), [
     "/dashboard/modulos/academia_alunos",
   ]);
@@ -668,8 +704,6 @@ export async function registerGymFaceProfile(formData: FormData): Promise<void> 
       face_label: faceLabel,
       image_url: nextImageUrl,
       image_storage_path: nextStoragePath,
-      recognition_score: Number.isFinite(recognitionScore) ? Math.max(0, Math.min(1, recognitionScore)) : 0,
-      quality_score: Number.isFinite(qualityScore) ? Math.max(0, Math.min(100, qualityScore)) : 0,
       is_active: true,
       updated_at: new Date().toISOString(),
     },
@@ -689,7 +723,6 @@ export async function registerGymFingerprintTemplate(formData: FormData): Promis
   const templateText = (formData.get("template_text") as string | null)?.trim() ?? "";
   const templateHash = (formData.get("template_hash") as string | null)?.trim() || null;
   const deviceUserCode = (formData.get("device_user_code") as string | null)?.trim() || null;
-  const qualityScore = Number((formData.get("quality_score") as string | null) ?? "0");
   const deviceName = (formData.get("device_name") as string | null)?.trim() || null;
   const returnTo = safeReturnTo(formData.get("return_to"), [
     "/dashboard/modulos/academia_alunos",
@@ -720,7 +753,6 @@ export async function registerGymFingerprintTemplate(formData: FormData): Promis
       template_text: templateText,
       template_hash: templateHash,
       device_user_code: deviceUserCode,
-      quality_score: Number.isFinite(qualityScore) ? Math.max(0, Math.min(100, qualityScore)) : 0,
       device_name: deviceName,
       is_active: true,
       updated_at: new Date().toISOString(),
