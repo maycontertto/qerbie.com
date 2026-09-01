@@ -3,7 +3,6 @@ import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guar
 import { createClient } from "@/lib/supabase/server";
 import {
   createGymStudent,
-  logGymAccessEvent,
   recordGymPayment,
   registerGymFaceProfile,
   registerGymFingerprintTemplate,
@@ -163,6 +162,8 @@ export default async function AcademiaAlunosPage({
         ? { kind: "error" as const, message: "Dados inválidos." }
         : error === "login_taken"
           ? { kind: "error" as const, message: "Esse login já existe." }
+        : error === "device_code_taken"
+          ? { kind: "error" as const, message: "Esse código do leitor já está em uso por outro aluno." }
         : error === "save_failed"
           ? { kind: "error" as const, message: "Não foi possível salvar agora. Tente novamente." }
           : null;
@@ -426,7 +427,7 @@ export default async function AcademiaAlunosPage({
                         </span>
                       </div>
 
-                      <div className="grid gap-3 xl:grid-cols-3">
+                      <div className="grid gap-3 xl:grid-cols-2">
                         <form action={registerGymFaceProfile} encType="multipart/form-data" className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                           <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
                           <input type="hidden" name="student_id" value={s.id} />
@@ -448,36 +449,13 @@ export default async function AcademiaAlunosPage({
                           <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Digital</p>
                           <input name="finger_name" defaultValue="indicador" placeholder="Dedo" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
                           <textarea name="template_text" rows={3} placeholder="Template biométrico" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                          <input name="device_user_code" placeholder="Código no leitor USB (opcional)" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
                           <div className="mt-2 grid grid-cols-2 gap-2">
                             <input name="quality_score" type="number" min="0" max="100" placeholder="90" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
                             <input name="device_name" placeholder="Leitor" className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
                           </div>
                           <button type="submit" className="mt-2 w-full rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">
                             Salvar digital
-                          </button>
-                        </form>
-
-                        <form action={logGymAccessEvent} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
-                          <input type="hidden" name="return_to" value="/dashboard/modulos/academia_alunos" />
-                          <input type="hidden" name="student_id" value={s.id} />
-                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Entrada</p>
-                          <select name="method" defaultValue="facial" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
-                            <option value="manual">Manual</option>
-                            <option value="qr">QR</option>
-                            <option value="facial">Face</option>
-                            <option value="fingerprint">Digital</option>
-                          </select>
-                          <select name="result" defaultValue="accepted" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800">
-                            <option value="accepted">Aceito</option>
-                            <option value="denied">Negado</option>
-                            <option value="expired">Expirado</option>
-                            <option value="manual_override">Override manual</option>
-                          </select>
-                          <input name="confidence" type="number" step="0.01" min="0" max="1" placeholder="0.98" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
-                          <input name="device_name" placeholder="Dispositivo" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
-                          <input name="notes" placeholder="Observação" className="mt-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
-                          <button type="submit" className="mt-2 w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500">
-                            Registrar entrada
                           </button>
                         </form>
                       </div>
