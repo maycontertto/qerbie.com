@@ -100,11 +100,31 @@ provedor depois (API paga) sem reescrever nada além de variáveis de ambiente.
 - [ ] Testar `POST /api/ai/chat` (`{ "message": "quanto vendi hoje?" }`) com
       o usuário logado antes de construir a UI do painel.
 
-## Sprint 3 — UI do painel (planejado, não iniciado)
+## Sprint 3 — UI do painel (concluído)
 
-- Componente de chat no dashboard (ex.: `src/components/ai/AssistantPanel.tsx`)
-  consumindo `POST /api/ai/chat`, mantendo `conversationId` em estado local.
+- [x] `src/app/dashboard/AssistantWidget.tsx` — botão flutuante + painel de
+      chat (client component), mesmo estilo visual do dashboard (zinc/rounded,
+      dark mode). Mantém `conversationId` em memória durante a sessão da
+      página e consome `POST /api/ai/chat`.
+- [x] Renderizado apenas em `src/app/dashboard/page.tsx` (hub principal) por
+      enquanto — ainda não replicado em `/dashboard/modulos/**`,
+      `/dashboard/branding` ou `/dashboard/pagamento`. Se quiser em todas as
+      páginas do dashboard, criar `src/app/dashboard/layout.tsx` envolvendo
+      `{children}` com o widget.
+- [x] Validado com `get_errors`, `npx eslint` e `npm run build` (limpos).
+- Antes de funcionar de verdade, ainda depende do Sprint 2 estar 100%
+  operacional (servidor Ollama no ar + env vars no Vercel) — até lá, o
+  widget mostra a mensagem de erro amigável vinda da API (503 provider não
+  configurado).
+
+## Sprint 4+ (planejado, não iniciado)
+
 - Ferramentas de escrita (ex.: ajustar estoque, confirmar agendamento) — só
   depois de definir o fluxo de confirmação explícita do usuário antes de
   executar qualquer ação que altere dados.
+- Persistir/mostrar histórico de conversas anteriores (hoje cada carregamento
+  de página começa uma conversa nova no widget, embora o histórico fique
+  salvo em `ai_conversations`/`ai_messages`).
+- Replicar o widget nas demais páginas do dashboard via layout compartilhado.
+
 
