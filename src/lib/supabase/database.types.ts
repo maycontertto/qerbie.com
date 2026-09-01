@@ -3005,6 +3005,152 @@ export interface Database {
           },
         ];
       };
+
+      ai_conversations: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          user_id: string;
+          title: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          user_id: string;
+          title?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          user_id?: string;
+          title?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      ai_messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          merchant_id: string;
+          role: string;
+          content: string;
+          tool_name: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          merchant_id: string;
+          role: string;
+          content: string;
+          tool_name?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          conversation_id?: string;
+          merchant_id?: string;
+          role?: string;
+          content?: string;
+          tool_name?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_conversations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_messages_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+
+      ai_usage_logs: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          user_id: string | null;
+          conversation_id: string | null;
+          provider: string | null;
+          model: string | null;
+          tool_name: string | null;
+          status: string;
+          error_message: string | null;
+          latency_ms: number | null;
+          input_tokens: number | null;
+          output_tokens: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          user_id?: string | null;
+          conversation_id?: string | null;
+          provider?: string | null;
+          model?: string | null;
+          tool_name?: string | null;
+          status?: string;
+          error_message?: string | null;
+          latency_ms?: number | null;
+          input_tokens?: number | null;
+          output_tokens?: number | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          user_id?: string | null;
+          conversation_id?: string | null;
+          provider?: string | null;
+          model?: string | null;
+          tool_name?: string | null;
+          status?: string;
+          error_message?: string | null;
+          latency_ms?: number | null;
+          input_tokens?: number | null;
+          output_tokens?: number | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_logs_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_usage_logs_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_conversations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
 
     Views: Record<string, never>;
