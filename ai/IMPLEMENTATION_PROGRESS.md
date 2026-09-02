@@ -304,4 +304,35 @@ permissão pode mudar o status.
 Validado com `get_errors`, `npm run build` e `npx eslint`; commit `317ad50`,
 push e deploy em produção concluídos. **Ainda não testado manualmente.**
 
+### Consciência de segmento de negócio (multi-vertical) [x]
+
+Descoberta ao testar a Fase B3: o Qerbie atende ~20 segmentos diferentes
+(`BusinessCategoryKey` em `src/lib/merchant/businessCategories.ts`) e nem
+todo módulo do dashboard existe para todo segmento (ex.: "Trocas" só existe
+para loja/material de construção/casa de ração/açaiteria — ver
+`getDashboardModules()` em `src/lib/merchant/dashboardModules.ts`). O
+assistente propôs uma ação de um módulo que o estabelecimento de teste do
+usuário nem usa, o que gerou confusão.
+
+- [x] `ai/types/index.ts` — `ToolDefinition` ganhou `requiresModuleHref?:
+      string` opcional: se definido, a ferramenta só aparece disponível (e só
+      executa) para segmentos que têm aquele módulo habilitado no dashboard.
+- [x] `ai/core/moduleAvailability.ts` (novo) — `isModuleEnabledForCategory()`
+      reaproveita `getDashboardModules()` (a MESMA função que decide a
+      navegação real do dashboard humano) em vez de manter uma segunda lista
+      paralela — elimina o risco de as duas listas divergirem.
+- [x] `ai/core/registry.ts` — `listAvailable()` e `execute()` agora também
+      checam `requiresModuleHref` (além da permissão), com a mesma filosofia
+      de "falha fechada" já usada pra permissão.
+- [x] `ai/tools/exchanges.ts` — `get_exchange_requests` e
+      `update_exchange_status` marcadas com
+      `requiresModuleHref: "/dashboard/modulos/trocas"`.
+- [x] `ai/core/prompt.ts` — o prompt de sistema agora mostra o **nome legível**
+      do segmento (ex.: "Casa de Ração" em vez da chave interna
+      `casa_de_racao`) e explica ao modelo que nem todo recurso existe pra
+      todo segmento, e que as ferramentas disponíveis já refletem isso.
+
+Validado com `get_errors` + `npm run build` + `npx eslint`; commit `8653922`,
+push e deploy em produção concluídos.
+
 
