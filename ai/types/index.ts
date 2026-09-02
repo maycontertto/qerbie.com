@@ -76,6 +76,12 @@ export interface ToolDefinition<TArgs = Record<string, never>, TData = unknown> 
   kind: ToolKind;
   parameters: ToolParameterSchema;
   run(ctx: AssistantContext, args: TArgs): Promise<ToolResult<TData>>;
+  /**
+   * Obrigatório para ferramentas `kind: "write"`: monta o texto de prévia
+   * mostrado ao usuário antes de qualquer confirmação (nunca executa nada).
+   * Sem isso, a rota de chat recusa propor a ação (falha fechada).
+   */
+  buildPreview?(ctx: AssistantContext, args: TArgs): string;
 }
 
 export type AssistantRole = "user" | "assistant" | "tool" | "system";

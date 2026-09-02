@@ -4,7 +4,8 @@ import { buildSystemPrompt } from "@ai/core/prompt";
 import { toolRegistry } from "@ai/core/registry";
 import { getConfiguredProvider } from "@ai/providers";
 import { registerAllTools } from "@ai/tools";
-import type { AIChatMessage } from "@ai/core/provider";
+import type { AIChatMessage, AIToolCallRequest } from "@ai/core/provider";
+import type { AssistantContext } from "@ai/types";
 
 const MAX_TOOL_ITERATIONS = 4;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -103,6 +104,21 @@ export async function POST(req: Request) {
       if (result.finishReason === "tool_calls" && result.toolCalls && result.toolCalls.length > 0) {
         messages.push({ role: "assistant", content: result.message.content, toolCalls: result.toolCalls });
 
+        // Se o modelo pedir uma ferramenta de escrita, a rodada para aqui: nenhuma
+        // ferramenta é executada (nem as de leitura que vieram junto na mesma
+        // chamada) até o usuário confirmar explicitamente a ação proposta.
+        const writeCall = result.toolCalls.find((call) => toolRegistry.get(call.name)?.kind === "write");
+
+        if (writeCall) {
+          const pendingActionResponse = await proposeWriteAction({
+            ctx,
+            conversationId,
+            providerName: provider.name,
+            call: writeCall,
+          });
+          return pendingActionResponse;
+        }
+
         for (const call of result.toolCalls) {
           const toolStartedAt = Date.now();
           const toolResult = await toolRegistry.execute(call.name, ctx, call.arguments);
@@ -168,4 +184,105 @@ export async function POST(req: Request) {
     .eq("id", conversationId);
 
   return NextResponse.json({ conversationId, reply: finalContent });
+}
+
+interface ProposeWriteActionInput {
+  ctx: AssistantContext;
+  conversationId: string;
+  providerName: string;
+  call: AIToolCallRequest;
+}
+
+/**
+ * Registra uma proposta de ferramenta `kind: "write"` em `ai_pending_actions`
+ * e devolve o preview ao cliente — NUNCA executa a ferramenta aqui. A execução
+ * real só acontece em /api/ai/actions/[id]/confirm, relendo os argumentos
+ * gravados nesta tabela (nunca os que o cliente reenviar).
+ */
+async function proposeWriteAction({
+  ctx,
+  conversationId,
+  providerName,
+  call,
+}: ProposeWriteActionInput): Promise<NextResponse> {
+  const tool = toolRegistry.get(call.name);
+
+  const replyWithoutProposal = async (message: string) => {
+    await ctx.supabase.from("ai_messages").insert({
+      conversation_id: conversationId,
+      merchant_id: ctx.merchantId,
+      role: "assistant",
+      content: message,
+    });
+    await ctx.supabase
+      .from("ai_conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", conversationId);
+    return NextResponse.json({ conversationId, reply: message });
+  };
+
+  if (!tool || tool.kind !== "write") {
+    return replyWithoutProposal("Essa ação ainda não está disponível pelo assistente.");
+  }
+
+  if (tool.requiredPermission !== null && !ctx.can(tool.requiredPermission)) {
+    return replyWithoutProposal("Você não tem permissão para propor essa ação.");
+  }
+
+  if (typeof tool.buildPreview !== "function") {
+    console.error(`[ai/chat] ferramenta de escrita "${tool.name}" sem buildPreview configurado.`);
+    return replyWithoutProposal("Essa ação ainda não está disponível pelo assistente.");
+  }
+
+  let previewText: string;
+  try {
+    previewText = tool.buildPreview(ctx, call.arguments);
+  } catch (error) {
+    console.error(`[ai/chat] falha ao montar prévia da ação "${tool.name}":`, error);
+    return replyWithoutProposal("Não consegui montar a prévia dessa ação. Tente novamente.");
+  }
+
+  const { data: pending, error: pendingError } = await ctx.supabase
+    .from("ai_pending_actions")
+    .insert({
+      merchant_id: ctx.merchantId,
+      user_id: ctx.userId,
+      conversation_id: conversationId,
+      tool_name: tool.name,
+      arguments: call.arguments,
+      preview_text: previewText,
+    })
+    .select("id, preview_text")
+    .single();
+
+  if (pendingError || !pending) {
+    console.error("[ai/chat] falha ao gravar ai_pending_actions:", pendingError);
+    return replyWithoutProposal("Não consegui preparar essa ação para confirmação. Tente novamente.");
+  }
+
+  await ctx.supabase.from("ai_messages").insert({
+    conversation_id: conversationId,
+    merchant_id: ctx.merchantId,
+    role: "assistant",
+    content: pending.preview_text,
+  });
+
+  await ctx.supabase.from("ai_usage_logs").insert({
+    merchant_id: ctx.merchantId,
+    user_id: ctx.userId,
+    conversation_id: conversationId,
+    provider: providerName,
+    tool_name: tool.name,
+    status: "ok",
+  });
+
+  await ctx.supabase
+    .from("ai_conversations")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", conversationId);
+
+  return NextResponse.json({
+    conversationId,
+    pendingAction: { id: pending.id, previewText: pending.preview_text },
+  });
 }
