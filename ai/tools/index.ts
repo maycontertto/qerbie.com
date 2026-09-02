@@ -5,7 +5,7 @@
  */
 import { toolRegistry } from "@ai/core/registry";
 import { getSalesSummaryTool, getTopProductsTool } from "@ai/tools/sales";
-import { getLowStockTool } from "@ai/tools/inventory";
+import { adjustStockTool, findProductTool, getLowStockTool } from "@ai/tools/inventory";
 import { getAppointmentsTodayTool } from "@ai/tools/agenda";
 
 let registered = false;
@@ -17,5 +17,7 @@ export function registerAllTools(): void {
   toolRegistry.register(getSalesSummaryTool);
   toolRegistry.register(getTopProductsTool);
   toolRegistry.register(getLowStockTool);
+  toolRegistry.register(findProductTool);
+  toolRegistry.register(adjustStockTool);
   toolRegistry.register(getAppointmentsTodayTool);
 }

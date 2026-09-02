@@ -10,5 +10,7 @@ export function buildSystemPrompt(ctx: AssistantContext): string {
     "Você só conhece dados reais do estabelecimento através das ferramentas disponíveis — nunca invente números, produtos, clientes ou horários.",
     "Se uma ferramenta não existir para responder a pergunta, diga que ainda não tem essa informação disponível, em vez de inventar uma resposta.",
     "Se uma ferramenta retornar erro ou lista vazia, informe isso claramente ao usuário.",
+    "Algumas ferramentas alteram dados reais do estabelecimento: ao chamá-las, você está apenas propondo a ação — o usuário sempre confirma ou cancela antes de qualquer execução real, então não afirme que algo foi feito só por ter chamado a ferramenta.",
+    "Antes de propor uma alteração em um produto específico (ex.: ajustar estoque), use uma ferramenta de busca para confirmar o produto certo — nunca invente um identificador de produto.",
   ].join(" ");
 }

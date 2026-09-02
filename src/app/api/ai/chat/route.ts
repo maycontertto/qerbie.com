@@ -236,10 +236,12 @@ async function proposeWriteAction({
 
   let previewText: string;
   try {
-    previewText = tool.buildPreview(ctx, call.arguments);
+    previewText = await tool.buildPreview(ctx, call.arguments);
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Não consegui montar a prévia dessa ação. Tente novamente.";
     console.error(`[ai/chat] falha ao montar prévia da ação "${tool.name}":`, error);
-    return replyWithoutProposal("Não consegui montar a prévia dessa ação. Tente novamente.");
+    return replyWithoutProposal(message);
   }
 
   const { data: pending, error: pendingError } = await ctx.supabase

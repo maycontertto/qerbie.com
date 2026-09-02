@@ -79,9 +79,13 @@ export interface ToolDefinition<TArgs = Record<string, never>, TData = unknown> 
   /**
    * Obrigatório para ferramentas `kind: "write"`: monta o texto de prévia
    * mostrado ao usuário antes de qualquer confirmação (nunca executa nada).
-   * Sem isso, a rota de chat recusa propor a ação (falha fechada).
+   * Pode ser assíncrona para validar/buscar dados reais (ex.: nome atual do
+   * produto) antes de descrever a ação — nunca invente esses dados. Se
+   * lançar um erro, a proposta é recusada e a mensagem do erro é mostrada
+   * ao usuário no lugar da prévia. Sem isso, a rota de chat recusa propor a
+   * ação (falha fechada).
    */
-  buildPreview?(ctx: AssistantContext, args: TArgs): string;
+  buildPreview?(ctx: AssistantContext, args: TArgs): string | Promise<string>;
 }
 
 export type AssistantRole = "user" | "assistant" | "tool" | "system";

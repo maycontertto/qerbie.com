@@ -2,9 +2,59 @@
 
 import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 
 const STOCK_BASE = "/dashboard/modulos/estoque";
+
+export interface UpdateProductStockInput {
+  merchantId: string;
+  productId: string;
+  trackStock: boolean;
+  /** `null` mantém a quantidade atual (só altera `track_stock`). */
+  stockQuantity: number | null;
+}
+
+export interface UpdateProductStockResult {
+  ok: boolean;
+  error?: "save_failed" | "not_found";
+}
+
+/**
+ * Mutação central de estoque, reaproveitada pela Server Action `saveProductStock`
+ * (formulário humano) e pela ferramenta de IA `adjust_stock` (ai/tools/inventory.ts).
+ * Não faz nenhuma checagem de permissão — quem chama é responsável por isso.
+ */
+export async function updateProductStockCore(
+  supabase: SupabaseClient<Database>,
+  input: UpdateProductStockInput,
+): Promise<UpdateProductStockResult> {
+  const update: Database["public"]["Tables"]["products"]["Update"] = { track_stock: input.trackStock };
+  if (input.stockQuantity != null) update.stock_quantity = input.stockQuantity;
+
+  const { data, error } = await supabase
+    .from("products")
+    .update(update)
+    .eq("merchant_id", input.merchantId)
+    .eq("id", input.productId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("updateProductStockCore: update failed", {
+      code: error.code,
+      message: error.message,
+      details: (error as { details?: string | null }).details,
+    });
+    return { ok: false, error: "save_failed" };
+  }
+
+  if (!data) {
+    return { ok: false, error: "not_found" };
+  }
+
+  return { ok: true };
+}
 
 function clampInt(value: FormDataEntryValue | null, min: number, max: number): number | null {
   if (value == null) return null;
@@ -110,21 +160,14 @@ export async function saveProductStock(formData: FormData): Promise<void> {
     redirect("/dashboard");
   }
 
-  const update: { track_stock: boolean; stock_quantity?: number } = { track_stock: track };
-  if (qty != null) update.stock_quantity = qty;
+  const result = await updateProductStockCore(supabase, {
+    merchantId: merchant.id,
+    productId,
+    trackStock: track,
+    stockQuantity: qty,
+  });
 
-  const { error } = await supabase
-    .from("products")
-    .update(update)
-    .eq("merchant_id", merchant.id)
-    .eq("id", productId);
-
-  if (error) {
-    console.error("saveProductStock: update failed", {
-      code: error.code,
-      message: error.message,
-      details: (error as { details?: string | null }).details,
-    });
+  if (!result.ok) {
     redirect(STOCK_BASE + "?error=save_failed");
   }
 
