@@ -89,16 +89,47 @@ provedor depois (API paga) sem reescrever nada além de variáveis de ambiente.
   6. persiste a resposta final em `ai_messages` e retorna `{ conversationId, reply }`.
 - [x] Validado com `get_errors`, `npx eslint` e `npm run build` (todos limpos).
 
+### Bloqueio real de infraestrutura (Oracle Cloud)
+
+- A VM Oracle Free Tier (A1.Flex/ARM) não pôde ser criada: a região São Paulo
+  está com capacidade esgotada ("out of capacity") para 2 OCPU/12GB e
+  1 OCPU/6GB, mesmo com toda a config pronta (rede, IP público, SSH,
+  storage, imagem Ubuntu). Não é um bug do Qerbie — é limitação do free tier
+  da Oracle. O lojista pode tentar novamente mais tarde (a disponibilidade
+  varia) ou pagar por um plano com capacidade garantida.
+
+### Pivô temporário: Groq como provedor bridge (em produção agora)
+
+- Enquanto a VM Oracle não sobe, `AI_PROVIDER=groq` está ativo em produção —
+  zero mudança de código, só variáveis de ambiente (valida a decisão de
+  arquitetura do cliente OpenAI-compatible genérico).
+- Env vars atuais na Vercel: `AI_PROVIDER=groq`, `AI_PROVIDER_API_KEY`
+  (gerada em console.groq.com/keys, grátis, sem cartão) e
+  `AI_PROVIDER_MODEL=openai/gpt-oss-120b`.
+- **Bug corrigido:** `getConfiguredProvider()` não fazia `.trim()` nas env
+  vars — corrigido para tolerar espaços/quebras de linha ao colar valores no
+  dashboard da Vercel.
+- **Causa raiz do 502 inicial:** o modelo configurado originalmente,
+  `llama-3.3-70b-versatile`, foi **removido do catálogo da Groq**. Modelos
+  de texto disponíveis em 2026-09 (revalidar antes de trocar no futuro, a
+  Groq depreca modelos com frequência): `openai/gpt-oss-120b`,
+  `openai/gpt-oss-20b`, `openai/gpt-oss-safeguard-20b`, `groq/compound`,
+  `groq/compound-mini`, `qwen/qwen3.6-27b`, `qwen/qwen3.8-27b`,
+  `allam-2-7b` (foco árabe). Escolhido `openai/gpt-oss-120b` por qualidade e
+  suporte a tool calling.
+- Adicionado `console.error` no catch de `route.ts` pra o erro real do
+  provedor aparecer direto nos logs do Vercel (antes só ia pro
+  `ai_usage_logs.error_message` no Supabase).
+- **Testado e funcionando em produção** (`www.qerbie.com/dashboard`): o
+  assistente respondeu corretamente a "quero que veja se foi vendido alguma
+  coisa hoje" usando `get_sales_summary`.
+
 ### Pendências operacionais (fora do código, ação do lojista)
 
-- [ ] Criar a VM na Oracle Cloud Free Tier, instalar o Ollama, baixar um
-      modelo (ex.: `ollama pull llama3.1:8b`) e publicar a porta do Ollama
-      atrás de HTTPS (proxy reverso, ex.: Caddy/Nginx com certificado
-      automático) — o Ollama sozinho não tem HTTPS nem autenticação.
-- [ ] Definir no Vercel: `AI_PROVIDER=ollama`, `OLLAMA_BASE_URL`, `OLLAMA_MODEL`
-      (e `OLLAMA_API_KEY` se configurar autenticação no proxy).
-- [ ] Testar `POST /api/ai/chat` (`{ "message": "quanto vendi hoje?" }`) com
-      o usuário logado antes de construir a UI do painel.
+- [ ] Quando a Oracle liberar capacidade: criar a VM, instalar o Ollama,
+      baixar um modelo (ex.: `ollama pull llama3.1:8b`) e publicar a porta
+      atrás de HTTPS (proxy reverso) — aí trocar `AI_PROVIDER` de volta para
+      `ollama` (self-hosted, sem custo por token) se desejado.
 
 ## Sprint 3 — UI do painel (concluído)
 
@@ -113,9 +144,10 @@ provedor depois (API paga) sem reescrever nada além de variáveis de ambiente.
       `{children}` com o widget.
 - [x] Validado com `get_errors`, `npx eslint` e `npm run build` (limpos).
 - Antes de funcionar de verdade, ainda depende do Sprint 2 estar 100%
-  operacional (servidor Ollama no ar + env vars no Vercel) — até lá, o
-  widget mostra a mensagem de erro amigável vinda da API (503 provider não
-  configurado).
+  operacional (provedor de IA configurado + env vars no Vercel) — hoje isso
+  já está resolvido via Groq (ver seção "Pivô temporário" acima).
+- **Confirmado funcionando em produção** — teste real do lojista via widget
+  respondeu corretamente usando dados reais do Supabase.
 
 ## Sprint 4+ (planejado, não iniciado)
 
