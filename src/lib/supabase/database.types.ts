@@ -3151,6 +3151,73 @@ export interface Database {
           },
         ];
       };
+
+      ai_pending_actions: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          user_id: string;
+          conversation_id: string | null;
+          tool_name: string;
+          arguments: Json;
+          preview_text: string;
+          status: string;
+          result: Json | null;
+          error_message: string | null;
+          created_at: string;
+          expires_at: string;
+          resolved_at: string | null;
+          resolved_by_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          user_id: string;
+          conversation_id?: string | null;
+          tool_name: string;
+          arguments?: Json;
+          preview_text: string;
+          status?: string;
+          result?: Json | null;
+          error_message?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          resolved_at?: string | null;
+          resolved_by_user_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          user_id?: string;
+          conversation_id?: string | null;
+          tool_name?: string;
+          arguments?: Json;
+          preview_text?: string;
+          status?: string;
+          result?: Json | null;
+          error_message?: string | null;
+          created_at?: string;
+          expires_at?: string;
+          resolved_at?: string | null;
+          resolved_by_user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_pending_actions_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "ai_pending_actions_conversation_id_fkey";
+            columns: ["conversation_id"];
+            isOneToOne: false;
+            referencedRelation: "ai_conversations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
 
     Views: Record<string, never>;
