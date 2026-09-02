@@ -244,8 +244,31 @@ pela Server Action existente quanto pela nova tool.
 
 Validado com `get_errors`, `npm run build` e `npx eslint` nos arquivos
 alterados; commit `4ac1564`, push e deploy em produção
-(`https://www.qerbie.com`) concluídos. **Ainda não testado manualmente** —
-esta é a primeira ferramenta `kind: "write"` real, então será o primeiro
-teste ponta a ponta de toda a arquitetura de confirmação da Fase A.
+(`https://www.qerbie.com`) concluídos. Testado manualmente pelo lojista em
+produção em 2026-09-02 (perguntou estoque, pediu pra somar +4, confirmou, o
+ajuste foi aplicado corretamente) — primeiro teste ponta a ponta real de
+toda a arquitetura de confirmação da Fase A, com sucesso.
+
+### Fase B2 — editar produto por texto (`update_product`) [x]
+
+- [x] `src/lib/catalog/actions.ts` — nova `updateProductFieldsCore()`:
+      atualização **parcial** (só toca as colunas explicitamente informadas:
+      `name`, `description`, `price`, `isActive`, `isFeatured`). Diferente da
+      Server Action `updateProduct` (formulário humano, sempre substitui o
+      produto inteiro), essa função existe especificamente para a IA não
+      apagar campos que o lojista não pediu para mudar. Replica a mesma
+      regra de negócio: desativar o produto (`isActive: false`) zera o
+      estoque automaticamente, igual ao formulário humano.
+- [x] `ai/tools/catalog.ts` (novo arquivo, nova área) — `update_product`
+      (`kind: "write"`): edita nome/descrição/preço/ativo de um produto já
+      cadastrado. Preview lista só as mudanças reais (compara valor novo com
+      valor atual do banco) e lança erro se nada mudou de fato. Não mexe em
+      estoque (isso é papel do `adjust_stock`), nem em menu/categoria/imagem
+      (fora de escopo desta etapa — criação de produto fica para uma fase
+      futura por causa da resolução de `menu_id`).
+- [x] `ai/tools/index.ts` — `updateProductTool` registrada.
+
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `ba1a942`,
+push e deploy em produção concluídos. **Ainda não testado manualmente.**
 
 
