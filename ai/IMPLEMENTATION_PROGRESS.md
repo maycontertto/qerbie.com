@@ -206,4 +206,46 @@ real (`adjust_stock`), extraindo a mutação central de
 `src/lib/merchant/stockActions.ts` para uma função pura reaproveitável tanto
 pela Server Action existente quanto pela nova tool.
 
+### Fase B1 — primeira ferramenta de escrita real (`adjust_stock`) [x]
+
+- [x] `ai/types/index.ts` — `buildPreview` passou a aceitar retorno
+      `string | Promise<string>` (necessário pro preview de `adjust_stock`
+      consultar o produto real no banco antes de montar o texto).
+- [x] `src/app/api/ai/chat/route.ts` — `proposeWriteAction()` agora dá
+      `await` em `buildPreview()` e, no catch, repassa `error.message` real
+      (quando é uma instância de `Error`) em vez de sempre devolver um texto
+      genérico — necessário pra surfacear erros como "produto não
+      encontrado" ou "somente o dono pode ajustar estoque".
+- [x] `src/lib/merchant/stockActions.ts` — extraída `updateProductStockCore()`
+      (mutação pura de `products.track_stock`/`stock_quantity`, sem nenhuma
+      checagem de permissão — quem chama decide). `saveProductStock()`
+      (Server Action humana) refatorada para chamar essa função central;
+      `saveProductStockBatch()` não foi tocada (fora do escopo). Este é o
+      padrão "extrair e delegar" a ser reaproveitado nas próximas
+      ferramentas de escrita (agenda, catálogo etc.).
+- [x] `ai/tools/inventory.ts` — duas ferramentas novas:
+  - `find_product` (`kind: "read"`) — busca por nome parcial (`ilike`),
+    retorna `productId`/`stockQuantity`/`trackStock`/`unitLabel`. Existe
+    porque `get_low_stock` não expõe `id`, e o modelo nunca deve inventar um
+    UUID de produto.
+  - `adjust_stock` (`kind: "write"`) — propõe nova quantidade em estoque.
+    Replica a restrição real da UI humana: `saveProductStock` é
+    owner-only (não usa nenhuma permissão `dashboard_*`), então
+    `adjust_stock` também checa `ctx.isOwner` explicitamente tanto no
+    `buildPreview` (falha cedo, com mensagem clara) quanto no `run()`
+    (defesa em profundidade, revalidado no momento da confirmação). Chama
+    `updateProductStockCore()` para a escrita real.
+- [x] `ai/tools/index.ts` — `findProductTool` e `adjustStockTool`
+      registradas em `registerAllTools()`.
+- [x] `ai/core/prompt.ts` — duas frases novas no prompt: (1) deixa claro que
+      chamar uma ferramenta de escrita é só uma proposta, não uma execução
+      confirmada; (2) instrui o modelo a usar uma ferramenta de busca antes
+      de propor alteração num produto específico.
+
+Validado com `get_errors`, `npm run build` e `npx eslint` nos arquivos
+alterados; commit `4ac1564`, push e deploy em produção
+(`https://www.qerbie.com`) concluídos. **Ainda não testado manualmente** —
+esta é a primeira ferramenta `kind: "write"` real, então será o primeiro
+teste ponta a ponta de toda a arquitetura de confirmação da Fase A.
+
 
