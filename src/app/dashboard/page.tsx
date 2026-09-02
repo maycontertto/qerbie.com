@@ -5,7 +5,6 @@ import { setBusinessCategory } from "@/lib/merchant/actions";
 import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
 import { getDashboardModules } from "@/lib/merchant/dashboardModules";
 import { HistoryRangePicker } from "./HistoryRangePicker";
-import { AssistantWidget } from "./AssistantWidget";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -651,8 +650,6 @@ export default async function DashboardPage({
           )}
         </div>
       </main>
-
-      <AssistantWidget merchantName={merchant.name} />
     </div>
   );
 }
