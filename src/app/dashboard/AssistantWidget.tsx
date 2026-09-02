@@ -7,6 +7,9 @@ type ChatRole = "user" | "assistant";
 interface ChatMessage {
   role: ChatRole;
   content: string;
+  /** Presente quando a mensagem é uma proposta de ação de escrita aguardando confirmação. */
+  pendingActionId?: string;
+  pendingActionResolved?: boolean;
 }
 
 interface ConversationSummary {
@@ -27,6 +30,7 @@ export function AssistantWidget({ merchantName }: { merchantName: string }) {
   const [loading, setLoading] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [resolvingActionId, setResolvingActionId] = useState<string | null>(null);
   const conversationIdRef = useRef<string | undefined>(undefined);
 
   async function openHistory() {
@@ -66,6 +70,39 @@ export function AssistantWidget({ merchantName }: { merchantName: string }) {
     setMessages([]);
   }
 
+  /**
+   * Confirma ou rejeita uma ação de escrita proposta pela IA. NUNCA reenvia
+   * argumentos — o backend só reexecuta o que já está salvo em
+   * ai_pending_actions (ver src/app/api/ai/actions/[id]/confirm/route.ts).
+   */
+  async function resolvePendingAction(msgIndex: number, decision: "confirm" | "reject") {
+    const target = messages[msgIndex];
+    if (!target?.pendingActionId || target.pendingActionResolved) return;
+    const actionId = target.pendingActionId;
+
+    setResolvingActionId(actionId);
+    setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, pendingActionResolved: true } : m)));
+
+    try {
+      const res = await fetch(`/api/ai/actions/${actionId}/${decision}`, { method: "POST" });
+      const data = await res.json();
+      const resultText =
+        decision === "reject"
+          ? "Ação cancelada. Nada foi alterado."
+          : data.ok
+            ? "✅ Ação executada com sucesso."
+            : `❌ Não foi possível executar: ${data.error ?? "erro desconhecido"}`;
+      setMessages((prev) => [...prev, { role: "assistant", content: resultText }]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Não consegui falar com o assistente agora. Tente novamente." },
+      ]);
+    } finally {
+      setResolvingActionId(null);
+    }
+  }
+
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
     const text = input.trim();
@@ -85,12 +122,23 @@ export function AssistantWidget({ merchantName }: { merchantName: string }) {
 
       if (data.conversationId) conversationIdRef.current = data.conversationId;
 
-      const reply =
-        typeof data.reply === "string"
-          ? data.reply
-          : "O assistente ainda não está disponível. Fale com o suporte se precisar de ajuda agora.";
-
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      if (data.pendingAction && typeof data.pendingAction.id === "string") {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: String(data.pendingAction.previewText ?? "Confirma essa ação?"),
+            pendingActionId: data.pendingAction.id,
+            pendingActionResolved: false,
+          },
+        ]);
+      } else {
+        const reply =
+          typeof data.reply === "string"
+            ? data.reply
+            : "O assistente ainda não está disponível. Fale com o suporte se precisar de ajuda agora.";
+        setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -197,6 +245,26 @@ export function AssistantWidget({ merchantName }: { merchantName: string }) {
                     }`}
                   >
                     {m.content}
+                    {m.pendingActionId && !m.pendingActionResolved && (
+                      <div className="mt-2.5 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => resolvePendingAction(i, "confirm")}
+                          disabled={resolvingActionId === m.pendingActionId}
+                          className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                        >
+                          Confirmar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => resolvePendingAction(i, "reject")}
+                          disabled={resolvingActionId === m.pendingActionId}
+                          className="rounded-full bg-zinc-300 px-3 py-1 text-xs font-semibold text-zinc-800 disabled:opacity-50 dark:bg-zinc-600 dark:text-zinc-50"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
