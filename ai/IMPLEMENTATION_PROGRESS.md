@@ -171,4 +171,39 @@ provedor depois (API paga) sem reescrever nada além de variáveis de ambiente.
       depois de definir o fluxo de confirmação explícita do usuário antes de
       executar qualquer ação que altere dados.
 
+### Item 3 — Agente de escrita (WRITE/GENERATE), Fase A (fundação) [x]
+
+Plano completo (Fases A-E) registrado em `/memories/repo/qerbie-ai-assistant.md`.
+Fase A concluída — infraestrutura de confirmação pronta, mas **nenhuma
+ferramenta de escrita real ainda existe** (Fase B fica para a próxima etapa).
+
+- [x] **A1** — `ToolDefinition` (`ai/types/index.ts`) ganhou `kind: "read" |
+      "write" | "generate"`. As 4 ferramentas do Sprint 1 marcadas como `"read"`.
+- [x] **A2** — Migration `integrations/supabase/schema/052_ai_pending_actions.sql`
+      + `integrations/supabase/rls/ai_pending_actions.rls.sql`: tabela
+      `ai_pending_actions` guarda toda proposta de escrita (tool_name,
+      arguments, preview_text, status, expires_at) para o backend nunca
+      confiar em argumentos reenviados pelo cliente na hora da confirmação.
+      RLS: só quem propôs a ação pode confirmá-la/rejeitá-la; sem política de
+      delete (auditoria é append-only).
+- [x] **A3** — Gate de confirmação: `src/app/api/ai/chat/route.ts` agora
+      detecta quando o modelo chama uma ferramenta `kind: "write"` e, em vez
+      de executar, chama `proposeWriteAction()` (grava em
+      `ai_pending_actions` + devolve `{ pendingAction: { id, previewText } }`
+      ao cliente, sem rodar nada). Dois endpoints novos:
+      `POST /api/ai/actions/[id]/confirm` (relê os `arguments` salvos, roda
+      `toolRegistry.execute()` — que já revalida permissão — e grava
+      resultado/erro real) e `POST /api/ai/actions/[id]/reject` (só marca como
+      `rejected`). Lookup compartilhado em `ai/core/pendingActions.ts`
+      (`fetchPendingAction`) trata expiração (10 min).
+- [x] **A4** — `AssistantWidget.tsx`: mensagens do assistente que trazem
+      `pendingActionId` mostram botões "Confirmar"/"Cancelar"; ao resolver,
+      chama o endpoint correspondente e adiciona uma nova mensagem com o
+      resultado real (nunca assume sucesso antes da resposta do backend).
+
+Próximo passo (Fase B, ainda não iniciado): primeira ferramenta de escrita
+real (`adjust_stock`), extraindo a mutação central de
+`src/lib/merchant/stockActions.ts` para uma função pura reaproveitável tanto
+pela Server Action existente quanto pela nova tool.
+
 
