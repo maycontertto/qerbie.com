@@ -335,4 +335,51 @@ usuário nem usa, o que gerou confusão.
 Validado com `get_errors` + `npm run build` + `npx eslint`; commit `8653922`,
 push e deploy em produção concluídos.
 
+### Fase C — solicitações de agendamento (`confirm_appointment`/`decline_appointment`) [x]
+
+Escopo: confirmar/recusar uma solicitação de agendamento pendente
+(`merchant_appointment_requests`), mesmo fluxo da tela humana em
+`src/app/dashboard/modulos/agenda/page.tsx`. Não inclui criar/cancelar slot
+nem reagendar (fora de escopo desta fase).
+
+Descoberta ao verificar `getDashboardModules()`: o módulo "Agenda"
+(`/dashboard/modulos/agenda`) NÃO existe para todos os segmentos — academias,
+por exemplo, usam um fluxo próprio de planos/presença/renovações, sem
+`merchant_appointment_requests`. Isso confirma que a ferramenta de leitura já
+existente (`get_appointments_today`, criada no Sprint 1, antes do sistema de
+`requiresModuleHref` existir) também precisava do gate — foi retrofitada
+nesta fase.
+
+- [x] `src/lib/merchant/agendaActions.ts` — extraída
+      `resolveAppointmentRequestCore()` (privada) + `confirmAppointmentRequestCore()`/
+      `declineAppointmentRequestCore()` (exportadas). Só altera o status se a
+      solicitação ainda estiver `pending` (mesmo guard `.eq("status","pending")`
+      do código original); retorna `{ ok, updated, error }` em vez de decidir
+      sozinha o redirect. `confirmAppointmentRequest()`/`declineAppointmentRequest()`
+      (Server Actions humanas) refatoradas para chamar essas funções, **mantendo
+      o comportamento exato de antes** (inclusive o caso "já resolvida por outra
+      via" continua sendo tratado como sucesso silencioso no formulário humano,
+      como sempre foi).
+- [x] `ai/tools/agenda.ts`:
+  - `get_appointments_today` — retrofitada com
+    `requiresModuleHref: "/dashboard/modulos/agenda"`.
+  - `get_pending_appointments` (novo, `kind: "read"`) — lista só as
+    solicitações `pending`, incluindo o `appointmentRequestId` (necessário
+    pras ferramentas de escrita; o tool antigo não expunha id nenhum).
+  - `confirm_appointment` / `decline_appointment` (novos, `kind: "write"`) —
+    `buildPreview` busca a solicitação real (nome do cliente + horário) antes
+    de descrever a ação, e recusa a proposta se ela já não estiver mais
+    `pending`. Diferente da tela humana, o `run()` trata "0 linhas afetadas"
+    (solicitação já resolvida por outra via) como **erro explícito** em vez de
+    sucesso silencioso — decisão deliberada pra nunca a IA afirmar sucesso sem
+    confirmação real do backend (regra #4), mesmo que isso divirja do
+    comportamento (mais permissivo) do formulário humano.
+- [x] `ai/tools/index.ts` — as 3 ferramentas novas registradas.
+
+Permissão `dashboard_orders` (mesma da tela humana — não é restrito a dono).
+
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
+**Ainda não testado manualmente** — depende de o merchant de teste do usuário
+ser de um segmento com o módulo Agenda habilitado (não é o caso de academia).
+
 
