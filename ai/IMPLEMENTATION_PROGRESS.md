@@ -149,14 +149,26 @@ provedor depois (API paga) sem reescrever nada além de variáveis de ambiente.
 - **Confirmado funcionando em produção** — teste real do lojista via widget
   respondeu corretamente usando dados reais do Supabase.
 
-## Sprint 4+ (planejado, não iniciado)
+## Sprint 4 (em andamento)
 
-- Ferramentas de escrita (ex.: ajustar estoque, confirmar agendamento) — só
-  depois de definir o fluxo de confirmação explícita do usuário antes de
-  executar qualquer ação que altere dados.
-- Persistir/mostrar histórico de conversas anteriores (hoje cada carregamento
-  de página começa uma conversa nova no widget, embora o histórico fique
-  salvo em `ai_conversations`/`ai_messages`).
-- Replicar o widget nas demais páginas do dashboard via layout compartilhado.
+- [x] Widget em todas as páginas do dashboard via `src/app/dashboard/layout.tsx`
+      (busca `merchant` uma vez com `allowSuspended: true` e envolve
+      `{children}` — removido de `page.tsx` pra não duplicar).
+- [x] Histórico de conversas anteriores:
+  - `GET /api/ai/conversations` — lista conversas do merchant (id, title,
+    updated_at), ordenadas por `updated_at desc`.
+  - `GET /api/ai/conversations/[id]` — mensagens (só `user`/`assistant`) de
+    uma conversa, validando `merchant_id` antes de retornar.
+  - `src/app/api/ai/chat/route.ts` agora faz `update` em
+    `ai_conversations.updated_at` a cada resposta bem-sucedida (o trigger
+    `set_updated_at` só dispara em UPDATE, não em INSERT de mensagens — sem
+    isso a lista de histórico nunca reordenava pela conversa mais recente).
+  - `AssistantWidget.tsx` ganhou botões de "nova conversa" e "conversas
+    anteriores" no cabeçalho; o segundo abre uma lista que troca o painel de
+    chat por um `<ul>` de conversas (título + data), clicando carrega as
+    mensagens salvas.
+- [ ] Ferramentas de escrita (ex.: ajustar estoque, confirmar agendamento) — só
+      depois de definir o fluxo de confirmação explícita do usuário antes de
+      executar qualquer ação que altere dados.
 
 
