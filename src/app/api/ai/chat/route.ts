@@ -133,6 +133,7 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     lastError = error instanceof Error ? error.message : "Erro desconhecido ao consultar a IA.";
+    console.error("[ai/chat] falha ao consultar o provedor de IA:", lastError);
   }
 
   await ctx.supabase.from("ai_usage_logs").insert({

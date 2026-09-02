@@ -31,15 +31,15 @@ export function getConfiguredProvider(): AIProvider {
   }
 
   if (providerName === "ollama") {
-    const baseUrl = process.env.OLLAMA_BASE_URL;
-    const model = process.env.OLLAMA_MODEL;
+    const baseUrl = process.env.OLLAMA_BASE_URL?.trim();
+    const model = process.env.OLLAMA_MODEL?.trim();
     if (!baseUrl || !model) {
       throw new Error("Defina OLLAMA_BASE_URL e OLLAMA_MODEL para usar AI_PROVIDER=ollama.");
     }
     return createOpenAiCompatibleProvider({
       name: "ollama",
       baseUrl,
-      apiKey: process.env.OLLAMA_API_KEY,
+      apiKey: process.env.OLLAMA_API_KEY?.trim(),
       model,
     });
   }
@@ -49,8 +49,8 @@ export function getConfiguredProvider(): AIProvider {
     throw new Error(`AI_PROVIDER="${providerName}" desconhecido. Use ollama, openai, groq ou deepseek.`);
   }
 
-  const apiKey = process.env.AI_PROVIDER_API_KEY;
-  const model = process.env.AI_PROVIDER_MODEL;
+  const apiKey = process.env.AI_PROVIDER_API_KEY?.trim();
+  const model = process.env.AI_PROVIDER_MODEL?.trim();
   if (!apiKey || !model) {
     throw new Error(`Defina AI_PROVIDER_API_KEY e AI_PROVIDER_MODEL para usar AI_PROVIDER=${providerName}.`);
   }
