@@ -19,7 +19,26 @@ function startOfDayUtc(d: Date): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
+/**
+ * Interpreta uma data/hora informada pelo modelo de IA. Se já vier com
+ * timezone explícito (Z ou +hh:mm/-hh:mm), usa como está. Se vier "nua"
+ * (sem timezone), assume horário de Brasília (America/Sao_Paulo) — o Brasil
+ * não tem mais horário de verão desde 2019, então o offset é sempre -03:00.
+ * Isso evita depender do modelo sempre incluir o offset certo (o servidor
+ * roda em UTC, então uma data nua interpretada "crua" ficaria 3h errada).
+ */
+function resolveAppointmentDateTime(raw: string): Date | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const hasExplicitTimezone = /(Z|[+-]\d{2}:\d{2})$/.test(trimmed);
+  const withTimezone = hasExplicitTimezone ? trimmed : `${trimmed}-03:00`;
+  const parsed = new Date(withTimezone);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
 interface AppointmentsTodayArgs {
+  daysAhead?: number;
   limit?: number;
 }
 
@@ -40,13 +59,17 @@ interface AppointmentsTodayData {
 export const getAppointmentsTodayTool: ToolDefinition<AppointmentsTodayArgs, AppointmentsTodayData> = {
   name: "get_appointments_today",
   description:
-    "Retorna os agendamentos confirmados ou aguardando confirmação para hoje, com cliente, profissional/fila e horário.",
+    "Retorna os agendamentos confirmados ou aguardando confirmação (dados de AGENDA, não de vendas/pedidos). Por padrão só hoje; use daysAhead para olhar os próximos dias (ex.: 7 para a semana) e responder 'quantos atendimentos estão marcados'.",
   requiredPermission: "dashboard_access",
   kind: "read",
   requiresModuleHref: AGENDA_MODULE_HREF,
   parameters: {
     type: "object",
     properties: {
+      daysAhead: {
+        type: "number",
+        description: "Quantos dias à frente considerar, a partir de hoje (padrão 1 = só hoje, máximo 30).",
+      },
       limit: {
         type: "number",
         description: "Quantidade máxima de agendamentos a retornar (padrão 20, máximo 100).",
@@ -55,9 +78,10 @@ export const getAppointmentsTodayTool: ToolDefinition<AppointmentsTodayArgs, App
   },
   async run(ctx: AssistantContext, args: AppointmentsTodayArgs) {
     const limit = Math.min(Math.max(args.limit ?? 20, 1), 100);
+    const daysAhead = Math.min(Math.max(args.daysAhead ?? 1, 1), 30);
     const now = new Date();
     const fromIso = startOfDayUtc(now).toISOString();
-    const toIso = startOfDayUtc(new Date(now.getTime() + 24 * 60 * 60 * 1000)).toISOString();
+    const toIso = startOfDayUtc(new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000)).toISOString();
 
     const { data, error } = await ctx.supabase
       .from("merchant_appointment_requests")
@@ -353,7 +377,8 @@ export const createAppointmentSlotTool: ToolDefinition<CreateAppointmentSlotArgs
     properties: {
       startsAt: {
         type: "string",
-        description: "Data/hora de início em ISO 8601 com fuso horário (ex.: 2026-09-10T14:00:00-03:00).",
+        description:
+          "Data/hora de início (ex.: 2026-09-10T14:00:00). Se não incluir o fuso horário, será tratado como horário de Brasília (America/Sao_Paulo, UTC-3) — pode incluir explicitamente (ex.: -03:00) se preferir.",
       },
       durationMin: { type: "number", description: "Duração do horário em minutos (1 a 1440)." },
       queueId: { type: "string", description: "UUID do profissional/fila (opcional, obtido de list_queues)." },
@@ -361,9 +386,9 @@ export const createAppointmentSlotTool: ToolDefinition<CreateAppointmentSlotArgs
     required: ["startsAt", "durationMin"],
   },
   async buildPreview(ctx: AssistantContext, args: CreateAppointmentSlotArgs) {
-    const startsAt = new Date(args.startsAt);
-    if (!Number.isFinite(startsAt.getTime())) {
-      throw new Error("Data/hora inválida — informe em ISO 8601 com fuso horário.");
+    const startsAt = resolveAppointmentDateTime(args.startsAt);
+    if (!startsAt) {
+      throw new Error("Data/hora inválida.");
     }
     if (!Number.isFinite(args.durationMin) || args.durationMin <= 0 || args.durationMin > 24 * 60) {
       throw new Error("Duração inválida — use um valor em minutos entre 1 e 1440.");
@@ -389,10 +414,15 @@ export const createAppointmentSlotTool: ToolDefinition<CreateAppointmentSlotArgs
     )} (${queueLabel}). Confirma?`;
   },
   async run(ctx: AssistantContext, args: CreateAppointmentSlotArgs) {
+    const startsAt = resolveAppointmentDateTime(args.startsAt);
+    if (!startsAt) {
+      return { ok: false, error: "Data/hora inválida." };
+    }
+
     const result = await createAppointmentSlotCore(ctx.supabase, {
       merchantId: ctx.merchantId,
       queueId: args.queueId ?? null,
-      startsAtIso: args.startsAt,
+      startsAtIso: startsAt.toISOString(),
       durationMin: args.durationMin,
     });
 
@@ -479,3 +509,81 @@ export const cancelAppointmentSlotTool: ToolDefinition<CancelAppointmentSlotArgs
     return { ok: true, data: { slotId: args.slotId } };
   },
 };
+
+interface AvailableSlotsArgs {
+  daysAhead?: number;
+  queueId?: string;
+  limit?: number;
+}
+
+interface AvailableSlotRow {
+  slotId: string;
+  professionalName: string | null;
+  startsAt: string;
+  endsAt: string;
+}
+
+interface AvailableSlotsData {
+  slots: AvailableSlotRow[];
+}
+
+export const getAvailableSlotsTool: ToolDefinition<AvailableSlotsArgs, AvailableSlotsData> = {
+  name: "get_available_slots",
+  description:
+    "Lista os horários disponíveis na agenda (ainda sem cliente associado) que os clientes podem reservar — use para responder 'quantos horários livres tem' ou 'que horários estão disponíveis'.",
+  requiredPermission: "dashboard_access",
+  kind: "read",
+  requiresModuleHref: AGENDA_MODULE_HREF,
+  parameters: {
+    type: "object",
+    properties: {
+      daysAhead: {
+        type: "number",
+        description: "Quantos dias à frente considerar, a partir de agora (padrão 7, máximo 30).",
+      },
+      queueId: { type: "string", description: "Filtrar por profissional/fila específico (opcional, obtido de list_queues)." },
+      limit: { type: "number", description: "Quantidade máxima de resultados (padrão 20, máximo 100)." },
+    },
+  },
+  async run(ctx: AssistantContext, args: AvailableSlotsArgs) {
+    const limit = Math.min(Math.max(args.limit ?? 20, 1), 100);
+    const daysAhead = Math.min(Math.max(args.daysAhead ?? 7, 1), 30);
+    const now = new Date();
+    const toIso = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000).toISOString();
+
+    let query = ctx.supabase
+      .from("merchant_appointment_slots")
+      .select("id, starts_at, ends_at, merchant_queues(name)")
+      .eq("merchant_id", ctx.merchantId)
+      .eq("status", "available")
+      .eq("is_active", true)
+      .gte("starts_at", now.toISOString())
+      .lt("starts_at", toIso)
+      .order("starts_at", { ascending: true })
+      .limit(limit);
+
+    if (args.queueId) {
+      query = query.eq("queue_id", args.queueId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    const slots = (data ?? []).map((row) => {
+      const queue = row.merchant_queues as unknown as { name: string } | { name: string }[] | null;
+      const professionalName = Array.isArray(queue) ? queue[0]?.name ?? null : queue?.name ?? null;
+      return {
+        slotId: row.id,
+        professionalName,
+        startsAt: row.starts_at,
+        endsAt: row.ends_at,
+      };
+    });
+
+    return { ok: true, data: { slots } };
+  },
+};
+

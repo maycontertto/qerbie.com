@@ -107,14 +107,21 @@ export async function POST(req: Request) {
         // Se o modelo pedir uma ferramenta de escrita, a rodada para aqui: nenhuma
         // ferramenta é executada (nem as de leitura que vieram junto na mesma
         // chamada) até o usuário confirmar explicitamente a ação proposta.
-        const writeCall = result.toolCalls.find((call) => toolRegistry.get(call.name)?.kind === "write");
+        const writeCalls = result.toolCalls.filter((call) => toolRegistry.get(call.name)?.kind === "write");
+        const writeCall = writeCalls[0];
 
         if (writeCall) {
+          // O modelo às vezes pede várias ações de escrita na mesma resposta (ex.: "agende 3
+          // horários"), mas só a primeira é proposta agora — as demais são descartadas aqui e
+          // NUNCA acontecem sozinhas depois. Avisamos o usuário para não passar a impressão de
+          // que todas foram entendidas/serão feitas.
+          const extraWriteCallsCount = writeCalls.length - 1;
           const pendingActionResponse = await proposeWriteAction({
             ctx,
             conversationId,
             providerName: provider.name,
             call: writeCall,
+            extraWriteCallsCount,
           });
           return pendingActionResponse;
         }
@@ -191,6 +198,8 @@ interface ProposeWriteActionInput {
   conversationId: string;
   providerName: string;
   call: AIToolCallRequest;
+  /** Quantas outras ações de escrita pedidas na mesma resposta do modelo foram descartadas (não propostas agora). */
+  extraWriteCallsCount: number;
 }
 
 /**
@@ -204,6 +213,7 @@ async function proposeWriteAction({
   conversationId,
   providerName,
   call,
+  extraWriteCallsCount,
 }: ProposeWriteActionInput): Promise<NextResponse> {
   const tool = toolRegistry.get(call.name);
 
@@ -242,6 +252,10 @@ async function proposeWriteAction({
       error instanceof Error ? error.message : "Não consegui montar a prévia dessa ação. Tente novamente.";
     console.error(`[ai/chat] falha ao montar prévia da ação "${tool.name}":`, error);
     return replyWithoutProposal(message);
+  }
+
+  if (extraWriteCallsCount > 0) {
+    previewText += ` (Você pediu mais de uma ação nessa mensagem — vamos confirmar uma de cada vez; me diga o que fazer em seguida depois desta.)`;
   }
 
   const { data: pending, error: pendingError } = await ctx.supabase

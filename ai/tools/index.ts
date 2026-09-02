@@ -13,6 +13,7 @@ import {
   createAppointmentSlotTool,
   declineAppointmentTool,
   getAppointmentsTodayTool,
+  getAvailableSlotsTool,
   getPendingAppointmentsTool,
   listQueuesTool,
 } from "@ai/tools/agenda";
@@ -32,6 +33,7 @@ export function registerAllTools(): void {
   toolRegistry.register(updateProductTool);
   toolRegistry.register(getAppointmentsTodayTool);
   toolRegistry.register(getPendingAppointmentsTool);
+  toolRegistry.register(getAvailableSlotsTool);
   toolRegistry.register(confirmAppointmentTool);
   toolRegistry.register(declineAppointmentTool);
   toolRegistry.register(listQueuesTool);

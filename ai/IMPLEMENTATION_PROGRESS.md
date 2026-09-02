@@ -415,8 +415,67 @@ escopo (não existe como ação isolada hoje, seria lógica nova).
 Todas com `requiresModuleHref: "/dashboard/modulos/agenda"`, permissão
 `dashboard_orders`.
 
-Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `1905bcb`,
+push e deploy em produção concluídos.
 **Ainda não testado manualmente** — mesma limitação da Fase C1 (precisa de
 merchant de segmento com módulo Agenda).
+
+### Correções pós-teste em produção (barbearia) [x]
+
+Usuário testou em produção com merchant do segmento barbearia (primeiro
+segmento real com módulo Agenda testado) e reportou 2 problemas:
+
+1. Pediu para agendar 3 horários, confirmou, mas só 2 ficaram marcados e o
+   horário criado não ficou correto.
+2. Perguntou quantos atendimentos tinha marcado; o assistente respondeu que
+   só sabia quantos atendimentos foram *concluídos* (confundiu com dados de
+   vendas) — e não existia nenhuma ferramenta para consultar horários
+   disponíveis.
+
+Causas raiz encontradas e corrigidas:
+
+- [x] **Bug de fuso horário em `create_appointment_slot`**: o servidor
+      (Vercel) roda em UTC, e o tool exigia que o modelo sempre incluísse o
+      offset `-03:00` no horário — o modelo nem sempre inclui isso de forma
+      confiável, então uma data "nua" (ex. `2026-09-10T14:00:00`) era
+      interpretada como UTC em vez de horário de Brasília, ficando 3h errada.
+      Corrigido com `resolveAppointmentDateTime()` (`ai/tools/agenda.ts`):
+      se a string não tiver timezone explícito, assume `-03:00`
+      automaticamente (Brasil não tem mais horário de verão desde 2019,
+      então America/Sao_Paulo é sempre UTC-3 — não precisa de lib de timezone
+      pra isso).
+- [x] **Múltiplas ações de escrita descartadas silenciosamente**:
+      `src/app/api/ai/chat/route.ts` só propõe a PRIMEIRA ferramenta de
+      escrita quando o modelo pede várias na mesma resposta (ex.: 3x
+      `create_appointment_slot` de uma vez) — as outras eram descartadas sem
+      nenhum aviso, e como o histórico da conversa só guarda texto (não a
+      lista de tool_calls original), o modelo não tinha como saber que só 1
+      das 3 foi de fato proposta. Isso explica "confirmei tudo mas só 2
+      ficaram marcados". Correção: `proposeWriteAction()` agora recebe
+      `extraWriteCallsCount` e anexa um aviso explícito no preview quando
+      há mais ações pedidas na mesma mensagem, para o usuário saber que
+      precisa confirmar uma de cada vez. Reforçado também no system prompt
+      (`ai/core/prompt.ts`): "só pode propor UMA ação de escrita por vez".
+      NÃO foi feita uma reformulação arquitetural maior (ex.: persistir a
+      fila de tool_calls pendentes) — fica para se o problema persistir
+      mesmo com o aviso.
+- [x] **Sem ferramenta pra "quantos atendimentos marcados" além de hoje**:
+      `get_appointments_today` ganhou parâmetro opcional `daysAhead`
+      (padrão 1 = só hoje, máximo 30) — permite responder "quantos
+      atendimentos tem essa semana", etc.
+- [x] **Sem ferramenta pra horários disponíveis**: novo tool
+      `get_available_slots` (`kind: "read"`) lista slots com
+      `status: "available"` (ainda sem cliente) num período (padrão 7 dias),
+      com filtro opcional por profissional/fila.
+- [x] `ai/core/prompt.ts`: nova frase deixando explícito que
+      "atendimentos/agendamentos marcados" (ferramentas de agenda) é um
+      domínio DIFERENTE de "vendas/pedidos" (`get_sales_summary`,
+      `get_top_products`) — para o modelo não confundir os dois ao responder
+      perguntas sobre "quantos atendimentos".
+- [x] `ai/tools/index.ts` — `get_available_slots` registrada.
+
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
+**Ainda não testado manualmente** — usuário vai retestar no mesmo merchant
+de barbearia depois do deploy.
 
 

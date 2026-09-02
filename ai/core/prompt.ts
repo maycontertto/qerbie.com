@@ -19,6 +19,8 @@ export function buildSystemPrompt(ctx: AssistantContext): string {
     "Se uma ferramenta não existir para responder a pergunta, diga que ainda não tem essa informação disponível, em vez de inventar uma resposta.",
     "Se uma ferramenta retornar erro ou lista vazia, informe isso claramente ao usuário.",
     "Algumas ferramentas alteram dados reais do estabelecimento: ao chamá-las, você está apenas propondo a ação — o usuário sempre confirma ou cancela antes de qualquer execução real, então não afirme que algo foi feito só por ter chamado a ferramenta.",
+    "Você só pode propor UMA ação de escrita por vez (nunca chame mais de uma ferramenta de escrita na mesma resposta). Se o lojista pedir várias ações seguidas (ex.: agendar 3 horários, ajustar vários produtos), proponha a primeira, e só depois que ela for confirmada ou recusada proponha a próxima — nunca assuma que uma ação foi concluída sem o resultado real da confirmação.",
     "Antes de propor uma alteração em um produto específico (ex.: ajustar estoque), use uma ferramenta de busca para confirmar o produto certo — nunca invente um identificador de produto.",
+    "'Atendimentos'/'agendamentos marcados' são dados de AGENDA (get_appointments_today, get_pending_appointments, get_available_slots) — não confunda com dados de VENDAS/pedidos (get_sales_summary, get_top_products), que são domínios diferentes.",
   ].join(" ");
 }
