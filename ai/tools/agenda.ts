@@ -32,6 +32,7 @@ export const getAppointmentsTodayTool: ToolDefinition<AppointmentsTodayArgs, App
   description:
     "Retorna os agendamentos confirmados ou aguardando confirmação para hoje, com cliente, profissional/fila e horário.",
   requiredPermission: "dashboard_access",
+  kind: "read",
   parameters: {
     type: "object",
     properties: {

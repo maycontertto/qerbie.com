@@ -41,6 +41,7 @@ export const getSalesSummaryTool: ToolDefinition<SalesSummaryArgs, SalesSummaryD
   description:
     "Retorna o resumo de vendas concluídas do estabelecimento (número de pedidos, faturamento e ticket médio) para um período: hoje, últimos 7 dias ou últimos 30 dias.",
   requiredPermission: "dashboard_sales",
+  kind: "read",
   parameters: {
     type: "object",
     properties: {
@@ -101,6 +102,7 @@ export const getTopProductsTool: ToolDefinition<TopProductsArgs, TopProductsData
   description:
     "Retorna os produtos mais vendidos (por quantidade) em pedidos concluídos, para um período: hoje, últimos 7 dias ou últimos 30 dias.",
   requiredPermission: "dashboard_sales",
+  kind: "read",
   parameters: {
     type: "object",
     properties: {

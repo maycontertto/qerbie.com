@@ -29,6 +29,7 @@ export const getLowStockTool: ToolDefinition<LowStockArgs, LowStockData> = {
   description:
     "Retorna os produtos com controle de estoque ativado cuja quantidade em estoque está no mínimo configurado ou abaixo dele (estoque baixo/acabando).",
   requiredPermission: "dashboard_products",
+  kind: "read",
   parameters: {
     type: "object",
     properties: {
