@@ -2,7 +2,54 @@
 
 import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
-import type { ExchangeRequestStatus } from "@/lib/supabase/database.types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database, ExchangeRequestStatus } from "@/lib/supabase/database.types";
+
+const EXCHANGE_STATUSES: ExchangeRequestStatus[] = ["open", "in_progress", "done", "cancelled"];
+
+export interface UpdateExchangeStatusInput {
+  merchantId: string;
+  exchangeRequestId: string;
+  status: ExchangeRequestStatus;
+}
+
+export interface UpdateExchangeStatusResult {
+  ok: boolean;
+  error?: "save_failed" | "not_found" | "invalid_status";
+}
+
+/**
+ * Mutação central reaproveitada pela Server Action `updateExchangeStatus`
+ * (formulário humano) e pela ferramenta de IA `update_exchange_status`
+ * (ai/tools/exchanges.ts).
+ */
+export async function updateExchangeStatusCore(
+  supabase: SupabaseClient<Database>,
+  input: UpdateExchangeStatusInput,
+): Promise<UpdateExchangeStatusResult> {
+  if (!EXCHANGE_STATUSES.includes(input.status)) {
+    return { ok: false, error: "invalid_status" };
+  }
+
+  const { data, error } = await supabase
+    .from("merchant_exchange_requests")
+    .update({ status: input.status })
+    .eq("merchant_id", input.merchantId)
+    .eq("id", input.exchangeRequestId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("updateExchangeStatusCore: update failed", { code: error.code, message: error.message });
+    return { ok: false, error: "save_failed" };
+  }
+
+  if (!data) {
+    return { ok: false, error: "not_found" };
+  }
+
+  return { ok: true };
+}
 
 async function requireOpsPermission() {
   const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect();
@@ -66,17 +113,13 @@ export async function updateExchangeStatus(formData: FormData): Promise<void> {
 
   if (!id) redirect("/dashboard/modulos/trocas?error=invalid");
 
-  const allowed: ExchangeRequestStatus[] = ["open", "in_progress", "done", "cancelled"];
-  if (!allowed.includes(status)) redirect("/dashboard/modulos/trocas?error=invalid");
+  const result = await updateExchangeStatusCore(supabase, {
+    merchantId: merchant.id,
+    exchangeRequestId: id,
+    status,
+  });
 
-  const { error } = await supabase
-    .from("merchant_exchange_requests")
-    .update({ status })
-    .eq("merchant_id", merchant.id)
-    .eq("id", id);
-
-  if (error) {
-    console.error("updateExchangeStatus failed", { code: error.code, message: error.message });
+  if (!result.ok) {
     redirect("/dashboard/modulos/trocas?error=save_failed");
   }
   redirect("/dashboard/modulos/trocas?saved=1");
