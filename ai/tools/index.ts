@@ -8,10 +8,13 @@ import { getSalesSummaryTool, getTopProductsTool } from "@ai/tools/sales";
 import { adjustStockTool, findProductTool, getLowStockTool } from "@ai/tools/inventory";
 import { updateProductTool } from "@ai/tools/catalog";
 import {
+  cancelAppointmentSlotTool,
   confirmAppointmentTool,
+  createAppointmentSlotTool,
   declineAppointmentTool,
   getAppointmentsTodayTool,
   getPendingAppointmentsTool,
+  listQueuesTool,
 } from "@ai/tools/agenda";
 import { getExchangeRequestsTool, updateExchangeStatusTool } from "@ai/tools/exchanges";
 
@@ -31,6 +34,9 @@ export function registerAllTools(): void {
   toolRegistry.register(getPendingAppointmentsTool);
   toolRegistry.register(confirmAppointmentTool);
   toolRegistry.register(declineAppointmentTool);
+  toolRegistry.register(listQueuesTool);
+  toolRegistry.register(createAppointmentSlotTool);
+  toolRegistry.register(cancelAppointmentSlotTool);
   toolRegistry.register(getExchangeRequestsTool);
   toolRegistry.register(updateExchangeStatusTool);
 }

@@ -96,6 +96,88 @@ function parseLocalDateTimeToIso(value: string): string | null {
   return d.toISOString();
 }
 
+export interface CreateAppointmentSlotInput {
+  merchantId: string;
+  queueId?: string | null;
+  startsAtIso: string;
+  durationMin: number;
+}
+
+export interface CreateAppointmentSlotResult {
+  ok: boolean;
+  slotId?: string;
+  error?: "invalid_slot" | "save_failed";
+}
+
+/** Mutação central reaproveitada por `createAppointmentSlot` (Server Action) e `create_appointment_slot` (ai/tools/agenda.ts). */
+export async function createAppointmentSlotCore(
+  supabase: SupabaseClient<Database>,
+  input: CreateAppointmentSlotInput,
+): Promise<CreateAppointmentSlotResult> {
+  const startsAt = new Date(input.startsAtIso);
+  if (
+    !Number.isFinite(startsAt.getTime()) ||
+    !Number.isFinite(input.durationMin) ||
+    input.durationMin <= 0 ||
+    input.durationMin > 24 * 60
+  ) {
+    return { ok: false, error: "invalid_slot" };
+  }
+
+  const endsAt = new Date(startsAt.getTime() + input.durationMin * 60 * 1000);
+
+  const { data, error } = await supabase
+    .from("merchant_appointment_slots")
+    .insert({
+      merchant_id: input.merchantId,
+      queue_id: input.queueId ?? null,
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      status: "available",
+      is_active: true,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, error: "save_failed" };
+  }
+
+  return { ok: true, slotId: data.id };
+}
+
+export interface CancelAppointmentSlotInput {
+  merchantId: string;
+  slotId: string;
+}
+
+export interface CancelAppointmentSlotResult {
+  ok: boolean;
+  /** true se algum horário realmente existia e foi cancelado agora. */
+  updated?: boolean;
+  error?: "save_failed";
+}
+
+/** Mutação central reaproveitada por `cancelAppointmentSlot` (Server Action) e `cancel_appointment_slot` (ai/tools/agenda.ts). */
+export async function cancelAppointmentSlotCore(
+  supabase: SupabaseClient<Database>,
+  input: CancelAppointmentSlotInput,
+): Promise<CancelAppointmentSlotResult> {
+  const { data, error } = await supabase
+    .from("merchant_appointment_slots")
+    .update({ status: "cancelled", is_active: false })
+    .eq("id", input.slotId)
+    .eq("merchant_id", input.merchantId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, error: "save_failed" };
+  }
+
+  return { ok: true, updated: Boolean(data) };
+}
+
 export async function createAppointmentSlot(formData: FormData) {
   const queueIdRaw = String(formData.get("queue_id") ?? "").trim();
   const queueId = queueIdRaw || null;
@@ -108,22 +190,16 @@ export async function createAppointmentSlot(formData: FormData) {
     redirect("/dashboard/modulos/agenda?error=invalid_slot");
   }
 
-  const startsAt = new Date(startsAtIso);
-  const endsAt = new Date(startsAt.getTime() + durationMin * 60 * 1000);
-
   const { merchant, supabase } = await requireAgendaPermission();
 
-  const { error } = await supabase.from("merchant_appointment_slots").insert({
-    merchant_id: merchant.id,
-    queue_id: queueId,
-    starts_at: startsAt.toISOString(),
-    ends_at: endsAt.toISOString(),
-    status: "available",
-    is_active: true,
-  });
+  const result = await createAppointmentSlotCore(supabase, { merchantId: merchant.id, queueId, startsAtIso, durationMin });
 
-  if (error) {
-    redirect("/dashboard/modulos/agenda?error=slot_create_failed");
+  if (!result.ok) {
+    redirect(
+      result.error === "invalid_slot"
+        ? "/dashboard/modulos/agenda?error=invalid_slot"
+        : "/dashboard/modulos/agenda?error=slot_create_failed",
+    );
   }
 
   redirect("/dashboard/modulos/agenda?saved=1");
@@ -135,13 +211,9 @@ export async function cancelAppointmentSlot(formData: FormData) {
 
   const { merchant, supabase } = await requireAgendaPermission();
 
-  const { error } = await supabase
-    .from("merchant_appointment_slots")
-    .update({ status: "cancelled", is_active: false })
-    .eq("id", slotId)
-    .eq("merchant_id", merchant.id);
+  const result = await cancelAppointmentSlotCore(supabase, { merchantId: merchant.id, slotId });
 
-  if (error) {
+  if (!result.ok) {
     redirect("/dashboard/modulos/agenda?error=save_failed");
   }
 

@@ -6,7 +6,12 @@
  * seu próprio fluxo de planos/presença) — ver `requiresModuleHref` abaixo.
  */
 import type { AssistantContext, ToolDefinition } from "@ai/types";
-import { confirmAppointmentRequestCore, declineAppointmentRequestCore } from "@/lib/merchant/agendaActions";
+import {
+  cancelAppointmentSlotCore,
+  confirmAppointmentRequestCore,
+  createAppointmentSlotCore,
+  declineAppointmentRequestCore,
+} from "@/lib/merchant/agendaActions";
 
 const AGENDA_MODULE_HREF = "/dashboard/modulos/agenda";
 
@@ -264,5 +269,213 @@ export const declineAppointmentTool: ToolDefinition<ResolveAppointmentArgs, Reso
     }
 
     return { ok: true, data: { appointmentRequestId: args.appointmentRequestId } };
+  },
+};
+
+interface ListQueuesArgs {
+  limit?: number;
+}
+
+interface QueueRow {
+  queueId: string;
+  name: string;
+}
+
+interface ListQueuesData {
+  queues: QueueRow[];
+}
+
+export const listQueuesTool: ToolDefinition<ListQueuesArgs, ListQueuesData> = {
+  name: "list_queues",
+  description:
+    "Lista os profissionais/filas ativos do estabelecimento (usados para associar um horário de agenda a um profissional específico).",
+  requiredPermission: "dashboard_access",
+  kind: "read",
+  requiresModuleHref: AGENDA_MODULE_HREF,
+  parameters: {
+    type: "object",
+    properties: {
+      limit: { type: "number", description: "Quantidade máxima de resultados (padrão 50, máximo 100)." },
+    },
+  },
+  async run(ctx: AssistantContext, args: ListQueuesArgs) {
+    const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);
+
+    const { data, error } = await ctx.supabase
+      .from("merchant_queues")
+      .select("id, name")
+      .eq("merchant_id", ctx.merchantId)
+      .eq("is_active", true)
+      .order("display_order", { ascending: true })
+      .limit(limit);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    return {
+      ok: true,
+      data: { queues: (data ?? []).map((row) => ({ queueId: row.id, name: row.name })) },
+    };
+  },
+};
+
+interface CreateAppointmentSlotArgs {
+  startsAt: string;
+  durationMin: number;
+  queueId?: string;
+}
+
+interface CreateAppointmentSlotData {
+  slotId: string;
+}
+
+function formatDateTimeSp(iso: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(iso));
+}
+
+export const createAppointmentSlotTool: ToolDefinition<CreateAppointmentSlotArgs, CreateAppointmentSlotData> = {
+  name: "create_appointment_slot",
+  description:
+    "Propõe criar um novo horário disponível na agenda para clientes reservarem. Use list_queues antes se quiser associar a um profissional específico.",
+  requiredPermission: "dashboard_orders",
+  kind: "write",
+  requiresModuleHref: AGENDA_MODULE_HREF,
+  parameters: {
+    type: "object",
+    properties: {
+      startsAt: {
+        type: "string",
+        description: "Data/hora de início em ISO 8601 com fuso horário (ex.: 2026-09-10T14:00:00-03:00).",
+      },
+      durationMin: { type: "number", description: "Duração do horário em minutos (1 a 1440)." },
+      queueId: { type: "string", description: "UUID do profissional/fila (opcional, obtido de list_queues)." },
+    },
+    required: ["startsAt", "durationMin"],
+  },
+  async buildPreview(ctx: AssistantContext, args: CreateAppointmentSlotArgs) {
+    const startsAt = new Date(args.startsAt);
+    if (!Number.isFinite(startsAt.getTime())) {
+      throw new Error("Data/hora inválida — informe em ISO 8601 com fuso horário.");
+    }
+    if (!Number.isFinite(args.durationMin) || args.durationMin <= 0 || args.durationMin > 24 * 60) {
+      throw new Error("Duração inválida — use um valor em minutos entre 1 e 1440.");
+    }
+
+    let queueLabel = "sem profissional específico";
+    if (args.queueId) {
+      const { data: queue } = await ctx.supabase
+        .from("merchant_queues")
+        .select("name")
+        .eq("id", args.queueId)
+        .eq("merchant_id", ctx.merchantId)
+        .maybeSingle();
+      if (!queue) {
+        throw new Error("Não encontrei esse profissional/fila. Use list_queues para ver os disponíveis.");
+      }
+      queueLabel = queue.name;
+    }
+
+    const endsAt = new Date(startsAt.getTime() + args.durationMin * 60 * 1000);
+    return `Criar horário disponível de ${formatDateTimeSp(startsAt.toISOString())} até ${formatDateTimeSp(
+      endsAt.toISOString(),
+    )} (${queueLabel}). Confirma?`;
+  },
+  async run(ctx: AssistantContext, args: CreateAppointmentSlotArgs) {
+    const result = await createAppointmentSlotCore(ctx.supabase, {
+      merchantId: ctx.merchantId,
+      queueId: args.queueId ?? null,
+      startsAtIso: args.startsAt,
+      durationMin: args.durationMin,
+    });
+
+    if (!result.ok || !result.slotId) {
+      return {
+        ok: false,
+        error: result.error === "invalid_slot" ? "Data ou duração inválida." : "Não foi possível criar o horário agora. Tente novamente.",
+      };
+    }
+
+    return { ok: true, data: { slotId: result.slotId } };
+  },
+};
+
+interface CancelAppointmentSlotArgs {
+  slotId: string;
+}
+
+interface CancelAppointmentSlotData {
+  slotId: string;
+}
+
+export const cancelAppointmentSlotTool: ToolDefinition<CancelAppointmentSlotArgs, CancelAppointmentSlotData> = {
+  name: "cancel_appointment_slot",
+  description:
+    "Propõe cancelar um horário disponível (que ainda não tem nenhuma solicitação de cliente associada). Não use para recusar/cancelar um agendamento já solicitado por um cliente — para isso use decline_appointment.",
+  requiredPermission: "dashboard_orders",
+  kind: "write",
+  requiresModuleHref: AGENDA_MODULE_HREF,
+  parameters: {
+    type: "object",
+    properties: {
+      slotId: { type: "string", description: "UUID do horário a cancelar." },
+    },
+    required: ["slotId"],
+  },
+  async buildPreview(ctx: AssistantContext, args: CancelAppointmentSlotArgs) {
+    const { data: slot } = await ctx.supabase
+      .from("merchant_appointment_slots")
+      .select("id, starts_at, ends_at, status, merchant_queues(name)")
+      .eq("id", args.slotId)
+      .eq("merchant_id", ctx.merchantId)
+      .maybeSingle();
+
+    if (!slot) {
+      throw new Error("Não encontrei esse horário.");
+    }
+    if (slot.status !== "available") {
+      throw new Error(
+        "Esse horário já tem uma solicitação de cliente associada (não está mais disponível) — não posso cancelar por aqui. Resolva a solicitação primeiro (confirm_appointment/decline_appointment).",
+      );
+    }
+
+    const queue = slot.merchant_queues as unknown as { name: string } | { name: string }[] | null;
+    const queueLabel = Array.isArray(queue) ? queue[0]?.name : queue?.name;
+    return `Cancelar o horário disponível de ${formatDateTimeSp(slot.starts_at)} até ${formatDateTimeSp(slot.ends_at)}${
+      queueLabel ? ` (${queueLabel})` : ""
+    }. Confirma?`;
+  },
+  async run(ctx: AssistantContext, args: CancelAppointmentSlotArgs) {
+    const { data: slot } = await ctx.supabase
+      .from("merchant_appointment_slots")
+      .select("id, status")
+      .eq("id", args.slotId)
+      .eq("merchant_id", ctx.merchantId)
+      .maybeSingle();
+
+    if (!slot) {
+      return { ok: false, error: "Horário não encontrado." };
+    }
+    if (slot.status !== "available") {
+      return { ok: false, error: "Esse horário não está mais disponível — não foi cancelado." };
+    }
+
+    const result = await cancelAppointmentSlotCore(ctx.supabase, { merchantId: ctx.merchantId, slotId: args.slotId });
+
+    if (!result.ok) {
+      return { ok: false, error: "Não foi possível cancelar agora. Tente novamente." };
+    }
+    if (!result.updated) {
+      return { ok: false, error: "Esse horário já não existia mais — nada foi alterado." };
+    }
+
+    return { ok: true, data: { slotId: args.slotId } };
   },
 };

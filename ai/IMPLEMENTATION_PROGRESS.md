@@ -378,8 +378,45 @@ nesta fase.
 
 Permissão `dashboard_orders` (mesma da tela humana — não é restrito a dono).
 
-Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `70f0790`,
+push e deploy em produção concluídos.
 **Ainda não testado manualmente** — depende de o merchant de teste do usuário
 ser de um segmento com o módulo Agenda habilitado (não é o caso de academia).
+
+### Fase C2 — criar/cancelar horário de agenda (`create_appointment_slot`/`cancel_appointment_slot`) [x]
+
+Escopo: criar um novo horário disponível e cancelar um horário que ainda não
+tem nenhuma solicitação de cliente associada. "Reagendar" continua fora de
+escopo (não existe como ação isolada hoje, seria lógica nova).
+
+- [x] `src/lib/merchant/agendaActions.ts` — extraídas `createAppointmentSlotCore()`
+      e `cancelAppointmentSlotCore()`; `createAppointmentSlot()`/
+      `cancelAppointmentSlot()` (Server Actions humanas) refatoradas para
+      chamá-las, mantendo o comportamento exato de antes (inclusive
+      `cancelAppointmentSlot()` continua sem checar o status atual do slot,
+      igual sempre foi).
+- [x] `ai/tools/agenda.ts`:
+  - `list_queues` (novo, `kind: "read"`) — lista profissionais/filas ativos,
+    necessário porque nenhuma ferramenta expunha `queue_id` antes (evita a IA
+    inventar um UUID de profissional).
+  - `create_appointment_slot` (novo, `kind: "write"`) — args em ISO 8601 com
+    fuso horário explícito (evita a ambiguidade do input `datetime-local` sem
+    timezone usado no form humano). `buildPreview` valida data/duração e
+    resolve o nome do profissional antes de descrever a ação.
+  - `cancel_appointment_slot` (novo, `kind: "write"`) — **mais restrito que o
+    form humano de propósito**: só cancela slots com `status: "available"`
+    (sem nenhuma solicitação associada); se o slot já tiver virado
+    `pending`/`booked`, a ferramenta recusa e instrui a resolver a
+    solicitação primeiro via `confirm_appointment`/`decline_appointment`.
+    Evita a IA cancelar por baixo dos panos um horário que um cliente real já
+    reservou (o form humano permite isso sem aviso, mas a IA não deveria).
+- [x] `ai/tools/index.ts` — as 3 ferramentas novas registradas.
+
+Todas com `requiresModuleHref: "/dashboard/modulos/agenda"`, permissão
+`dashboard_orders`.
+
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
+**Ainda não testado manualmente** — mesma limitação da Fase C1 (precisa de
+merchant de segmento com módulo Agenda).
 
 
