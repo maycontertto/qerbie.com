@@ -9,12 +9,62 @@ interface ChatMessage {
   content: string;
 }
 
+interface ConversationSummary {
+  id: string;
+  title: string | null;
+  updated_at: string;
+}
+
+function formatConversationDate(iso: string): string {
+  return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
 export function AssistantWidget({ merchantName }: { merchantName: string }) {
   const [open, setOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const conversationIdRef = useRef<string | undefined>(undefined);
+
+  async function openHistory() {
+    setShowHistory(true);
+    setLoadingHistory(true);
+    try {
+      const res = await fetch("/api/ai/conversations");
+      const data = await res.json();
+      setConversations(Array.isArray(data.conversations) ? data.conversations : []);
+    } catch {
+      setConversations([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }
+
+  async function loadConversation(id: string) {
+    setShowHistory(false);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/ai/conversations/${id}`);
+      const data = await res.json();
+      if (Array.isArray(data.messages)) {
+        conversationIdRef.current = id;
+        setMessages(data.messages.map((m: { role: ChatRole; content: string }) => ({ role: m.role, content: m.content })));
+      }
+    } catch {
+      // mantém a conversa atual se o carregamento falhar
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function startNewConversation() {
+    setShowHistory(false);
+    conversationIdRef.current = undefined;
+    setMessages([]);
+  }
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -81,35 +131,84 @@ export function AssistantWidget({ merchantName }: { merchantName: string }) {
               <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Assistente Qerbie</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">{merchantName}</p>
             </div>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={startNewConversation}
+                title="Nova conversa"
+                aria-label="Nova conversa"
+                className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onClick={openHistory}
+                title="Conversas anteriores"
+                aria-label="Conversas anteriores"
+                className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3M21 12a9 9 0 1 1-3.5-7.14M21 4v5h-5" />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
-            {messages.length === 0 && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Pergunte sobre vendas, estoque ou agenda de hoje. Ex.: &ldquo;quanto vendi hoje?&rdquo;
-              </p>
-            )}
-            {messages.map((m, i) => (
-              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${
-                    m.role === "user"
-                      ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-                      : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
-                  }`}
-                >
-                  {m.content}
+          {showHistory ? (
+            <div className="flex-1 overflow-y-auto px-4 py-3">
+              {loadingHistory ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Carregando...</p>
+              ) : conversations.length === 0 ? (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhuma conversa anterior ainda.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {conversations.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => loadConversation(c.id)}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                      >
+                        <p className="truncate text-zinc-800 dark:text-zinc-200">{c.title || "Conversa sem título"}</p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{formatConversationDate(c.updated_at)}</p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+              {messages.length === 0 && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Pergunte sobre vendas, estoque ou agenda de hoje. Ex.: &ldquo;quanto vendi hoje?&rdquo;
+                </p>
+              )}
+              {messages.map((m, i) => (
+                <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2 text-sm ${
+                      m.role === "user"
+                        ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                        : "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+                    }`}
+                  >
+                    {m.content}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="rounded-2xl bg-zinc-100 px-3.5 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                  Pensando...
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="rounded-2xl bg-zinc-100 px-3.5 py-2 text-sm text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                    Pensando...
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           <form onSubmit={sendMessage} className="flex items-center gap-2 border-t border-zinc-200 p-3 dark:border-zinc-800">
             <input

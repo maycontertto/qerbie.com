@@ -161,5 +161,11 @@ export async function POST(req: Request) {
     content: finalContent,
   });
 
+  // Traz a conversa pro topo da lista de histórico (mensagens não disparam o trigger sozinhas).
+  await ctx.supabase
+    .from("ai_conversations")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", conversationId);
+
   return NextResponse.json({ conversationId, reply: finalContent });
 }
