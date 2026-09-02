@@ -269,6 +269,39 @@ toda a arquitetura de confirmação da Fase A, com sucesso.
 - [x] `ai/tools/index.ts` — `updateProductTool` registrada.
 
 Validado com `get_errors`, `npm run build` e `npx eslint`; commit `ba1a942`,
+push e deploy em produção concluídos. Testado manualmente pelo lojista em
+produção em 2026-09-02 (alterou nome e preço de um produto, confirmou,
+aplicou certinho) — segunda ferramenta de escrita validada ponta a ponta.
+
+### Fase B3 — status de trocas/devoluções (`update_exchange_status`) [x]
+
+Descoberta ao mapear o plano original ("observações em pedidos/agendamentos/
+trocas"): não existe um campo `notes` genérico e editável pelo lojista de
+forma isolada em nenhuma tabela — `merchant_appointment_requests` só tem
+`customer_notes` (preenchido pelo cliente, não deveria ser sobrescrito pela
+IA) e `orders`/`order_items` têm notas por item de pedido, não por pedido
+inteiro. O alvo seguro e realmente útil encontrado foi
+`merchant_exchange_requests` (trocas/devoluções): tabela única, independente
+de vertical de negócio, com `status` (`open`/`in_progress`/`done`/
+`cancelled`) e `notes` já preenchidos na criação.
+
+- [x] `src/lib/merchant/exchangeActions.ts` — extraída
+      `updateExchangeStatusCore()` (mutação pura, valida o enum de status);
+      `updateExchangeStatus()` (Server Action humana) refatorada para
+      chamá-la. `createExchangeRequest()` não foi tocada (fora de escopo).
+- [x] `ai/tools/exchanges.ts` (novo arquivo, nova área):
+  - `get_exchange_requests` (`kind: "read"`) — lista solicitações por
+    status (padrão: só as abertas).
+  - `update_exchange_status` (`kind: "write"`) — propõe novo status para uma
+    solicitação. Preview traduz os status para português ("aberta", "em
+    andamento", "concluída", "cancelada").
+- [x] `ai/tools/index.ts` — as duas ferramentas registradas.
+
+Permissão `dashboard_orders` (mesma da tela humana de trocas), sem checagem
+extra de dono — igual ao formulário humano, qualquer membro com essa
+permissão pode mudar o status.
+
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `317ad50`,
 push e deploy em produção concluídos. **Ainda não testado manualmente.**
 
 
