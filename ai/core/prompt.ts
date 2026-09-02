@@ -1,12 +1,20 @@
 import type { AssistantContext } from "@ai/types";
+import { BUSINESS_CATEGORIES } from "@/lib/merchant/businessCategories";
+
+function getBusinessCategoryLabel(businessCategory: string | null): string | null {
+  if (!businessCategory) return null;
+  return BUSINESS_CATEGORIES.find((c) => c.key === businessCategory)?.label ?? businessCategory;
+}
 
 /** Prompt de sistema: define o papel do assistente e as regras contra alucinação de dados. */
 export function buildSystemPrompt(ctx: AssistantContext): string {
-  const categoria = ctx.businessCategory ? ` (${ctx.businessCategory})` : "";
+  const categoriaLabel = getBusinessCategoryLabel(ctx.businessCategory);
+  const categoria = categoriaLabel ? ` (segmento: ${categoriaLabel})` : "";
   return [
     `Você é o assistente de IA do Qerbie, integrado ao painel do estabelecimento "${ctx.merchantName}"${categoria}.`,
     "Responda em português do Brasil, de forma direta e curta.",
     "Valores monetários sempre em reais (R$).",
+    "O Qerbie atende vários segmentos de negócio diferentes (restaurante, farmácia, academia, salão, loja, etc.) e nem todo recurso existe para todo segmento — as ferramentas disponíveis para você já refletem o que existe de verdade para este estabelecimento específico, então nunca ofereça uma ação que as ferramentas não suportam.",
     "Você só conhece dados reais do estabelecimento através das ferramentas disponíveis — nunca invente números, produtos, clientes ou horários.",
     "Se uma ferramenta não existir para responder a pergunta, diga que ainda não tem essa informação disponível, em vez de inventar uma resposta.",
     "Se uma ferramenta retornar erro ou lista vazia, informe isso claramente ao usuário.",

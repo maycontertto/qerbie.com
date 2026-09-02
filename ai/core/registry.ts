@@ -4,6 +4,7 @@
  * valida permissão antes de rodar a consulta real no Supabase.
  */
 import type { AssistantContext, ToolDefinition, ToolResult } from "@ai/types";
+import { isModuleEnabledForCategory } from "@ai/core/moduleAvailability";
 
 class ToolRegistry {
   private readonly tools = new Map<string, ToolDefinition<unknown, unknown>>();
@@ -22,7 +23,9 @@ class ToolRegistry {
   /** Lista as ferramentas que o usuário atual tem permissão de usar (para montar o function-calling da IA). */
   listAvailable(ctx: AssistantContext): ToolDefinition<unknown, unknown>[] {
     return Array.from(this.tools.values()).filter(
-      (tool) => tool.requiredPermission === null || ctx.can(tool.requiredPermission),
+      (tool) =>
+        (tool.requiredPermission === null || ctx.can(tool.requiredPermission)) &&
+        (!tool.requiresModuleHref || isModuleEnabledForCategory(ctx.businessCategory, tool.requiresModuleHref)),
     );
   }
 
@@ -34,6 +37,10 @@ class ToolRegistry {
 
     if (tool.requiredPermission !== null && !ctx.can(tool.requiredPermission)) {
       return { ok: false, error: "Você não tem permissão para consultar esses dados." };
+    }
+
+    if (tool.requiresModuleHref && !isModuleEnabledForCategory(ctx.businessCategory, tool.requiresModuleHref)) {
+      return { ok: false, error: "Esse recurso não está disponível para o segmento deste estabelecimento." };
     }
 
     try {

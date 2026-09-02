@@ -41,6 +41,7 @@ export const getExchangeRequestsTool: ToolDefinition<ExchangeRequestsArgs, Excha
     "Lista solicitações de troca/devolução do estabelecimento (padrão: só as abertas). Use antes de propor uma mudança de status, para obter o id certo.",
   requiredPermission: "dashboard_orders",
   kind: "read",
+  requiresModuleHref: "/dashboard/modulos/trocas",
   parameters: {
     type: "object",
     properties: {
@@ -108,6 +109,7 @@ export const updateExchangeStatusTool: ToolDefinition<UpdateExchangeStatusArgs, 
     "Propõe alterar o status de uma solicitação de troca/devolução (aberta, em andamento, concluída ou cancelada). Use get_exchange_requests antes para obter o id certo.",
   requiredPermission: "dashboard_orders",
   kind: "write",
+  requiresModuleHref: "/dashboard/modulos/trocas",
   parameters: {
     type: "object",
     properties: {

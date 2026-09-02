@@ -74,6 +74,16 @@ export interface ToolDefinition<TArgs = Record<string, never>, TData = unknown> 
   requiredPermission: AssistantPermission | null;
   /** Ver `ToolKind`. Toda ferramenta nova precisa declarar isso explicitamente. */
   kind: ToolKind;
+  /**
+   * Se a ferramenta só faz sentido para segmentos de negócio que têm esse
+   * módulo habilitado no dashboard (ex.: "/dashboard/modulos/trocas" só
+   * existe para alguns segmentos — ver src/lib/merchant/dashboardModules.ts),
+   * informe o `href` do módulo aqui. A ferramenta some da lista disponível
+   * (e é recusada em `execute`) para merchants de outros segmentos — evita
+   * a IA propor uma ação de um recurso que aquele tipo de negócio nem usa.
+   * Deixe undefined para ferramentas universais (a maioria).
+   */
+  requiresModuleHref?: string;
   parameters: ToolParameterSchema;
   run(ctx: AssistantContext, args: TArgs): Promise<ToolResult<TData>>;
   /**
