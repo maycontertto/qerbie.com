@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import * as XLSX from "xlsx";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSuggestedCategories } from "@/lib/catalog/templates";
@@ -227,6 +228,76 @@ function readSpreadsheetRows(bytes: Uint8Array): SpreadsheetRow[] {
       } satisfies SpreadsheetRow;
     })
     .filter((row) => row.name.length >= 2 || row.barcode || row.internalCode);
+}
+
+export interface UpdateProductFieldsInput {
+  merchantId: string;
+  productId: string;
+  /** Somente os campos presentes (!== undefined) são alterados — atualização parcial. */
+  name?: string;
+  description?: string | null;
+  price?: number;
+  isActive?: boolean;
+  isFeatured?: boolean;
+}
+
+export interface UpdateProductFieldsResult {
+  ok: boolean;
+  error?: "save_failed" | "not_found" | "no_fields";
+}
+
+/**
+ * Atualização parcial de produto, reaproveitada pela ferramenta de IA
+ * `update_product` (ai/tools/inventory.ts). Diferente de `updateProduct`
+ * (Server Action do formulário humano, que sempre substitui o produto
+ * inteiro), esta função só toca as colunas explicitamente informadas —
+ * evita que a IA apague campos que o lojista não pediu para mudar.
+ * Reaplica a mesma regra de negócio de `updateProduct`: desativar o produto
+ * zera o estoque automaticamente.
+ */
+export async function updateProductFieldsCore(
+  supabase: SupabaseClient<Database>,
+  input: UpdateProductFieldsInput,
+): Promise<UpdateProductFieldsResult> {
+  const updateRow: Database["public"]["Tables"]["products"]["Update"] = {};
+  if (input.name !== undefined) updateRow.name = input.name;
+  if (input.description !== undefined) updateRow.description = input.description;
+  if (input.price !== undefined) updateRow.price = input.price;
+  if (input.isFeatured !== undefined) updateRow.is_featured = input.isFeatured;
+  if (input.isActive !== undefined) {
+    updateRow.is_active = input.isActive;
+    if (!input.isActive) {
+      updateRow.track_stock = false;
+      updateRow.stock_quantity = 0;
+    }
+  }
+
+  if (Object.keys(updateRow).length === 0) {
+    return { ok: false, error: "no_fields" };
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .update(updateRow)
+    .eq("merchant_id", input.merchantId)
+    .eq("id", input.productId)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    console.error("updateProductFieldsCore: update failed", {
+      code: error.code,
+      message: error.message,
+      details: (error as { details?: string | null }).details,
+    });
+    return { ok: false, error: "save_failed" };
+  }
+
+  if (!data) {
+    return { ok: false, error: "not_found" };
+  }
+
+  return { ok: true };
 }
 
 export async function createMenuCategory(formData: FormData): Promise<void> {

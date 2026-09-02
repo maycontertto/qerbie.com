@@ -6,6 +6,7 @@
 import { toolRegistry } from "@ai/core/registry";
 import { getSalesSummaryTool, getTopProductsTool } from "@ai/tools/sales";
 import { adjustStockTool, findProductTool, getLowStockTool } from "@ai/tools/inventory";
+import { updateProductTool } from "@ai/tools/catalog";
 import { getAppointmentsTodayTool } from "@ai/tools/agenda";
 
 let registered = false;
@@ -19,5 +20,6 @@ export function registerAllTools(): void {
   toolRegistry.register(getLowStockTool);
   toolRegistry.register(findProductTool);
   toolRegistry.register(adjustStockTool);
+  toolRegistry.register(updateProductTool);
   toolRegistry.register(getAppointmentsTodayTool);
 }
