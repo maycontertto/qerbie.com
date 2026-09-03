@@ -20,6 +20,7 @@ import {
   rescheduleAppointmentTool,
 } from "@ai/tools/agenda";
 import { getExchangeRequestsTool, updateExchangeStatusTool } from "@ai/tools/exchanges";
+import { getPlatformHelpTool } from "@ai/tools/platform";
 
 let registered = false;
 
@@ -45,4 +46,5 @@ export function registerAllTools(): void {
   toolRegistry.register(cancelAppointmentSlotTool);
   toolRegistry.register(getExchangeRequestsTool);
   toolRegistry.register(updateExchangeStatusTool);
+  toolRegistry.register(getPlatformHelpTool);
 }
