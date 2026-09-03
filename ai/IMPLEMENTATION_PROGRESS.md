@@ -559,7 +559,35 @@ isolada até aqui (ver nota em Fase C2).
 
 Ainda não existe Server Action humana equivalente (só IA por enquanto).
 
-Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `10b1d80`,
+push e deploy em produção concluídos.
+**Ainda não testado manualmente.**
+
+### Fase: `get_platform_help` (onboarding sobre o próprio Qerbie) [x]
+
+Pedido do usuário: um lojista que acabou de criar conta (já autenticado,
+dentro do painel) pergunta pro mesmo assistente coisas como "o que essa
+plataforma faz pela minha academia?" ou "onde eu cadastro meus alunos/
+clientes?" — dúvida sobre o PRÓPRIO Qerbie e seus recursos, não sobre dado
+real do negócio. Diferente de um chat público pré-cadastro: como o usuário
+já está autenticado, `ctx.merchantId`/`ctx.businessCategory` já vêm de
+`buildAssistantContext()` normalmente — não precisou de rota nova, tabela de
+leads nem rate-limit extra.
+
+- [x] `ai/tools/platform.ts` (área nova) — `get_platform_help` (`kind:
+      "read"`), sem `requiresModuleHref` (é universal). Reaproveita
+      `getDashboardModules(ctx.businessCategory)` — mesma fonte que gera a
+      navegação real do dashboard — pra nunca inventar um módulo que não
+      existe pro segmento do lojista. Retorna `headerNudge` + módulos de
+      catálogo/atendimento/vendas com título, descrição, status ("Agora"/
+      "Em breve") e link.
+- [x] `ai/core/prompt.ts` — 2 frases novas orientando quando usar essa tool
+      (perguntas sobre o próprio Qerbie/navegação) vs. as demais tools
+      (dado real do negócio).
+- [x] `ai/tools/index.ts` — `get_platform_help` registrada.
+
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `db18e7e`,
+push e deploy em produção concluídos.
 **Ainda não testado manualmente.**
 
 
