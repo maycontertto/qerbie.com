@@ -588,6 +588,9 @@ leads nem rate-limit extra.
 
 Validado com `get_errors`, `npm run build` e `npx eslint`; commit `db18e7e`,
 push e deploy em produção concluídos.
-**Ainda não testado manualmente.**
+**Testado manualmente e confirmado** (2026-09-03) — usuário perguntou "o que
+tem na plataforma" (resposta correta via `get_platform_help`) e depois "por
+que eu deveria virar cliente da Qerbie" (pergunta de venda, sem tool
+dedicada — o modelo respondeu bem só com o prompt + contexto do segmento).
 
 
