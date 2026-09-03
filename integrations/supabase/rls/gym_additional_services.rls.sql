@@ -9,7 +9,24 @@ alter table public.gym_additional_services force row level security;
 revoke all on table public.gym_additional_services from anon;
 revoke all on table public.gym_additional_services from authenticated;
 
+grant select on table public.gym_additional_services to anon;
 grant select, insert, update, delete on table public.gym_additional_services to authenticated;
+
+drop policy if exists gym_additional_services_anon_select on public.gym_additional_services;
+create policy gym_additional_services_anon_select
+on public.gym_additional_services
+for select
+to anon
+using (
+	is_active = true
+	and exists (
+		select 1
+		from public.gym_qr_tokens t
+		where t.qr_token = (current_setting('request.headers', true)::json ->> 'x-gym-qr-token')
+			and t.is_active = true
+			and t.merchant_id = gym_additional_services.merchant_id
+	)
+);
 
 drop policy if exists gym_additional_services_auth_select on public.gym_additional_services;
 create policy gym_additional_services_auth_select

@@ -1,4 +1,4 @@
-export type ServiceVerticalKey = "b" | "e" | "l" | "p" | "s";
+export type ServiceVerticalKey = "b" | "e" | "g" | "l" | "p" | "s";
 
 interface ServiceVerticalConfig {
   /** Header enviado ao createClient() para a policy RLS de acesso anônimo por QR (ver src/lib/supabase/server.ts). */
@@ -9,12 +9,13 @@ interface ServiceVerticalConfig {
 }
 
 /**
- * As 5 verticais de serviço (diferente do restaurante `t`, que vende
+ * As verticais de serviço (diferente do restaurante `t`, que vende
  * PRODUTOS via carrinho) compartilham exatamente o mesmo formato de tabela
- * de serviço (name, description, price_cents, duration_min, is_active) —
- * ver integrations/supabase/schema/035_barbearias.sql..039_lavajato.sql.
+ * para as páginas com fila/agenda (name, description, price_cents,
+ * duration_min, is_active), enquanto a academia usa uma tabela própria de
+ * serviços adicionais (name, price_cents, is_active).
  * Por isso um único core (src/lib/customer/serviceAssistantReply.ts)
- * atende todas, em vez de duplicar 5 vezes.
+ * atende todas sem duplicar rota por vertical.
  */
 export const SERVICE_VERTICALS: Record<ServiceVerticalKey, ServiceVerticalConfig> = {
   b: {
@@ -28,6 +29,12 @@ export const SERVICE_VERTICALS: Record<ServiceVerticalKey, ServiceVerticalConfig
     qrTokenTable: "aesthetic_qr_tokens",
     servicesTable: "aesthetic_services",
     label: "clínica de estética",
+  },
+  g: {
+    qrHeaderName: "x-gym-qr-token",
+    qrTokenTable: "gym_qr_tokens",
+    servicesTable: "gym_additional_services",
+    label: "academia",
   },
   l: {
     qrHeaderName: "x-carwash-qr-token",

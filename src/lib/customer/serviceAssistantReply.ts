@@ -17,8 +17,8 @@ function formatBRLFromCents(cents: number): string {
 }
 
 /**
- * Núcleo compartilhado do assistente de autoatendimento das 5 verticais de
- * serviço (barbearia/estética/lava-jato/pet/salão) — resolve qrToken ->
+ * Núcleo compartilhado do assistente de autoatendimento das verticais de
+ * serviço (barbearia/estética/academia/lava-jato/pet/salão) — resolve qrToken ->
  * merchant com o MESMO client/header usado nas páginas humanas dessas
  * verticais (sem admin client, sem tool-calling), busca os serviços reais
  * ativos e injeta como texto no system prompt. Nunca inventa serviço fora
@@ -59,17 +59,29 @@ export async function getServiceAssistantReply(params: {
     return { reply: "Mensagem vazia.", status: 400 };
   }
 
-  const { data: services } = await supabase
-    .from(config.servicesTable)
-    .select("name, description, price_cents, duration_min")
-    .eq("merchant_id", token.merchant_id)
-    .eq("is_active", true)
-    .limit(60);
+  const servicesQuery = params.vertical === "g"
+    ? supabase
+        .from(config.servicesTable)
+        .select("name, price_cents")
+        .eq("merchant_id", token.merchant_id)
+        .eq("is_active", true)
+        .limit(60)
+    : supabase
+        .from(config.servicesTable)
+        .select("name, description, price_cents, duration_min")
+        .eq("merchant_id", token.merchant_id)
+        .eq("is_active", true)
+        .limit(60);
+
+  const { data: services } = await servicesQuery;
 
   const servicesText = (services ?? [])
     .map((s) => {
-      const price = ` (${formatBRLFromCents(s.price_cents)}, ~${s.duration_min}min)`;
-      const description = s.description ? `: ${s.description}` : "";
+      const hasDuration = "duration_min" in s && typeof s.duration_min === "number";
+      const price = hasDuration
+        ? ` (${formatBRLFromCents(s.price_cents)}, ~${s.duration_min}min)`
+        : ` (${formatBRLFromCents(s.price_cents)})`;
+      const description = "description" in s && s.description ? `: ${s.description}` : "";
       return `- ${s.name}${price}${description}`;
     })
     .join("\n");

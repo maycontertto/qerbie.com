@@ -12,6 +12,7 @@ import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { GYM_SESSION_COOKIE } from "@/lib/gym/constants";
 import { CopyButton } from "./CopyButton";
+import { CustomerServiceAssistant } from "@/app/t/CustomerServiceAssistant";
 
 function maskPix(pix: string): string {
   const v = pix.trim();
@@ -230,7 +231,7 @@ export default async function GymCustomerPage({
                           </p>
                           <CopyButton value={merchant.payment_pix_key} label="Copiar PIX" />
                         </div>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 break-words">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 wrap-break-word">
                           {merchant.payment_pix_key}
                         </p>
                         {merchant.payment_pix_description ? (
@@ -250,7 +251,7 @@ export default async function GymCustomerPage({
                             href={merchant.payment_card_url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50 break-words"
+                            className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50 wrap-break-word"
                           >
                             {merchant.payment_card_url}
                           </a>
@@ -410,6 +411,7 @@ export default async function GymCustomerPage({
           </div>
         )}
       </div>
+      <CustomerServiceAssistant vertical="g" qrToken={qrToken} />
     </div>
   );
 }

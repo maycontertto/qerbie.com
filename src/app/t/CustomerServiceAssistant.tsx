@@ -20,7 +20,7 @@ export function CustomerServiceAssistant({
   vertical,
   qrToken,
 }: {
-  vertical: "b" | "e" | "l" | "p" | "s";
+  vertical: "b" | "e" | "g" | "l" | "p" | "s";
   qrToken: string;
 }) {
   const [open, setOpen] = useState(false);

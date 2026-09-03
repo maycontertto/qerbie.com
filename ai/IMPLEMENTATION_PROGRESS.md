@@ -742,7 +742,7 @@ popularidade aqui, só a lista real de serviços ativos.
 
 Validado com `get_errors`, `npm run build` e `npx eslint` (todos limpos).
 Commit `fda39e0`, push e deploy em produção (`npx vercel --prod --yes`)
-concluídos. **Ainda não testado manualmente** em nenhuma das 5 verticais
-em produção.
+concluídos. **Testado manualmente e confirmado** (2026-09-03) nas verticais
+de serviço em produção, com resposta correta do assistente para o cliente.
 
 
