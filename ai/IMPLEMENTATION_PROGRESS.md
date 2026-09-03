@@ -474,6 +474,58 @@ Causas raiz encontradas e corrigidas:
       perguntas sobre "quantos atendimentos".
 - [x] `ai/tools/index.ts` — `get_available_slots` registrada.
 
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `fce31e0`,
+deploy em produção concluído. **Testado manualmente** — usuário reportou
+que timezone e confirmação sequencial funcionaram corretamente (3 slots
+criados com horários certos, um de cada vez).
+
+### Gap: "vaga aberta" vs. "cliente marcado direto" [x]
+
+No reteste em produção (mesmo merchant de barbearia), o usuário pediu pra
+agendar 3 clientes pelo nome (Victor, mariano, João) via `create_appointment_slot`
+— o assistente criou os 3 horários corretamente, mas quando o usuário
+perguntou "quantos atendimentos tenho marcados", a resposta foi "nenhum".
+Tecnicamente correto (o modelo de dados separa "vaga disponível" —
+`merchant_appointment_slots`, sem cliente nenhum associado — de "solicitação
+de cliente" — `merchant_appointment_requests`, que é o que as ferramentas de
+leitura de "atendimentos" consultam), mas inútil pra quem só quer marcar um
+cliente conhecido por telefone/balcão e já considerar isso um atendimento
+real marcado. Confirmado por leitura de código que essa capacidade não
+existia nem no painel humano (`src/app/dashboard/modulos/agenda/page.tsx`
+só tem o form de criar vaga aberta).
+
+Decisão (perguntada ao usuário via clarifying question, aprovada): construir
+uma capacidade nova de "marcar cliente direto", em vez de só melhorar a
+comunicação sobre a limitação.
+
+- [x] `bookAppointmentForCustomerCore()` (`src/lib/merchant/agendaActions.ts`)
+      — reaproveita `createAppointmentSlotCore` (cria a vaga) e
+      `confirmAppointmentRequestCore` (confirma a solicitação) em sequência:
+      cria o slot, insere uma `merchant_appointment_requests` com
+      `customer_name`/`customer_contact`/`customer_notes` e
+      `session_token: "staff:${userId}"` (sintético — não há sessão real de
+      cliente aqui; a trigger `handle_appointment_request_insert` só valida
+      `session_token` pra role `anon`, então funciona normalmente pro
+      cliente autenticado do painel), e confirma imediatamente. Sem
+      migration — `customer_name`/`customer_contact`/`customer_notes` já
+      existiam na tabela (nullable), só não havia nenhum código que os
+      preenchesse fora do fluxo de reserva do próprio cliente.
+- [x] Novo tool de IA `book_appointment_for_customer` (`ai/tools/agenda.ts`,
+      `kind: "write"`) — args `startsAt`, `durationMin`, `customerName`
+      (obrigatório), `customerContact`/`customerNotes`/`queueId` (opcionais).
+      `buildPreview` deixa explícito que o agendamento já fica CONFIRMADO
+      pro cliente citado.
+- [x] `create_appointment_slot`: descrição atualizada instruindo o modelo a
+      usar `book_appointment_for_customer` em vez desta sempre que o lojista
+      citar o nome de um cliente específico.
+- [x] `ai/core/prompt.ts`: nova frase explicando a diferença entre os dois
+      conceitos e reforçando quando usar cada ferramenta.
+- [x] `ai/tools/index.ts` — `book_appointment_for_customer` registrada.
+
+Ainda não existe uma Server Action humana equivalente no painel (fica pra
+uma iteração futura, se o usuário quiser um botão "marcar cliente direto"
+também no painel) — a capacidade nova só está exposta via IA por enquanto.
+
 Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
 **Ainda não testado manualmente** — usuário vai retestar no mesmo merchant
 de barbearia depois do deploy.

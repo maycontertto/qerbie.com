@@ -8,6 +8,7 @@ import { getSalesSummaryTool, getTopProductsTool } from "@ai/tools/sales";
 import { adjustStockTool, findProductTool, getLowStockTool } from "@ai/tools/inventory";
 import { updateProductTool } from "@ai/tools/catalog";
 import {
+  bookAppointmentForCustomerTool,
   cancelAppointmentSlotTool,
   confirmAppointmentTool,
   createAppointmentSlotTool,
@@ -38,6 +39,7 @@ export function registerAllTools(): void {
   toolRegistry.register(declineAppointmentTool);
   toolRegistry.register(listQueuesTool);
   toolRegistry.register(createAppointmentSlotTool);
+  toolRegistry.register(bookAppointmentForCustomerTool);
   toolRegistry.register(cancelAppointmentSlotTool);
   toolRegistry.register(getExchangeRequestsTool);
   toolRegistry.register(updateExchangeStatusTool);

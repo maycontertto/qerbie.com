@@ -7,6 +7,7 @@
  */
 import type { AssistantContext, ToolDefinition } from "@ai/types";
 import {
+  bookAppointmentForCustomerCore,
   cancelAppointmentSlotCore,
   confirmAppointmentRequestCore,
   createAppointmentSlotCore,
@@ -368,7 +369,7 @@ function formatDateTimeSp(iso: string): string {
 export const createAppointmentSlotTool: ToolDefinition<CreateAppointmentSlotArgs, CreateAppointmentSlotData> = {
   name: "create_appointment_slot",
   description:
-    "Propõe criar um novo horário disponível na agenda para clientes reservarem. Use list_queues antes se quiser associar a um profissional específico.",
+    "Propõe criar um novo horário disponível na agenda para QUALQUER cliente reservar sozinho depois (ex.: publicar horários livres). Não grava nome de cliente nenhum. Se o lojista já disser o nome de um cliente específico (ex.: 'marca o Victor às 10h'), use book_appointment_for_customer em vez desta — ela já cria e confirma o agendamento para esse cliente. Use list_queues antes se quiser associar a um profissional específico.",
   requiredPermission: "dashboard_orders",
   kind: "write",
   requiresModuleHref: AGENDA_MODULE_HREF,
@@ -434,6 +435,109 @@ export const createAppointmentSlotTool: ToolDefinition<CreateAppointmentSlotArgs
     }
 
     return { ok: true, data: { slotId: result.slotId } };
+  },
+};
+
+interface BookAppointmentForCustomerArgs {
+  startsAt: string;
+  durationMin: number;
+  customerName: string;
+  customerContact?: string;
+  customerNotes?: string;
+  queueId?: string;
+}
+
+interface BookAppointmentForCustomerData {
+  slotId: string;
+  appointmentRequestId: string;
+}
+
+export const bookAppointmentForCustomerTool: ToolDefinition<
+  BookAppointmentForCustomerArgs,
+  BookAppointmentForCustomerData
+> = {
+  name: "book_appointment_for_customer",
+  description:
+    "Propõe marcar um horário JÁ CONFIRMADO para um cliente específico pelo nome (ex.: agendamento por telefone/balcão), sem depender do cliente reservar sozinho pelo app/QR. Cria o horário e o agendamento confirmado em uma única operação. Use quando o lojista citar o nome de um cliente ao pedir um agendamento. Use list_queues antes se quiser associar a um profissional específico.",
+  requiredPermission: "dashboard_orders",
+  kind: "write",
+  requiresModuleHref: AGENDA_MODULE_HREF,
+  parameters: {
+    type: "object",
+    properties: {
+      startsAt: {
+        type: "string",
+        description:
+          "Data/hora de início (ex.: 2026-09-10T14:00:00). Se não incluir o fuso horário, será tratado como horário de Brasília (America/Sao_Paulo, UTC-3).",
+      },
+      durationMin: { type: "number", description: "Duração do atendimento em minutos (1 a 1440)." },
+      customerName: { type: "string", description: "Nome do cliente a ser marcado (obrigatório)." },
+      customerContact: { type: "string", description: "Telefone/contato do cliente (opcional)." },
+      customerNotes: { type: "string", description: "Observações sobre o atendimento (opcional)." },
+      queueId: { type: "string", description: "UUID do profissional/fila (opcional, obtido de list_queues)." },
+    },
+    required: ["startsAt", "durationMin", "customerName"],
+  },
+  async buildPreview(ctx: AssistantContext, args: BookAppointmentForCustomerArgs) {
+    const startsAt = resolveAppointmentDateTime(args.startsAt);
+    if (!startsAt) {
+      throw new Error("Data/hora inválida.");
+    }
+    if (!Number.isFinite(args.durationMin) || args.durationMin <= 0 || args.durationMin > 24 * 60) {
+      throw new Error("Duração inválida — use um valor em minutos entre 1 e 1440.");
+    }
+    if (!args.customerName?.trim()) {
+      throw new Error("Informe o nome do cliente.");
+    }
+
+    let queueLabel = "sem profissional específico";
+    if (args.queueId) {
+      const { data: queue } = await ctx.supabase
+        .from("merchant_queues")
+        .select("name")
+        .eq("id", args.queueId)
+        .eq("merchant_id", ctx.merchantId)
+        .maybeSingle();
+      if (!queue) {
+        throw new Error("Não encontrei esse profissional/fila. Use list_queues para ver os disponíveis.");
+      }
+      queueLabel = queue.name;
+    }
+
+    const endsAt = new Date(startsAt.getTime() + args.durationMin * 60 * 1000);
+    return `Marcar ${formatDateTimeSp(startsAt.toISOString())} até ${formatDateTimeSp(
+      endsAt.toISOString(),
+    )} (${queueLabel}) já CONFIRMADO para o cliente "${args.customerName.trim()}". Confirma?`;
+  },
+  async run(ctx: AssistantContext, args: BookAppointmentForCustomerArgs) {
+    const startsAt = resolveAppointmentDateTime(args.startsAt);
+    if (!startsAt) {
+      return { ok: false, error: "Data/hora inválida." };
+    }
+
+    const result = await bookAppointmentForCustomerCore(ctx.supabase, {
+      merchantId: ctx.merchantId,
+      staffUserId: ctx.userId,
+      queueId: args.queueId ?? null,
+      startsAtIso: startsAt.toISOString(),
+      durationMin: args.durationMin,
+      customerName: args.customerName,
+      customerContact: args.customerContact ?? null,
+      customerNotes: args.customerNotes ?? null,
+    });
+
+    if (!result.ok) {
+      const messages: Record<string, string> = {
+        invalid_slot: "Data ou duração inválida.",
+        invalid_customer_name: "Informe o nome do cliente.",
+        slot_save_failed: "Não foi possível criar o horário agora. Tente novamente.",
+        request_save_failed: "O horário foi criado, mas não consegui vincular o cliente. Tente confirmar manualmente pelo painel.",
+        confirm_failed: "O agendamento foi criado, mas não consegui confirmar automaticamente. Tente confirmar manualmente pelo painel.",
+      };
+      return { ok: false, error: messages[result.error ?? ""] ?? "Não foi possível marcar o agendamento agora. Tente novamente." };
+    }
+
+    return { ok: true, data: { slotId: result.slotId!, appointmentRequestId: result.requestId! } };
   },
 };
 

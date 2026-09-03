@@ -146,6 +146,97 @@ export async function createAppointmentSlotCore(
   return { ok: true, slotId: data.id };
 }
 
+export interface BookAppointmentForCustomerInput {
+  merchantId: string;
+  /** Usado para compor um session_token sintético (não há sessão real de cliente aqui). */
+  staffUserId: string;
+  queueId?: string | null;
+  startsAtIso: string;
+  durationMin: number;
+  customerName: string;
+  customerContact?: string | null;
+  customerNotes?: string | null;
+}
+
+export interface BookAppointmentForCustomerResult {
+  ok: boolean;
+  slotId?: string;
+  requestId?: string;
+  error?: "invalid_slot" | "invalid_customer_name" | "slot_save_failed" | "request_save_failed" | "confirm_failed";
+}
+
+/**
+ * Cria um horário já vinculado e confirmado para um cliente específico
+ * informado pelo lojista (ex.: telefone/balcão), sem depender do cliente
+ * reservar sozinho via QR. Reaproveita `createAppointmentSlotCore` (cria a
+ * vaga) e `confirmAppointmentRequestCore` (confirma a solicitação), só que
+ * em sequência, dentro de uma única operação lógica. Usada pela ferramenta
+ * de IA `book_appointment_for_customer` (ai/tools/agenda.ts). Ainda não há
+ * uma Server Action humana equivalente no painel.
+ */
+export async function bookAppointmentForCustomerCore(
+  supabase: SupabaseClient<Database>,
+  input: BookAppointmentForCustomerInput,
+): Promise<BookAppointmentForCustomerResult> {
+  const customerName = input.customerName.trim();
+  if (!customerName) {
+    return { ok: false, error: "invalid_customer_name" };
+  }
+
+  const slotResult = await createAppointmentSlotCore(supabase, {
+    merchantId: input.merchantId,
+    queueId: input.queueId ?? null,
+    startsAtIso: input.startsAtIso,
+    durationMin: input.durationMin,
+  });
+
+  if (!slotResult.ok || !slotResult.slotId) {
+    return { ok: false, error: slotResult.error === "invalid_slot" ? "invalid_slot" : "slot_save_failed" };
+  }
+
+  const startsAt = new Date(input.startsAtIso);
+  const endsAt = new Date(startsAt.getTime() + input.durationMin * 60 * 1000);
+
+  const { data: reqRow, error: reqError } = await supabase
+    .from("merchant_appointment_requests")
+    .insert({
+      merchant_id: input.merchantId,
+      slot_id: slotResult.slotId,
+      session_token: `staff:${input.staffUserId}`,
+      customer_name: customerName,
+      customer_contact: input.customerContact?.trim() || null,
+      customer_notes: input.customerNotes?.trim() || null,
+      status: "pending",
+      // Sobrescritos pela trigger handle_appointment_request_insert a partir do slot,
+      // mas obrigatórios no tipo de Insert.
+      slot_starts_at: startsAt.toISOString(),
+      slot_ends_at: endsAt.toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (reqError || !reqRow) {
+    console.error("bookAppointmentForCustomerCore: request insert failed", {
+      code: reqError?.code,
+      message: reqError?.message,
+    });
+    // A vaga ficou criada e disponível (a trigger só altera o slot se o insert vingar).
+    // Não é destrutivo — pode ser cancelada/reaproveitada manualmente depois.
+    return { ok: false, error: "request_save_failed" };
+  }
+
+  const confirmResult = await confirmAppointmentRequestCore(supabase, {
+    merchantId: input.merchantId,
+    requestId: reqRow.id,
+  });
+
+  if (!confirmResult.ok) {
+    return { ok: false, error: "confirm_failed", slotId: slotResult.slotId, requestId: reqRow.id };
+  }
+
+  return { ok: true, slotId: slotResult.slotId, requestId: reqRow.id };
+}
+
 export interface CancelAppointmentSlotInput {
   merchantId: string;
   slotId: string;
