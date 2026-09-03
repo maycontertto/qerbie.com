@@ -620,7 +620,7 @@ ações também como Server Actions humanas no módulo de Agenda.
 Validado com `get_errors`, `npm run build` e `npx eslint`; commit `8a65686`,
 push e deploy em produção concluídos. **Ainda não testado manualmente.**
 
-### Autoatendimento do cliente no cardápio (vertical `t`/restaurante) [x] — MVP
+### Autoatendimento do cliente no cardápio (vertical `t`/restaurante) [x] — MVP (commit `a5e6257`)
 
 Nova superfície, diferente das duas anteriores: chat de IA para o CLIENTE
 final (anônimo, sem login — resolvido só por `qrToken` -> `merchant_tables`
@@ -676,15 +676,20 @@ Arquivos:
       `<CustomerMenuAssistant qrToken={qrToken} />` só quando há cardápio
       ativo publicado.
 
-Validado com `get_errors`, `npm run build` e `npx eslint`. **Ainda não
-testado manualmente** nem em produção com um `qrToken` real.
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `a5e6257`,
+push e deploy em produção (`npx vercel --prod --yes`) concluídos.
+**Testado manualmente e confirmado** (2026-09-03) — usuário perguntou sobre
+um prato específico ("a pizza é boa?"), o assistente respondeu de forma
+amigável, sugeriu outros itens e disse corretamente que não podia fazer o
+pedido (só orientar), instruindo a usar o carrinho normal do cardápio.
 
 Limitações conhecidas / evoluções futuras:
 - Rate limiter não-distribuído (ver acima).
 - UI do widget (placeholder, rótulos) ainda só em português, mesmo que a
   resposta da IA já respeite o idioma escolhido pelo cliente (`lang`).
 - MVP restrito à vertical `t`; replicar padrão pras demais verticais
-  (`b`/`e`/`g`/`l`/`p`/`s`) depois de validar com uso real.
+  (`b`/`e`/`g`/`l`/`p`/`s`) depois de validar com uso real (já validado com
+  sucesso nessa primeira vertical).
 - Sem persistência de conversa (perde histórico ao recarregar a página).
 
 
