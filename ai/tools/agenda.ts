@@ -12,6 +12,7 @@ import {
   confirmAppointmentRequestCore,
   createAppointmentSlotCore,
   declineAppointmentRequestCore,
+  rescheduleAppointmentCore,
 } from "@/lib/merchant/agendaActions";
 
 const AGENDA_MODULE_HREF = "/dashboard/modulos/agenda";
@@ -44,6 +45,7 @@ interface AppointmentsTodayArgs {
 }
 
 interface AppointmentRow {
+  appointmentRequestId: string;
   customerName: string;
   professionalName: string | null;
   startsAt: string;
@@ -60,7 +62,7 @@ interface AppointmentsTodayData {
 export const getAppointmentsTodayTool: ToolDefinition<AppointmentsTodayArgs, AppointmentsTodayData> = {
   name: "get_appointments_today",
   description:
-    "Retorna os agendamentos confirmados ou aguardando confirmação (dados de AGENDA, não de vendas/pedidos). Por padrão só hoje; use daysAhead para olhar os próximos dias (ex.: 7 para a semana) e responder 'quantos atendimentos estão marcados'.",
+    "Retorna os agendamentos confirmados ou aguardando confirmação (dados de AGENDA, não de vendas/pedidos), incluindo o appointmentRequestId de cada um (necessário para reagendar). Por padrão só hoje; use daysAhead para olhar os próximos dias (ex.: 7 para a semana) e responder 'quantos atendimentos estão marcados'.",
   requiredPermission: "dashboard_access",
   kind: "read",
   requiresModuleHref: AGENDA_MODULE_HREF,
@@ -86,7 +88,7 @@ export const getAppointmentsTodayTool: ToolDefinition<AppointmentsTodayArgs, App
 
     const { data, error } = await ctx.supabase
       .from("merchant_appointment_requests")
-      .select("customer_name, slot_starts_at, slot_ends_at, status, merchant_queues(name)")
+      .select("id, customer_name, slot_starts_at, slot_ends_at, status, merchant_queues(name)")
       .eq("merchant_id", ctx.merchantId)
       .in("status", ["confirmed", "pending"])
       .gte("slot_starts_at", fromIso)
@@ -102,6 +104,7 @@ export const getAppointmentsTodayTool: ToolDefinition<AppointmentsTodayArgs, App
       const queue = row.merchant_queues as unknown as { name: string } | { name: string }[] | null;
       const professionalName = Array.isArray(queue) ? queue[0]?.name ?? null : queue?.name ?? null;
       return {
+        appointmentRequestId: row.id,
         customerName: row.customer_name || "Cliente sem nome",
         professionalName,
         startsAt: row.slot_starts_at,
@@ -291,6 +294,99 @@ export const declineAppointmentTool: ToolDefinition<ResolveAppointmentArgs, Reso
     }
     if (!result.updated) {
       return { ok: false, error: "Essa solicitação já não estava mais pendente — nada foi alterado." };
+    }
+
+    return { ok: true, data: { appointmentRequestId: args.appointmentRequestId } };
+  },
+};
+
+interface RescheduleAppointmentArgs {
+  appointmentRequestId: string;
+  startsAt: string;
+  durationMin?: number;
+}
+
+interface RescheduleAppointmentData {
+  appointmentRequestId: string;
+}
+
+async function loadReschedulableAppointment(ctx: AssistantContext, appointmentRequestId: string) {
+  const { data } = await ctx.supabase
+    .from("merchant_appointment_requests")
+    .select("id, customer_name, status, slot_starts_at, slot_ends_at")
+    .eq("merchant_id", ctx.merchantId)
+    .eq("id", appointmentRequestId)
+    .maybeSingle();
+  return data;
+}
+
+export const rescheduleAppointmentTool: ToolDefinition<RescheduleAppointmentArgs, RescheduleAppointmentData> = {
+  name: "reschedule_appointment",
+  description:
+    "Propõe mudar a data/hora de um agendamento já existente (pendente ou confirmado) para outra data/hora, mantendo o mesmo cliente. Use get_appointments_today ou get_pending_appointments antes para obter o appointmentRequestId certo.",
+  requiredPermission: "dashboard_orders",
+  kind: "write",
+  requiresModuleHref: AGENDA_MODULE_HREF,
+  parameters: {
+    type: "object",
+    properties: {
+      appointmentRequestId: { type: "string", description: "UUID do agendamento (obtido de get_appointments_today/get_pending_appointments)." },
+      startsAt: {
+        type: "string",
+        description:
+          "Nova data/hora de início (ex.: 2026-09-10T14:00:00). Se não incluir o fuso horário, será tratado como horário de Brasília (America/Sao_Paulo, UTC-3).",
+      },
+      durationMin: { type: "number", description: "Nova duração em minutos (opcional — se não informado, mantém a duração atual)." },
+    },
+    required: ["appointmentRequestId", "startsAt"],
+  },
+  async buildPreview(ctx: AssistantContext, args: RescheduleAppointmentArgs) {
+    const appt = await loadReschedulableAppointment(ctx, args.appointmentRequestId);
+    if (!appt) {
+      throw new Error("Não encontrei esse agendamento.");
+    }
+    if (appt.status !== "pending" && appt.status !== "confirmed") {
+      throw new Error("Esse agendamento não está mais pendente/confirmado (talvez já tenha sido recusado ou cancelado).");
+    }
+
+    const newStartsAt = resolveAppointmentDateTime(args.startsAt);
+    if (!newStartsAt) {
+      throw new Error("Data/hora inválida.");
+    }
+    if (args.durationMin !== undefined && (!Number.isFinite(args.durationMin) || args.durationMin <= 0 || args.durationMin > 24 * 60)) {
+      throw new Error("Duração inválida — use um valor em minutos entre 1 e 1440.");
+    }
+
+    const originalDurationMs = new Date(appt.slot_ends_at).getTime() - new Date(appt.slot_starts_at).getTime();
+    const durationMin = args.durationMin ?? originalDurationMs / (60 * 1000);
+    const newEndsAt = new Date(newStartsAt.getTime() + durationMin * 60 * 1000);
+
+    const who = appt.customer_name || "cliente sem nome";
+    return `Reagendar "${who}" de ${formatSlotRange(appt.slot_starts_at, appt.slot_ends_at)} para ${formatDateTimeSp(
+      newStartsAt.toISOString(),
+    )} até ${formatDateTimeSp(newEndsAt.toISOString())}. Confirma?`;
+  },
+  async run(ctx: AssistantContext, args: RescheduleAppointmentArgs) {
+    const newStartsAt = resolveAppointmentDateTime(args.startsAt);
+    if (!newStartsAt) {
+      return { ok: false, error: "Data/hora inválida." };
+    }
+
+    const result = await rescheduleAppointmentCore(ctx.supabase, {
+      merchantId: ctx.merchantId,
+      requestId: args.appointmentRequestId,
+      startsAtIso: newStartsAt.toISOString(),
+      durationMin: args.durationMin,
+    });
+
+    if (!result.ok) {
+      const messages: Record<string, string> = {
+        not_found: "Agendamento não encontrado.",
+        invalid_status: "Esse agendamento não está mais pendente/confirmado — não foi alterado.",
+        invalid_slot: "Data ou duração inválida.",
+        save_failed: "Não foi possível reagendar agora. Tente novamente.",
+      };
+      return { ok: false, error: messages[result.error ?? ""] ?? "Não foi possível reagendar agora. Tente novamente." };
     }
 
     return { ok: true, data: { appointmentRequestId: args.appointmentRequestId } };

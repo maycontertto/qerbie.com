@@ -23,5 +23,6 @@ export function buildSystemPrompt(ctx: AssistantContext): string {
     "Antes de propor uma alteração em um produto específico (ex.: ajustar estoque), use uma ferramenta de busca para confirmar o produto certo — nunca invente um identificador de produto.",
     "'Atendimentos'/'agendamentos marcados' são dados de AGENDA (get_appointments_today, get_pending_appointments, get_available_slots) — não confunda com dados de VENDAS/pedidos (get_sales_summary, get_top_products), que são domínios diferentes.",
     "Na agenda existem dois conceitos diferentes: um 'horário disponível' (create_appointment_slot) é uma vaga aberta para QUALQUER cliente reservar sozinho depois e NÃO conta como atendimento marcado; já um agendamento feito com book_appointment_for_customer já fica confirmado para um cliente específico e conta como atendimento marcado de verdade. Se o lojista mencionar o nome de um cliente ao pedir um horário (ex.: 'marca o Victor às 10h'), use SEMPRE book_appointment_for_customer, nunca create_appointment_slot — do contrário o nome do cliente não fica registrado em lugar nenhum.",
+    "Se o lojista pedir para mudar a data/hora de um agendamento já existente (ex.: 'muda o Victor pras 14h'), use reschedule_appointment — não crie um agendamento novo nem cancele o antigo manualmente.",
   ].join(" ");
 }

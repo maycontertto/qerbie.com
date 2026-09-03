@@ -237,6 +237,77 @@ export async function bookAppointmentForCustomerCore(
   return { ok: true, slotId: slotResult.slotId, requestId: reqRow.id };
 }
 
+export interface RescheduleAppointmentInput {
+  merchantId: string;
+  requestId: string;
+  startsAtIso: string;
+  /** Se omitido, mantém a duração atual do agendamento. */
+  durationMin?: number;
+}
+
+export interface RescheduleAppointmentResult {
+  ok: boolean;
+  error?: "not_found" | "invalid_status" | "invalid_slot" | "save_failed";
+}
+
+/**
+ * Move um agendamento (pendente ou confirmado) pra uma nova data/hora,
+ * atualizando o horário do slot associado e a cópia denormalizada em
+ * `merchant_appointment_requests` (nenhuma trigger sincroniza esses campos
+ * automaticamente — só status). Usada por `reschedule_appointment`
+ * (ai/tools/agenda.ts). Ainda não há uma Server Action humana equivalente.
+ */
+export async function rescheduleAppointmentCore(
+  supabase: SupabaseClient<Database>,
+  input: RescheduleAppointmentInput,
+): Promise<RescheduleAppointmentResult> {
+  const { data: req, error: reqError } = await supabase
+    .from("merchant_appointment_requests")
+    .select("id, slot_id, status, slot_starts_at, slot_ends_at")
+    .eq("id", input.requestId)
+    .eq("merchant_id", input.merchantId)
+    .maybeSingle();
+
+  if (reqError || !req) {
+    return { ok: false, error: "not_found" };
+  }
+  if (req.status !== "pending" && req.status !== "confirmed") {
+    return { ok: false, error: "invalid_status" };
+  }
+
+  const startsAt = new Date(input.startsAtIso);
+  const originalDurationMs = new Date(req.slot_ends_at).getTime() - new Date(req.slot_starts_at).getTime();
+  const durationMin = input.durationMin ?? originalDurationMs / (60 * 1000);
+
+  if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(durationMin) || durationMin <= 0 || durationMin > 24 * 60) {
+    return { ok: false, error: "invalid_slot" };
+  }
+
+  const endsAt = new Date(startsAt.getTime() + durationMin * 60 * 1000);
+
+  const { error: slotError } = await supabase
+    .from("merchant_appointment_slots")
+    .update({ starts_at: startsAt.toISOString(), ends_at: endsAt.toISOString() })
+    .eq("id", req.slot_id)
+    .eq("merchant_id", input.merchantId);
+
+  if (slotError) {
+    return { ok: false, error: "save_failed" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("merchant_appointment_requests")
+    .update({ slot_starts_at: startsAt.toISOString(), slot_ends_at: endsAt.toISOString() })
+    .eq("id", req.id)
+    .eq("merchant_id", input.merchantId);
+
+  if (updateError) {
+    return { ok: false, error: "save_failed" };
+  }
+
+  return { ok: true };
+}
+
 export interface CancelAppointmentSlotInput {
   merchantId: string;
   slotId: string;

@@ -526,8 +526,40 @@ Ainda não existe uma Server Action humana equivalente no painel (fica pra
 uma iteração futura, se o usuário quiser um botão "marcar cliente direto"
 também no painel) — a capacidade nova só está exposta via IA por enquanto.
 
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `55193d5`,
+push e deploy em produção concluídos. **Testado manualmente e confirmado** —
+usuário marcou 3 clientes (Victor, João, Junio) e o assistente confirmou
+corretamente dias/horários de todos ao perguntar "atendimentos marcados
+essa semana".
+
+### Fase C3 — reagendar (`reschedule_appointment`) [x]
+
+Escopo: mudar a data/hora de um agendamento já existente (pendente ou
+confirmado), sem precisar cancelar e criar outro. Não existia como ação
+isolada até aqui (ver nota em Fase C2).
+
+- [x] `rescheduleAppointmentCore()` (`src/lib/merchant/agendaActions.ts`) —
+      atualiza `starts_at`/`ends_at` do slot associado e a cópia
+      denormalizada (`slot_starts_at`/`slot_ends_at`) na
+      `merchant_appointment_requests` correspondente (nenhuma trigger
+      sincroniza esses campos automaticamente, só `status` — confirmado
+      lendo `handle_appointment_request_update`, que só age quando
+      `new.status <> old.status`). Duração mantém a atual se não informada.
+      Só aceita agendamentos com status `pending`/`confirmed`.
+- [x] Novo tool `reschedule_appointment` (`ai/tools/agenda.ts`,
+      `kind: "write"`) — args `appointmentRequestId`, `startsAt`,
+      `durationMin` (opcional). `buildPreview` mostra data/hora antiga →
+      nova.
+- [x] `get_appointments_today` passou a expor `appointmentRequestId` em cada
+      linha (antes só `get_pending_appointments` expunha id) — necessário
+      pra reagendar um agendamento já CONFIRMADO (não só pendente).
+- [x] `ai/core/prompt.ts` — nova frase instruindo usar `reschedule_appointment`
+      em vez de criar um novo agendamento + cancelar o antigo.
+- [x] `ai/tools/index.ts` — `reschedule_appointment` registrada.
+
+Ainda não existe Server Action humana equivalente (só IA por enquanto).
+
 Validado com `get_errors`, `npm run build` e `npx eslint`; commit pendente.
-**Ainda não testado manualmente** — usuário vai retestar no mesmo merchant
-de barbearia depois do deploy.
+**Ainda não testado manualmente.**
 
 
