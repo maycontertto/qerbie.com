@@ -33,8 +33,10 @@ export async function getServiceAssistantReply(params: {
   const config = SERVICE_VERTICALS[params.vertical];
   const supabase = await createClient({ [config.qrHeaderName]: params.qrToken });
 
+  // Todas as tabelas de QR das verticais têm o mesmo formato; o cast pra uma
+  // literal representativa preserva a tipagem do supabase-js com tabela dinâmica.
   const { data: token } = await supabase
-    .from(config.qrTokenTable)
+    .from(config.qrTokenTable as "barbershop_qr_tokens")
     .select("merchant_id")
     .eq("qr_token", params.qrToken)
     .eq("is_active", true)
@@ -59,39 +61,73 @@ export async function getServiceAssistantReply(params: {
     return { reply: "Mensagem vazia.", status: 400 };
   }
 
-  const servicesQuery = params.vertical === "g"
-    ? supabase
-        .from(config.servicesTable)
-        .select("name, price_cents")
-        .eq("merchant_id", token.merchant_id)
-        .eq("is_active", true)
-        .limit(60)
-    : supabase
-        .from(config.servicesTable)
-        .select("name, description, price_cents, duration_min")
-        .eq("merchant_id", token.merchant_id)
-        .eq("is_active", true)
-        .limit(60);
+  type ServiceLine = {
+    name: string;
+    price_cents: number;
+    description?: string | null;
+    duration_min?: number | null;
+  };
 
-  const { data: services } = await servicesQuery;
+  let services: ServiceLine[] = [];
+  if (params.vertical === "g") {
+    const { data } = await supabase
+      .from("gym_additional_services")
+      .select("name, price_cents")
+      .eq("merchant_id", token.merchant_id)
+      .eq("is_active", true)
+      .limit(60);
+    services = data ?? [];
+  } else {
+    const { data } = await supabase
+      .from(config.servicesTable as "barbershop_services")
+      .select("name, description, price_cents, duration_min")
+      .eq("merchant_id", token.merchant_id)
+      .eq("is_active", true)
+      .limit(60);
+    services = data ?? [];
+  }
 
-  const servicesText = (services ?? [])
+  // Academia: planos são a informação principal (RLS já permite select anon de planos ativos).
+  let plansText = "";
+  if (params.vertical === "g") {
+    const { data: plans } = await supabase
+      .from("gym_plans")
+      .select("name, price_cents, billing_period_months")
+      .eq("merchant_id", token.merchant_id)
+      .eq("is_active", true)
+      .order("price_cents", { ascending: true })
+      .limit(50);
+    plansText = (plans ?? [])
+      .map((p) => {
+        const months = Number(p.billing_period_months ?? 1);
+        const period = months === 1 ? "mensal" : `a cada ${months} meses`;
+        return `- ${p.name} (${formatBRLFromCents(p.price_cents)}, ${period})`;
+      })
+      .join("\n");
+  }
+
+  const servicesText = services
     .map((s) => {
-      const hasDuration = "duration_min" in s && typeof s.duration_min === "number";
-      const price = hasDuration
+      const price = typeof s.duration_min === "number"
         ? ` (${formatBRLFromCents(s.price_cents)}, ~${s.duration_min}min)`
         : ` (${formatBRLFromCents(s.price_cents)})`;
-      const description = "description" in s && s.description ? `: ${s.description}` : "";
+      const description = s.description ? `: ${s.description}` : "";
       return `- ${s.name}${price}${description}`;
     })
     .join("\n");
+
+  const guidanceLine = params.vertical === "g"
+    ? "Você não consegue fazer check-in, matrícula, trocar plano nem cobrar nada — só explicar os planos e serviços e ajudar o aluno a escolher; para se matricular, fazer check-in ou trocar de plano, oriente a usar as opções da própria página do QR."
+    : "Você não consegue marcar horário, entrar na fila nem cobrar nada — só explicar os serviços e ajudar o cliente a escolher; para agendar de verdade, oriente a usar os botões \"Entrar na fila\"/\"Agendar horário\" da própria página.";
 
   const systemPrompt = [
     `Você é o assistente de autoatendimento de "${merchant.name}" (${config.label}) no Qerbie.`,
     "Responda em português do Brasil. Seja curto e simpático.",
     "Você só pode falar sobre os serviços DESTE estabelecimento — nunca invente serviço fora da lista abaixo, nunca fale de outro estabelecimento, nunca dê informação financeira do lojista (faturamento, custos, margem).",
-    "Você não consegue marcar horário, entrar na fila nem cobrar nada — só explicar os serviços e ajudar o cliente a escolher; para agendar de verdade, oriente a usar os botões \"Entrar na fila\"/\"Agendar horário\" da própria página.",
-    "Serviços ativos:",
+    guidanceLine,
+    ...(params.vertical === "g"
+      ? ["Planos ativos:", plansText || "(nenhum plano cadastrado no momento)", "Serviços adicionais ativos:"]
+      : ["Serviços ativos:"]),
     servicesText || "(nenhum serviço cadastrado no momento)",
   ].join("\n");
 

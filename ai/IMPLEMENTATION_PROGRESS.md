@@ -745,4 +745,33 @@ Commit `fda39e0`, push e deploy em produção (`npx vercel --prod --yes`)
 concluídos. **Testado manualmente e confirmado** (2026-09-03) nas verticais
 de serviço em produção, com resposta correta do assistente para o cliente.
 
+### Autoatendimento do cliente na academia (vertical `g`) [x]
+
+Extensão do padrão acima pra vertical `g`, que tinha ficado de fora por ter
+página muito diferente (portal do aluno com login/check-in/planos, sem
+menu/fila/agenda). Iniciada por engano num agente paralelo (commit
+`cfa8671`) e depois corrigida/completada nesta trilha:
+
+- [x] `src/lib/customer/serviceVerticals.ts` — adicionada a chave `g`
+      (`gym_qr_tokens` / `gym_additional_services` / header
+      `x-gym-qr-token`).
+- [x] `src/lib/customer/serviceAssistantReply.ts` — para `g`: select sem
+      `description`/`duration_min` (a tabela de serviços da academia não
+      tem essas colunas), busca também os PLANOS ativos (`gym_plans`, RLS
+      anon já permitia — usada pelo portal do aluno) e injeta "Planos
+      ativos" + "Serviços adicionais ativos" no prompt; orientação do
+      prompt trocada pra check-in/matrícula/troca de plano (a página `g`
+      NÃO tem botões "Entrar na fila"/"Agendar horário").
+- [x] `src/app/t/CustomerServiceAssistant.tsx` — aceita `vertical="g"`.
+- [x] `src/app/g/[qrToken]/page.tsx` — renderiza o widget.
+- [x] `integrations/supabase/rls/gym_additional_services.rls.sql` — nova
+      policy `gym_additional_services_anon_select` (select anon de serviço
+      ativo validado pelo header `x-gym-qr-token` + QR ativo do mesmo
+      merchant, mesmo padrão das outras 5 verticais). **PENDENTE: rodar o
+      SQL no Supabase Dashboard** — sem isso o assistente da academia
+      responde "(nenhum serviço cadastrado)" para os serviços adicionais
+      (planos já funcionam).
+
+**Ainda não testado manualmente** na página `g` em produção.
+
 
