@@ -593,4 +593,31 @@ tem na plataforma" (resposta correta via `get_platform_help`) e depois "por
 que eu deveria virar cliente da Qerbie" (pergunta de venda, sem tool
 dedicada — o modelo respondeu bem só com o prompt + contexto do segmento).
 
+### Marcar cliente e reagendar também no painel humano [x]
+
+Desde a Fase C2/C3, `book_appointment_for_customer` e
+`reschedule_appointment` só existiam como ferramentas de IA — o lojista não
+conseguia fazer a mesma coisa sem passar pelo chat. Retomando a ordem de
+evolução do plano após o desvio do `get_platform_help`, expostas as duas
+ações também como Server Actions humanas no módulo de Agenda.
+
+- [x] `src/lib/merchant/agendaActions.ts` — novas Server Actions
+      `bookAppointmentForCustomer(formData)` e `rescheduleAppointment(formData)`,
+      ambas reaproveitando `bookAppointmentForCustomerCore`/
+      `rescheduleAppointmentCore` (mesma mutação central da IA, sem duplicar
+      lógica de negócio) atrás de `requireAgendaPermission()` (mesma
+      permissão `dashboard_orders`/isOwner das outras ações da agenda).
+- [x] `src/app/dashboard/modulos/agenda/page.tsx`:
+  - Novo card "Marcar cliente diretamente" (nome, contato, profissional,
+    início, duração, observações) — já confirma na hora, igual à tool de IA.
+  - Cada solicitação pendente e cada atendimento confirmado (nova seção
+    "Atendimentos confirmados", que consulta `status='confirmed'` com
+    `slot_starts_at >= agora`) ganhou um mini-formulário inline
+    "Reagendar" (novo horário + duração opcional).
+  - Novos códigos de erro tratados no banner: `invalid_booking`,
+    `booking_failed`, `invalid_status`.
+
+Validado com `get_errors`, `npm run build` e `npx eslint`; commit `8a65686`,
+push e deploy em produção concluídos. **Ainda não testado manualmente.**
+
 
