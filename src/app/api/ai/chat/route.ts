@@ -4,6 +4,7 @@ import { buildSystemPrompt } from "@ai/core/prompt";
 import { toolRegistry } from "@ai/core/registry";
 import { getConfiguredProvider } from "@ai/providers";
 import { registerAllTools } from "@ai/tools";
+import { AIProviderRateLimitError } from "@ai/core/provider";
 import type { AIChatMessage, AIToolCallRequest } from "@ai/core/provider";
 import type { AssistantContext } from "@ai/types";
 
@@ -96,6 +97,7 @@ export async function POST(req: Request) {
   const startedAt = Date.now();
   let finalContent = "";
   let lastError: string | null = null;
+  let isRateLimit = false;
 
   try {
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
@@ -155,6 +157,7 @@ export async function POST(req: Request) {
       break;
     }
   } catch (error) {
+    isRateLimit = error instanceof AIProviderRateLimitError;
     lastError = error instanceof Error ? error.message : "Erro desconhecido ao consultar a IA.";
     console.error("[ai/chat] falha ao consultar o provedor de IA:", lastError);
   }
@@ -170,7 +173,10 @@ export async function POST(req: Request) {
   });
 
   if (lastError) {
-    return NextResponse.json({ conversationId, error: lastError }, { status: 502 });
+    const reply = isRateLimit
+      ? "O assistente recebeu muitas mensagens nos últimos instantes. Aguarde alguns segundos e tente de novo."
+      : "Não consegui falar com o assistente agora. Tente novamente em instantes.";
+    return NextResponse.json({ conversationId, error: lastError, reply }, { status: 502 });
   }
 
   if (!finalContent.trim()) {

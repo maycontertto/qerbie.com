@@ -47,3 +47,11 @@ export interface AIProvider {
   readonly name: string;
   chat(input: AIChatInput): Promise<AIChatResult>;
 }
+
+/** Lançado quando o provedor esgota as tentativas de retry após respostas 429 (rate limit). */
+export class AIProviderRateLimitError extends Error {
+  constructor(providerName: string) {
+    super(`Provedor de IA "${providerName}" está com limite de uso atingido no momento.`);
+    this.name = "AIProviderRateLimitError";
+  }
+}

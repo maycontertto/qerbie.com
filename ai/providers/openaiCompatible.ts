@@ -10,6 +10,7 @@ import type {
   AIProvider,
   AIToolCallRequest,
 } from "@ai/core/provider";
+import { AIProviderRateLimitError } from "@ai/core/provider";
 import type { ToolDefinition } from "@ai/types";
 
 export interface OpenAiCompatibleConfig {
@@ -83,25 +84,63 @@ function toFinishReason(value: string): AIChatResult["finishReason"] {
   return "stop";
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Extrai o tempo de espera sugerido (em ms) de um 429, seja do header `Retry-After` ou do texto do erro (ex.: Groq: "Please try again in 2.205s"). */
+function parseRetryDelayMs(res: Response, bodyText: string): number {
+  const headerValue = res.headers.get("retry-after");
+  if (headerValue) {
+    const headerSeconds = Number(headerValue);
+    if (Number.isFinite(headerSeconds) && headerSeconds > 0) return headerSeconds * 1000;
+  }
+  const match = bodyText.match(/try again in ([\d.]+)s/i);
+  if (match) {
+    const seconds = Number(match[1]);
+    if (Number.isFinite(seconds) && seconds > 0) return seconds * 1000;
+  }
+  return 1500;
+}
+
+const MAX_RATE_LIMIT_RETRIES = 2;
+
 export function createOpenAiCompatibleProvider(config: OpenAiCompatibleConfig): AIProvider {
   return {
     name: config.name,
     async chat({ messages, tools }: AIChatInput): Promise<AIChatResult> {
-      const res = await fetch(`${config.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model: config.model,
-          messages: toOpenAiMessages(messages),
-          tools: tools.length > 0 ? toOpenAiTools(tools) : undefined,
-        }),
+      const body = JSON.stringify({
+        model: config.model,
+        messages: toOpenAiMessages(messages),
+        tools: tools.length > 0 ? toOpenAiTools(tools) : undefined,
       });
+
+      let res: Response;
+      let attempt = 0;
+      for (;;) {
+        res = await fetch(`${config.baseUrl.replace(/\/+$/, "")}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+          },
+          body,
+        });
+
+        if (res.status !== 429 || attempt >= MAX_RATE_LIMIT_RETRIES) break;
+
+        const text = await res.text().catch(() => "");
+        const delayMs = parseRetryDelayMs(res, text);
+        console.warn(`[ai/provider] ${config.name} respondeu 429, tentando de novo em ${delayMs}ms (tentativa ${attempt + 1}/${MAX_RATE_LIMIT_RETRIES})`);
+        await sleep(delayMs);
+        attempt += 1;
+      }
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
+        if (res.status === 429) {
+          throw new AIProviderRateLimitError(config.name);
+        }
         throw new Error(`Provedor de IA "${config.name}" respondeu ${res.status}: ${text.slice(0, 300)}`);
       }
 
