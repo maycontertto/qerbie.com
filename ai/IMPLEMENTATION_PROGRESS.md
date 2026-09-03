@@ -620,4 +620,71 @@ ações também como Server Actions humanas no módulo de Agenda.
 Validado com `get_errors`, `npm run build` e `npx eslint`; commit `8a65686`,
 push e deploy em produção concluídos. **Ainda não testado manualmente.**
 
+### Autoatendimento do cliente no cardápio (vertical `t`/restaurante) [x] — MVP
+
+Nova superfície, diferente das duas anteriores: chat de IA para o CLIENTE
+final (anônimo, sem login — resolvido só por `qrToken` -> `merchant_tables`
+-> `merchants`, igual ao padrão já usado em
+`src/app/t/[qrToken]/menu/page.tsx`). Objetivo: responder perguntas tipo
+"qual o prato mais vendido?"/"o que vocês têm de sobremesa?" no próprio
+cardápio público, sem expor dado financeiro nem de outros clientes.
+
+Decisões de escopo (MVP, não perguntado ao lojista antes por já ter sido
+delegado — "fica a seu critério"):
+- Só a vertical `t` (restaurante/cardápio) por enquanto. Outras verticais
+  (`b`, `e`, `g`, `l`, `p`, `s`) ficam para depois, se validar bem.
+- **Injeção de contexto, sem tool-calling**: cardápio ativo + itens mais
+  pedidos são buscados no servidor e embutidos como texto no system prompt;
+  o modelo só responde com base nisso (`tools: []`), sem precisar de um
+  registro de ferramentas paralelo pra usuário anônimo. Reduz risco e
+  garante que a IA nunca invente prato fora da lista real.
+- **Sem tabela nova**: histórico da conversa fica só no estado do React no
+  navegador do cliente (perdido ao recarregar a página) — não criamos
+  `ai_conversations`/`ai_messages` equivalentes pra visitante anônimo.
+- **Rate limit em memória, por instância** (`Map` simples, janela de 60s,
+  máx. 8 mensagens por merchant+IP) — contém abuso básico, mas **não é
+  distribuído** entre instâncias serverless da Vercel (cada instância tem
+  seu próprio contador). Motivo de aceitar isso no MVP: o provedor de IA
+  (Groq, `openai/gpt-oss-120b`) já tem um limite de TPM apertado (8000)
+  compartilhado com o chat pago dos lojistas no painel — importante não
+  deixar essa superfície nova (pública, sem autenticação) consumir esse
+  orçamento sem nenhuma contenção. Evoluir pra um limitador real
+  (Supabase ou KV distribuído) se o uso justificar.
+- Nunca expõe faturamento/receita/dado de outro cliente — só nome do
+  produto e quantas vezes foi pedido (mesmo padrão de segurança do
+  `get_top_products` já usado no painel do lojista).
+
+Arquivos:
+- [x] `src/lib/customer/popularItems.ts` — `getPopularMenuItemsCore(merchantId, limit=5)`.
+      Usa `createAdminClient()` (service role) porque a RLS anônima de
+      `orders`/`order_items` só permite ler os PRÓPRIOS pedidos
+      (`orders_anon_select` via `session_token`), e aqui precisamos agregar
+      pedidos de TODOS os clientes daquele lojista. `merchantId` é sempre
+      resolvido no servidor a partir do `qrToken` — nunca aceito do cliente.
+- [x] `src/app/api/public/menu-assistant/[qrToken]/route.ts` (POST) —
+      resolve `qrToken` -> merchant (cliente Supabase comum, sem admin),
+      aplica o rate limit em memória, monta o system prompt com cardápio
+      real + itens mais pedidos, chama
+      `getConfiguredProvider().chat({messages, tools: []})`, trata
+      `AIProviderRateLimitError` com mensagem amigável em português (ou
+      inglês/espanhol, conforme `lang` enviado pelo cliente).
+- [x] `src/app/t/[qrToken]/menu/CustomerMenuAssistant.tsx` — widget de chat
+      flutuante (bolha + painel), versão simplificada do
+      `AssistantWidget.tsx` do painel (sem histórico persistido, sem ações
+      pendentes de confirmação, já que essa superfície é só leitura).
+- [x] `src/app/t/[qrToken]/menu/CustomerMenuShell.tsx` — importa e renderiza
+      `<CustomerMenuAssistant qrToken={qrToken} />` só quando há cardápio
+      ativo publicado.
+
+Validado com `get_errors`, `npm run build` e `npx eslint`. **Ainda não
+testado manualmente** nem em produção com um `qrToken` real.
+
+Limitações conhecidas / evoluções futuras:
+- Rate limiter não-distribuído (ver acima).
+- UI do widget (placeholder, rótulos) ainda só em português, mesmo que a
+  resposta da IA já respeite o idioma escolhido pelo cliente (`lang`).
+- MVP restrito à vertical `t`; replicar padrão pras demais verticais
+  (`b`/`e`/`g`/`l`/`p`/`s`) depois de validar com uso real.
+- Sem persistência de conversa (perde histórico ao recarregar a página).
+
 

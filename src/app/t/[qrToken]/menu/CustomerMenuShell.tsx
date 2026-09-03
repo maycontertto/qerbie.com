@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CustomerLanguagePicker, useCustomerLanguage } from "@/app/t/CustomerLanguagePicker";
 import { tCustomer } from "@/lib/customer/i18n";
 import { CustomerMenuBrowser } from "@/app/t/[qrToken]/menu/CustomerMenuBrowser";
+import { CustomerMenuAssistant } from "@/app/t/[qrToken]/menu/CustomerMenuAssistant";
 
 type Menu = {
   id: string;
@@ -221,6 +222,8 @@ export function CustomerMenuShell({
           {tCustomer(lang, "change_name")}
         </Link>
       </div>
+
+      {menus.length > 0 && activeMenuId ? <CustomerMenuAssistant qrToken={qrToken} /> : null}
     </div>
   );
 }
