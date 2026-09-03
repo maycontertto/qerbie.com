@@ -692,4 +692,55 @@ Limitações conhecidas / evoluções futuras:
   sucesso nessa primeira vertical).
 - Sem persistência de conversa (perde histórico ao recarregar a página).
 
+### Autoatendimento do cliente nas 5 verticais de serviço (barbearia/estética/lava-jato/pet/salão) [x]
+
+Extensão do MVP acima pra `b`/`e`/`l`/`p`/`s` (vertical `g`/academia ficou de
+fora — página própria muito diferente, sem menu/fila/agenda padrão, ver
+`src/app/g/[qrToken]/page.tsx`). DESCOBERTA que permitiu generalizar em vez
+de duplicar 5 vezes: `barbershop_services`, `aesthetic_services`,
+`beauty_services`, `pet_services`, `carwash_services` têm EXATAMENTE o
+mesmo formato de coluna (`name, description, price_cents, duration_min,
+is_active`) — só o nome da tabela/token/header muda por vertical. Diferente
+do restaurante, essas 5 verticais NÃO têm cardápio/carrinho de produtos no
+lado do cliente — a página `.../menu` de cada uma é só uma tela de
+navegação com 2 botões ("Entrar na fila"/"Agendar horário"), então o
+assistente aqui fala de SERVIÇOS (nome/preço/duração), não de produtos, e
+não existe um conceito limpo de "serviço mais popular" hoje (agendamentos
+não guardam qual serviço foi escolhido) — por isso não tem ranking de
+popularidade aqui, só a lista real de serviços ativos.
+
+- [x] `src/lib/customer/serviceVerticals.ts` (novo) — `SERVICE_VERTICALS`
+      (config por vertical: tabela de qr token, header RLS, tabela de
+      serviços, label) + `isServiceVerticalKey()`.
+- [x] `src/lib/customer/serviceAssistantReply.ts` (novo) —
+      `getServiceAssistantReply({vertical, qrToken, message, history})`:
+      resolve qrToken -> merchant com o MESMO client/header das páginas
+      humanas dessas verticais (sem admin client), busca serviços ativos
+      reais, injeta como texto no prompt (`tools: []`, mesmo padrão do
+      restaurante), nunca afirma que marca/agenda (só orienta a usar
+      fila/agenda reais).
+- [x] `src/app/api/public/service-assistant/[vertical]/[qrToken]/route.ts`
+      (novo, rota ÚNICA compartilhada pelas 5 verticais) — valida
+      `vertical` contra `SERVICE_VERTICALS`, aplica rate limit ANTES de
+      qualquer consulta ao banco, chama o core acima.
+- [x] `src/lib/customer/rateLimit.ts` (novo) — `isRateLimited()` extraído
+      do `menu-assistant/route.ts` (estava duplicado) pra ser reaproveitado
+      pelas duas rotas públicas de assistente; `menu-assistant/route.ts`
+      refatorado pra importar daqui e também passou a checar rate limit
+      ANTES da consulta ao banco (antes era depois de resolver o merchant —
+      pequena melhoria de robustez a reboque da extração).
+- [x] `src/app/t/CustomerServiceAssistant.tsx` (novo, componente
+      compartilhado entre as 5 verticais, mesmo padrão de localização
+      cross-vertical de `CustomerInvalidQr.tsx`) — widget de chat
+      flutuante, cópia simplificada do `CustomerMenuAssistant.tsx` do
+      restaurante (sem seletor de idioma, já que essas 5 páginas não têm
+      `useCustomerLanguage`).
+- [x] `src/app/{b,e,l,p,s}/[qrToken]/menu/page.tsx` — cada uma importa e
+      renderiza `<CustomerServiceAssistant vertical="..." qrToken={qrToken} />`
+      (sempre, sem condicional de "tem serviço cadastrado" — o assistente já
+      lida com lista vazia dizendo que não há serviço cadastrado).
+
+Validado com `get_errors`, `npm run build` e `npx eslint` (todos limpos).
+**Ainda não testado manualmente** em nenhuma das 5 verticais em produção.
+
 

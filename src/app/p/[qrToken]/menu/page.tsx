@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
+import { CustomerServiceAssistant } from "@/app/t/CustomerServiceAssistant";
 import { CUSTOMER_SESSION_COOKIE } from "@/lib/customer/constants";
 import { buildMerchantBranding } from "@/lib/merchant/branding";
 
@@ -95,6 +96,8 @@ export default async function PetShopMenuPage({
           </a>
         </div>
       </div>
+
+      <CustomerServiceAssistant vertical="p" qrToken={qrToken} />
     </div>
   );
 }

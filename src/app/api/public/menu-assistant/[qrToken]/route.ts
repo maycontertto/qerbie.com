@@ -4,29 +4,10 @@ import { getConfiguredProvider } from "@ai/providers";
 import { AIProviderRateLimitError } from "@ai/core/provider";
 import type { AIChatMessage } from "@ai/core/provider";
 import { getPopularMenuItemsCore } from "@/lib/customer/popularItems";
+import { isRateLimited } from "@/lib/customer/rateLimit";
 
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_MESSAGES = 8;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 8;
-
-/**
- * Limite simples de taxa em memória, por instância do processo — contém
- * abuso/custo básico (o provedor de IA tem TPM compartilhado com o painel
- * dos lojistas pagantes), mas NÃO é distribuído entre instâncias serverless
- * da Vercel (cada instância tem seu próprio contador). Ver nota em
- * ai/IMPLEMENTATION_PROGRESS.md — evoluir pra um limitador real (Supabase
- * ou KV) se o uso crescer.
- */
-const requestLog = new Map<string, number[]>();
-
-function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  const timestamps = (requestLog.get(key) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  timestamps.push(now);
-  requestLog.set(key, timestamps);
-  return timestamps.length > RATE_LIMIT_MAX_REQUESTS;
-}
 
 interface MenuAssistantRequestBody {
   message?: string;
@@ -42,6 +23,15 @@ function languageInstruction(lang: string | undefined): string {
 
 export async function POST(req: Request, { params }: { params: Promise<{ qrToken: string }> }) {
   const { qrToken } = await params;
+
+  const rateLimitKey = `menu-assistant:${qrToken}:${req.headers.get("x-forwarded-for") ?? "unknown"}`;
+  if (isRateLimited(rateLimitKey)) {
+    return NextResponse.json(
+      { reply: "Muitas mensagens em pouco tempo. Aguarde um instante e tente de novo." },
+      { status: 429 },
+    );
+  }
+
   const supabase = await createClient();
 
   const { data: table } = await supabase
@@ -62,14 +52,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ qrToken
 
   if (!merchant) {
     return NextResponse.json({ error: "invalid_qr" }, { status: 404 });
-  }
-
-  const rateLimitKey = `${merchant.id}:${req.headers.get("x-forwarded-for") ?? "unknown"}`;
-  if (isRateLimited(rateLimitKey)) {
-    return NextResponse.json(
-      { reply: "Muitas mensagens em pouco tempo. Aguarde um instante e tente de novo." },
-      { status: 429 },
-    );
   }
 
   let body: MenuAssistantRequestBody;
