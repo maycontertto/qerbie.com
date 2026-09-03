@@ -51,7 +51,7 @@ export function CustomerMenuAssistant({ qrToken }: { qrToken: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Perguntar ao assistente do cardápio"
+        aria-label="Perguntar ao assistente Qerbie"
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-zinc-900 text-white shadow-lg transition-colors hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
         {open ? (
@@ -72,8 +72,8 @@ export function CustomerMenuAssistant({ qrToken }: { qrToken: string }) {
       {open && (
         <div className="fixed bottom-24 right-6 z-50 flex h-[70vh] max-h-150 w-[90vw] max-w-sm flex-col rounded-2xl border border-zinc-200 bg-white/95 shadow-xl backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/95">
           <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Assistente do cardápio</h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Pergunte o que é mais pedido ou peça sugestões</p>
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Assistente Qerbie</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">Estou aqui para te ajudar. Pergunte o que precisar.</p>
           </div>
 
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
