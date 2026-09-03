@@ -10,6 +10,7 @@ alter table public.merchants force row level security;
 revoke all on table public.merchants from anon;
 revoke all on table public.merchants from authenticated;
 
+grant select on table public.merchants to anon;
 grant select, insert, update, delete on table public.merchants to authenticated;
 
 -- Read: owner can read; members can read.
@@ -21,6 +22,19 @@ to authenticated
 using (
   owner_user_id = auth.uid()
   or public.is_merchant_member(id)
+);
+
+-- Read (customers): páginas públicas via QR (cardápio, fila, agenda,
+-- assistente) precisam ler nome/marca/pagamento do lojista sem sessão
+-- autenticada. Só dados já exibidos publicamente nessas páginas; nenhuma
+-- coluna sensível (senha, chave de API, etc.) existe nesta tabela.
+drop policy if exists merchants_anon_select on public.merchants;
+create policy merchants_anon_select
+on public.merchants
+for select
+to anon
+using (
+  status = 'active'
 );
 
 -- Create: only the user themself can become owner.

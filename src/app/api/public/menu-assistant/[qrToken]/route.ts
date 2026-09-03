@@ -5,6 +5,7 @@ import { AIProviderRateLimitError } from "@ai/core/provider";
 import type { AIChatMessage } from "@ai/core/provider";
 import { getPopularMenuItemsCore } from "@/lib/customer/popularItems";
 import { isRateLimited } from "@/lib/customer/rateLimit";
+import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
 
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_MESSAGES = 8;
@@ -46,7 +47,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ qrToken
 
   const { data: merchant } = await supabase
     .from("merchants")
-    .select("id, name")
+    .select("id, name, business_category")
     .eq("id", table.merchant_id)
     .maybeSingle();
 
@@ -91,13 +92,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ qrToken
     ? popularItems.map((p, i) => `${i + 1}. ${p.productName} (pedido ${p.timesOrdered}x nos últimos 30 dias)`).join("\n")
     : "Ainda não há dados suficientes de pedidos para calcular os mais pedidos.";
 
+  const categoryLabel = getBusinessCategoryLabel(merchant.business_category);
+  const segment = categoryLabel ? ` (${categoryLabel})` : "";
+
   const systemPrompt = [
-    `Você é o assistente de autoatendimento do cardápio de "${merchant.name}" no Qerbie.`,
+    `Você é o assistente de autoatendimento de "${merchant.name}"${segment} no Qerbie.`,
     languageInstruction(body.lang),
     "Seja curto e simpático.",
-    "Você só pode falar sobre o cardápio e os pedidos DESTE estabelecimento — nunca invente prato que não esteja na lista abaixo, nunca fale de outro estabelecimento, nunca dê informação financeira do lojista (faturamento, custos, margem).",
-    "Você não consegue fazer pedidos, alterar o carrinho nem cobrar nada — só dar sugestões e explicações; se o cliente quiser pedir de verdade, oriente a usar o cardápio normal da página.",
-    "Cardápio ativo:",
+    "Adapte o vocabulário ao tipo de negócio informado acima: em restaurante/pizzaria/bar/açaiteria fale de pratos e cardápio; em farmácia/mercado/conveniência/loja fale de produtos; em clínica/consultório/salão/estética/barbearia/pet shop fale de serviços ou procedimentos; se não souber o segmento, use um termo neutro como 'itens'.", 
+    "Você só pode falar sobre os itens e pedidos DESTE estabelecimento — nunca invente item que não esteja na lista abaixo, nunca fale de outro estabelecimento, nunca dê informação financeira do lojista (faturamento, custos, margem).",
+    "Você não consegue fazer pedidos, alterar o carrinho nem cobrar nada — só dar sugestões e explicações; se o cliente quiser pedir de verdade, oriente a usar o cardápio/catálogo normal da página.",
+    "Itens ativos:",
     menuText || "(nenhum item cadastrado no momento)",
     "Itens mais pedidos nos últimos 30 dias (use isso para responder 'o que é mais pedido'/'o que você recomenda'):",
     popularText,

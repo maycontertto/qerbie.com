@@ -79,7 +79,7 @@ export function CustomerMenuAssistant({ qrToken }: { qrToken: string }) {
           <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
             {messages.length === 0 && (
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Ex.: &ldquo;o que é mais pedido?&rdquo;, &ldquo;o que vocês têm de sobremesa?&rdquo;
+                Ex.: &ldquo;o que é mais pedido?&rdquo;, &ldquo;o que vocês têm disponível?&rdquo;
               </p>
             )}
             {messages.map((m, i) => (
