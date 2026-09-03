@@ -39,7 +39,7 @@ export default async function PetQrPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: tokens } = await supabase
     .from("pet_qr_tokens")
     .select("id, label, qr_token, is_active, created_at")

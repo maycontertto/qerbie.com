@@ -13,7 +13,7 @@ import { hasMemberPermission } from "@/lib/auth/guard";
 import type { AssistantContext, AssistantPermission } from "@ai/types";
 
 export async function buildAssistantContext(): Promise<AssistantContext | null> {
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const {
     data: { user },

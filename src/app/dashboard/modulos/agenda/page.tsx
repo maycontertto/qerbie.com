@@ -87,7 +87,7 @@ export default async function AgendaModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const nowIso = new Date().toISOString();
 
   const [

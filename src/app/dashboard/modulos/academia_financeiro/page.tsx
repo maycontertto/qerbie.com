@@ -34,7 +34,7 @@ export default async function AcademiaFinanceiroPage() {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const since = new Date();
   since.setDate(since.getDate() - 30);

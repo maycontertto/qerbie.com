@@ -38,7 +38,7 @@ export default async function EstoqueModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: products } = await supabase
     .from("products")

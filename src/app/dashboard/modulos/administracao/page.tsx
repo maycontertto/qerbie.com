@@ -50,7 +50,7 @@ export default async function AdministracaoModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: members } = await supabase
     .from("merchant_members")

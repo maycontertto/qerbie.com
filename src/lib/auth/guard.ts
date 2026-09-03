@@ -29,7 +29,7 @@ export function hasMemberPermission(
  * Use at the top of any protected Server Component / page.
  */
 export async function getSessionOrRedirect(options?: { redirectTo?: string }) {
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const {
     data: { user },

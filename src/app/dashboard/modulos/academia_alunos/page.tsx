@@ -63,7 +63,7 @@ export default async function AcademiaAlunosPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: plans } = await supabase
     .from("gym_plans")

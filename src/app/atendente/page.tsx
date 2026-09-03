@@ -12,7 +12,7 @@ export default async function AtendenteHomePage({
 }) {
   const { saved, avatar_saved, error } = await searchParams;
   const { user, merchant } = await getMerchantMemberOrRedirect();
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: profile } = await supabase
     .from("merchant_members")

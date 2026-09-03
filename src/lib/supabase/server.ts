@@ -10,11 +10,28 @@ import {
  * Creates a Supabase client for use in Server Components, Server Actions,
  * and Route Handlers.
  *
- * - Reads/writes auth tokens via Next.js cookies.
- * - Must be called inside a request context (not at module top-level).
  * - Uses the anon key (RLS enforced).
+ * - Must be called inside a request context (not at module top-level).
+ * - By default this client NEVER forwards the visitor's Supabase Auth
+ *   cookies, so every query always runs as the plain `anon` Postgres role.
+ *   This is critical for public/customer-facing pages (QR menu, fila,
+ *   agenda, etc.): a visitor's browser may carry a stale/expired (or even
+ *   valid but unrelated) merchant/staff auth session cookie — e.g. the same
+ *   phone was previously used to log into the dashboard. If that cookie
+ *   were forwarded, PostgREST could evaluate RLS as `authenticated` instead
+ *   of `anon`, silently changing which rows are visible, or failing
+ *   outright with an auth error (expired JWT) that gets swallowed by
+ *   `{ data }` destructuring — which is exactly what caused the
+ *   "QR inválido" bug for real customers whose browser had a lingering
+ *   dashboard session.
+ * - Pass `{ withAuth: true }` ONLY for trusted, authenticated surfaces
+ *   (dashboard, atendente, auth callback, etc.) that legitimately need the
+ *   signed-in merchant/staff session.
  */
-export async function createClient(extraHeaders: Record<string, string> = {}) {
+export async function createClient(
+  extraHeaders: Record<string, string> = {},
+  options: { withAuth?: boolean } = {},
+) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -22,6 +39,8 @@ export async function createClient(extraHeaders: Record<string, string> = {}) {
       "Supabase env ausente: defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY",
     );
   }
+
+  const withAuth = options.withAuth ?? false;
 
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
@@ -40,9 +59,13 @@ export async function createClient(extraHeaders: Record<string, string> = {}) {
       },
       cookies: {
         getAll() {
+          // Never forward auth cookies unless explicitly requested — see
+          // the doc comment above for why this matters.
+          if (!withAuth) return [];
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
+          if (!withAuth) return;
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options),

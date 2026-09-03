@@ -42,7 +42,7 @@ export default async function AcademiaRenovacoesPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: memberships } = await supabase
     .from("gym_memberships")

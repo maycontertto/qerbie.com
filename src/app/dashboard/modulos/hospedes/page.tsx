@@ -38,7 +38,7 @@ export default async function HospedesModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: guests } = await supabase
     .from("merchant_hotel_guests")
     .select("id, full_name, phone, email, notes, is_active, updated_at")

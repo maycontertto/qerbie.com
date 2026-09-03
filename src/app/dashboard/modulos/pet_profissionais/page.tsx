@@ -37,7 +37,7 @@ export default async function PetProfissionaisPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const [{ data: queues }, { data: services }, { data: mappings }] = await Promise.all([
     supabase

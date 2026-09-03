@@ -4,7 +4,7 @@ import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 export async function POST(req: Request) {
   try {
     const user = await getDashboardUserOrRedirect();
-    const supabase = createClient();
+    const supabase = createClient({}, { withAuth: true });
 
     const body = await req.json();
     const { amount, description } = body;

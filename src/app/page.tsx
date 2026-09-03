@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 export default async function HomePage() {
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -34,7 +34,7 @@ export default async function LavaServicosPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: items } = await supabase
     .from("carwash_services")
     .select("id, name, description, notes, image_url, price_cents, duration_min, is_active, updated_at")

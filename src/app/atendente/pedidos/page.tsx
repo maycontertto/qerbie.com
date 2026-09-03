@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AtendentePedidosPage() {
   const { merchant } = await getMerchantMemberOrRedirect();
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: tables } = await supabase
     .from("merchant_tables")

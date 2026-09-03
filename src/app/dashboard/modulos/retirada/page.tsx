@@ -53,7 +53,7 @@ export default async function RetiradaModulePage() {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: tables } = await supabase
     .from("merchant_tables")

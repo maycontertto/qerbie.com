@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const flow = (searchParams.get("flow") ?? "").toLowerCase();
 
   if (code) {
-    const supabase = await createClient();
+    const supabase = await createClient({}, { withAuth: true });
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {

@@ -52,7 +52,7 @@ export default async function TrocasModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const [{ data: requests }, { data: orders }] = await Promise.all([
     supabase

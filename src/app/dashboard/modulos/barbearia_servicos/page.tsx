@@ -35,7 +35,7 @@ export default async function BarbeariaServicosPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: items } = await supabase
     .from("barbershop_services")
     .select("id, name, description, price_cents, duration_min, is_active, updated_at")

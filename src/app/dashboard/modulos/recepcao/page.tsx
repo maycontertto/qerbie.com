@@ -79,7 +79,7 @@ export default async function RecepcaoModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: queues } = await supabase
     .from("merchant_queues")

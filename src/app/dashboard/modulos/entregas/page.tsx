@@ -54,7 +54,7 @@ export default async function EntregasModulePage() {
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: tables } = await supabase
     .from("merchant_tables")

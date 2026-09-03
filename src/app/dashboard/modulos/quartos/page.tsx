@@ -42,7 +42,7 @@ export default async function QuartosModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: roomTypes } = await supabase
     .from("merchant_hotel_room_types")
     .select("id, name, description, capacity, base_price, is_active, updated_at")

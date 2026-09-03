@@ -42,7 +42,7 @@ export default async function PlanosModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: plans } = await supabase
     .from("merchant_hotel_rate_plans")
     .select("id, name, description, includes_breakfast, nightly_price, is_active, updated_at")

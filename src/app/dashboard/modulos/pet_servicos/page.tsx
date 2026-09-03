@@ -37,7 +37,7 @@ export default async function PetServicosPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: items } = await supabase
     .from("pet_services")
     .select("id, name, description, notes, image_url, price_cents, duration_min, is_active, updated_at")

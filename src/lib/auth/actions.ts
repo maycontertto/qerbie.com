@@ -45,7 +45,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
     return { error: "A senha deve ter pelo menos 8 caracteres." };
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const emailRedirectTo = new URL("/auth/callback", await getRequestOrigin()).toString();
 
@@ -87,7 +87,7 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
     return { error: "E-mail e senha são obrigatórios." };
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -115,7 +115,7 @@ function normalizeNext(value: string): string | null {
 // ── Sign Out ────────────────────────────────────────────────
 
 export async function signOut(): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   await supabase.auth.signOut();
   redirect("/");
 }
@@ -170,7 +170,7 @@ function generateSlug(name: string): string {
  * Exported so the callback or middleware can call it.
  */
 export async function ensureMerchantForOAuth(): Promise<void> {
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return;

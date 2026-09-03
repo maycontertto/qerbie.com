@@ -42,7 +42,7 @@ export default async function HotelServicosModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: services } = await supabase
     .from("merchant_hotel_services")
     .select("id, name, description, price, is_active, updated_at, track_stock, stock_quantity")

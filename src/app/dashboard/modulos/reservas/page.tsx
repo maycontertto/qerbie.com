@@ -57,7 +57,7 @@ export default async function ReservasModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const [{ data: guests }, { data: roomTypes }, { data: plans }, { data: reservations }] =
     await Promise.all([

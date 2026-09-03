@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { hasMemberPermission } from "@/lib/auth/guard";
 
 async function getProductsContext() {
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const {
     data: { user },

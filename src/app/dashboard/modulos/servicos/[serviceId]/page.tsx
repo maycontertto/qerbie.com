@@ -46,7 +46,7 @@ export default async function ServiceEditPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: service } = await supabase
     .from("products")

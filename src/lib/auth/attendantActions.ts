@@ -62,7 +62,7 @@ export async function signInAttendant(formData: FormData): Promise<AuthResult> {
     return { error: "Login e senha são obrigatórios." };
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const email = makeStaffEmail(login);
 
   const { error } = await supabase.auth.signInWithPassword({
@@ -96,7 +96,7 @@ export async function signUpAttendant(formData: FormData): Promise<AuthResult> {
     return { error: "A senha deve ter pelo menos 8 caracteres." };
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const next = normalizeNext(nextRaw);
   const fallbackNext = code

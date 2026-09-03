@@ -53,7 +53,7 @@ export default async function ComprasModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const today = new Date().toISOString().slice(0, 10);
 
   const [{ data: primaryMenu }, { data: products }, { data: suppliers }, { data: recentEntries }] = await Promise.all([

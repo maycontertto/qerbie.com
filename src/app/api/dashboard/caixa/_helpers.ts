@@ -10,7 +10,7 @@ type ApiDashboardContext = {
 };
 
 export async function getDashboardContextForApi(): Promise<ApiDashboardContext | null> {
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const {
     data: { user },

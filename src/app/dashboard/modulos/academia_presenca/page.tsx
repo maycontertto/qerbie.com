@@ -34,7 +34,7 @@ export default async function AcademiaPresencaPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: students } = await supabase
     .from("gym_students")
     .select("id, name, login, is_active")

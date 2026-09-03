@@ -35,7 +35,7 @@ export default async function LavaProfissionaisPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const [{ data: queues }, { data: services }, { data: mappings }] = await Promise.all([
     supabase

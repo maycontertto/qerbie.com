@@ -37,7 +37,7 @@ export default async function PetHistoricoPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: pets } = await supabase
     .from("pet_profiles")
     .select("id, pet_name, owner_name, owner_contact, notes, updated_at")

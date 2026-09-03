@@ -46,7 +46,7 @@ export default async function ProductEditPage({
       </div>
     );
   }
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { data: product } = await supabase
     .from("products")

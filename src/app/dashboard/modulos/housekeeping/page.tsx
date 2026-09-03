@@ -52,7 +52,7 @@ export default async function HousekeepingModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const [{ data: reservations }, { data: tasks }] = await Promise.all([
     supabase

@@ -37,7 +37,7 @@ export default async function EsteticaQrPage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
   const { data: tokens } = await supabase
     .from("aesthetic_qr_tokens")
     .select("id, label, qr_token, is_active, created_at")

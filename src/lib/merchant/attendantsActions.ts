@@ -258,7 +258,7 @@ export async function redeemAttendantInvite(formData: FormData) {
     redirect("/atendente/vincular?error=code_required");
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   const { error } = await supabase.rpc("redeem_merchant_invite", {
     p_code: code,

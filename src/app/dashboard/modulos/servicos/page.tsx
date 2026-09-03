@@ -64,7 +64,7 @@ export default async function ServicosModulePage({
     );
   }
 
-  const supabase = await createClient();
+  const supabase = await createClient({}, { withAuth: true });
 
   // Ensure a primary menu exists (products require menu_id)
   let { data: menu } = await supabase
