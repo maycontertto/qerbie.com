@@ -2,6 +2,146 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
+function FeatureIcon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      {children}
+    </svg>
+  );
+}
+
+interface FeatureCardModel {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+const FEATURE_CARDS: FeatureCardModel[] = [
+  {
+    title: "QR Code inteligente",
+    description: "Cardápio, mesas, fila ou agenda — o QR se adapta ao tipo do seu negócio.",
+    icon: (
+      <FeatureIcon>
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="3" height="3" rx="0.5" />
+        <rect x="18" y="18" width="3" height="3" rx="0.5" />
+      </FeatureIcon>
+    ),
+  },
+  {
+    title: "Pedidos & Caixa em tempo real",
+    description: "Status ao vivo dos pedidos e um PDV com leitor de código de barras.",
+    icon: (
+      <FeatureIcon>
+        <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z" />
+        <path d="M9 8h6M9 12h6M9 16h4" />
+      </FeatureIcon>
+    ),
+  },
+  {
+    title: "Estoque & Compras",
+    description: "Entrada de nota, reposição em lote e controle simples de disponibilidade.",
+    icon: (
+      <FeatureIcon>
+        <path d="M3 7l9-4 9 4-9 4-9-4Z" />
+        <path d="M3 7v10l9 4 9-4V7M12 11v10" />
+      </FeatureIcon>
+    ),
+  },
+  {
+    title: "Agenda & Fila",
+    description: "Horários, confirmações e fila de espera para barbearia, salão, clínica, pet e lava-jato.",
+    icon: (
+      <FeatureIcon>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </FeatureIcon>
+    ),
+  },
+  {
+    title: "Pagamentos flexíveis",
+    description: "Pix, cartão ou dinheiro, com aviso automático combinando com o cliente.",
+    icon: (
+      <FeatureIcon>
+        <rect x="2" y="5" width="20" height="14" rx="2" />
+        <path d="M2 10h20" />
+      </FeatureIcon>
+    ),
+  },
+  {
+    title: "Equipe & Permissões",
+    description: "Cadastre atendentes e gerentes e controle o que cada um pode acessar.",
+    icon: (
+      <FeatureIcon>
+        <circle cx="9" cy="8" r="3" />
+        <path d="M2.5 20c0-3.3 2.9-6 6.5-6s6.5 2.7 6.5 6" />
+        <circle cx="17.5" cy="9" r="2.3" />
+        <path d="M15.8 20c0-2.4.6-4.1 2.2-5.3" />
+      </FeatureIcon>
+    ),
+  },
+  {
+    title: "Assistente de IA para você",
+    description: "Pergunte sobre vendas, estoque e agenda por chat, sem precisar abrir relatórios.",
+    icon: (
+      <FeatureIcon>
+        <path d="M12 3v3M12 18v3M4.5 12h3M16.5 12h3M6.5 6.5l2.1 2.1M15.4 15.4l2.1 2.1M6.5 17.5l2.1-2.1M15.4 8.6l2.1-2.1" />
+        <circle cx="12" cy="12" r="2.2" />
+      </FeatureIcon>
+    ),
+  },
+  {
+    title: "Assistente de IA pro cliente",
+    description: "Tira dúvidas do cardápio ou dos serviços sozinho, a qualquer hora do dia.",
+    icon: (
+      <FeatureIcon>
+        <path d="M21 12c0 4.418-4.03 8-9 8-1.06 0-2.077-.163-3.02-.463L3 21l1.36-4.083C3.5 15.61 3 13.87 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z" />
+      </FeatureIcon>
+    ),
+  },
+];
+
+interface SegmentCardModel {
+  emoji: string;
+  title: string;
+  description: string;
+}
+
+const SEGMENT_CARDS: SegmentCardModel[] = [
+  {
+    emoji: "🍽️",
+    title: "Restaurantes, pizzarias, bares & açaiterias",
+    description: "Cardápio digital por QR Code, mesas, pedidos em tempo real, retirada e entrega.",
+  },
+  {
+    emoji: "🛒",
+    title: "Mercados, farmácias, conveniências & lojas",
+    description: "Catálogo de produtos, estoque, compras e caixa com leitor de código de barras.",
+  },
+  {
+    emoji: "💇",
+    title: "Barbearias, salões & clínicas de estética",
+    description: "Agenda de horários, fila de espera e ficha de serviços por profissional.",
+  },
+  {
+    emoji: "🐾",
+    title: "Pet shops & lava-jatos",
+    description: "Fila, agenda e catálogo de serviços sob medida pro seu tipo de atendimento.",
+  },
+  {
+    emoji: "🏨",
+    title: "Hotéis",
+    description: "Reservas, ocupação e operação do dia a dia em um único painel.",
+  },
+  {
+    emoji: "🏋️",
+    title: "Academias & consultórios",
+    description: "Alunos ou pacientes, planos e controle mensal sem planilha.",
+  },
+];
+
 export default async function HomePage() {
   const supabase = await createClient({}, { withAuth: true });
   const {
@@ -64,35 +204,39 @@ export default async function HomePage() {
         </div>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
-            Mercado
-          </span>
-          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
-            Farmácia
-          </span>
-          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
-            Restaurante
-          </span>
-          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
-            Hotel
-          </span>
-          <span className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60">
-            Salão e mais
-          </span>
+          {[
+            "Restaurante",
+            "Mercado",
+            "Farmácia",
+            "Salão de Beleza",
+            "Barbearia",
+            "Clínica de Estética",
+            "Pet Shop",
+            "Lava-Jato",
+            "Hotel",
+            "e mais",
+          ].map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border border-zinc-200 bg-white/70 px-3 py-1 dark:border-zinc-800 dark:bg-zinc-900/60"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
 
         {/* Headline */}
         <h1 className="mt-8 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-5xl">
-          Controle vendas, estoque e operação do seu negócio em um só lugar.
+          Vendas, atendimento, agenda e estoque do seu negócio em um só lugar.
         </h1>
 
         {/* Subheadline */}
         <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-300">
-          Cadastre produtos rápido, registre compras, acompanhe pedidos e organize a rotina da empresa sem planilhas confusas nem retrabalho.
+          Cardápio ou catálogo digital via QR Code, pedidos em tempo real, fila, agenda e um assistente de IA que ajuda você a gerenciar e atende seus clientes sozinho — tudo pensado pro seu tipo de negócio.
         </p>
 
         <p className="mt-4 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-          Feito para quem precisa começar rápido e ter mais controle desde o primeiro acesso.
+          Feito para restaurantes, mercados, farmácias, salões, clínicas, barbearias, pet shops, lava-jatos, hotéis, academias e muito mais.
         </p>
 
         {/* Video */}
@@ -127,20 +271,28 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Benefits */}
-        <div className="mt-10 grid gap-3 text-left sm:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
-            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Cadastro mais rápido</p>
-            <p className="mt-2">Produto manual, planilha, NF-e e leitor de código de barras no mesmo fluxo.</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
-            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Mais controle diário</p>
-            <p className="mt-2">Estoque, pedidos, compras e operação organizados em telas simples para usar no celular ou computador.</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300">
-            <p className="font-semibold text-zinc-900 dark:text-zinc-50">Aprendizado guiado</p>
-            <p className="mt-2">Vídeos explicativos e suporte para ajudar seu negócio a começar sem complicação.</p>
-          </div>
+        {/* Features */}
+        <div className="mt-14 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+            Tudo incluído
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50 sm:text-3xl">
+            O que você recebe ao criar sua conta
+          </h2>
+        </div>
+        <div className="mt-8 grid gap-3 text-left sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURE_CARDS.map((feature) => (
+            <div
+              key={feature.title}
+              className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300"
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/10 text-brand dark:bg-brand/15">
+                {feature.icon}
+              </div>
+              <p className="mt-3 font-semibold text-zinc-900 dark:text-zinc-50">{feature.title}</p>
+              <p className="mt-1">{feature.description}</p>
+            </div>
+          ))}
         </div>
 
         {/* CTA Buttons */}
@@ -181,6 +333,33 @@ export default async function HomePage() {
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
           30 dias gratuitos. Sem cartão. Sem contrato. Sem risco.
         </p>
+
+        {/* Segments */}
+        <div className="mt-14 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">
+            Feito sob medida
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50 sm:text-3xl">
+            Um Qerbie para cada tipo de negócio
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300">
+            Ao criar sua conta você escolhe o segmento, e o painel já vem com os módulos certos para o seu dia a dia.
+          </p>
+        </div>
+        <div className="mt-8 grid gap-3 text-left sm:grid-cols-2 lg:grid-cols-3">
+          {SEGMENT_CARDS.map((segment) => (
+            <div
+              key={segment.title}
+              className="rounded-2xl border border-zinc-200 bg-white/75 p-4 text-sm text-zinc-700 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-300"
+            >
+              <span className="text-2xl" aria-hidden>
+                {segment.emoji}
+              </span>
+              <p className="mt-3 font-semibold text-zinc-900 dark:text-zinc-50">{segment.title}</p>
+              <p className="mt-1">{segment.description}</p>
+            </div>
+          ))}
+        </div>
 
         <section className="mt-14 rounded-3xl border border-zinc-200 bg-white/75 p-6 text-left shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
           <div className="flex flex-wrap items-start justify-between gap-4">

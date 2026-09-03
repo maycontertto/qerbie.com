@@ -20,16 +20,24 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
-  title: "Qerbie — Cardápio Digital e Pedidos via QR Code para Restaurantes",
+  title: "Qerbie — Gestão com QR Code para Restaurantes, Comércios e Serviços",
   description:
-    "Organize seu restaurante com cardápio digital, pedidos em tempo real e atendimento via QR Code. Funciona no celular ou computador. Teste grátis por 30 dias.",
+    "Vendas, estoque, pedidos, agenda, fila e pagamentos em um só lugar — com QR Code e assistente de IA. Para restaurantes, mercados, farmácias, salões, barbearias, clínicas, pet shops, lava-jatos, hotéis e mais. Teste grátis por 30 dias.",
   keywords: [
     "cardápio digital",
     "qr code restaurante",
-    "pedidos online restaurante",
     "sistema para restaurante",
-    "fila digital restaurante",
+    "sistema para salão de beleza",
+    "sistema para barbearia",
+    "sistema para clínica de estética",
+    "sistema para pet shop",
+    "sistema para mercado",
+    "sistema para farmácia",
+    "agenda online",
+    "fila digital",
+    "pedidos online",
     "atendimento por qr code",
+    "assistente de ia para comércio",
   ],
   robots: {
     index: true,
