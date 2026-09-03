@@ -741,6 +741,8 @@ popularidade aqui, só a lista real de serviços ativos.
       lida com lista vazia dizendo que não há serviço cadastrado).
 
 Validado com `get_errors`, `npm run build` e `npx eslint` (todos limpos).
-**Ainda não testado manualmente** em nenhuma das 5 verticais em produção.
+Commit `fda39e0`, push e deploy em produção (`npx vercel --prod --yes`)
+concluídos. **Ainda não testado manualmente** em nenhuma das 5 verticais
+em produção.
 
 
