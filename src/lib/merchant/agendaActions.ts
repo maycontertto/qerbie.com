@@ -171,8 +171,8 @@ export interface BookAppointmentForCustomerResult {
  * reservar sozinho via QR. Reaproveita `createAppointmentSlotCore` (cria a
  * vaga) e `confirmAppointmentRequestCore` (confirma a solicitação), só que
  * em sequência, dentro de uma única operação lógica. Usada pela ferramenta
- * de IA `book_appointment_for_customer` (ai/tools/agenda.ts). Ainda não há
- * uma Server Action humana equivalente no painel.
+ * de IA `book_appointment_for_customer` (ai/tools/agenda.ts) e pela Server
+ * Action humana `bookAppointmentForCustomer` (abaixo).
  */
 export async function bookAppointmentForCustomerCore(
   supabase: SupabaseClient<Database>,
@@ -255,7 +255,8 @@ export interface RescheduleAppointmentResult {
  * atualizando o horário do slot associado e a cópia denormalizada em
  * `merchant_appointment_requests` (nenhuma trigger sincroniza esses campos
  * automaticamente — só status). Usada por `reschedule_appointment`
- * (ai/tools/agenda.ts). Ainda não há uma Server Action humana equivalente.
+ * (ai/tools/agenda.ts) e pela Server Action humana `rescheduleAppointment`
+ * (abaixo).
  */
 export async function rescheduleAppointmentCore(
   supabase: SupabaseClient<Database>,
@@ -419,5 +420,84 @@ export async function declineAppointmentRequest(formData: FormData) {
   }
 
   // Slot status sync will run via trigger.
+  redirect("/dashboard/modulos/agenda?saved=1");
+}
+
+export async function bookAppointmentForCustomer(formData: FormData) {
+  const queueIdRaw = String(formData.get("queue_id") ?? "").trim();
+  const queueId = queueIdRaw || null;
+
+  const startsAtLocal = String(formData.get("starts_at") ?? "");
+  const durationMin = Number(formData.get("duration_min") ?? 0);
+  const customerName = String(formData.get("customer_name") ?? "").trim();
+  const customerContact = String(formData.get("customer_contact") ?? "").trim() || null;
+  const customerNotes = String(formData.get("customer_notes") ?? "").trim() || null;
+
+  const startsAtIso = parseLocalDateTimeToIso(startsAtLocal);
+  if (!startsAtIso || !Number.isFinite(durationMin) || durationMin <= 0 || durationMin > 24 * 60 || !customerName) {
+    redirect("/dashboard/modulos/agenda?error=invalid_booking");
+  }
+
+  const { merchant, user, supabase } = await requireAgendaPermission();
+
+  const result = await bookAppointmentForCustomerCore(supabase, {
+    merchantId: merchant.id,
+    staffUserId: user.id,
+    queueId,
+    startsAtIso,
+    durationMin,
+    customerName,
+    customerContact,
+    customerNotes,
+  });
+
+  if (!result.ok) {
+    redirect(
+      result.error === "invalid_customer_name" || result.error === "invalid_slot"
+        ? "/dashboard/modulos/agenda?error=invalid_booking"
+        : "/dashboard/modulos/agenda?error=booking_failed",
+    );
+  }
+
+  redirect("/dashboard/modulos/agenda?saved=1");
+}
+
+export async function rescheduleAppointment(formData: FormData) {
+  const requestId = String(formData.get("request_id") ?? "").trim();
+  if (!requestId) return;
+
+  const startsAtLocal = String(formData.get("starts_at") ?? "");
+  const durationMinRaw = String(formData.get("duration_min") ?? "").trim();
+  const durationMin = durationMinRaw ? Number(durationMinRaw) : undefined;
+
+  const startsAtIso = parseLocalDateTimeToIso(startsAtLocal);
+  if (
+    !startsAtIso ||
+    (durationMin !== undefined && (!Number.isFinite(durationMin) || durationMin <= 0 || durationMin > 24 * 60))
+  ) {
+    redirect("/dashboard/modulos/agenda?error=invalid_slot");
+  }
+
+  const { merchant, supabase } = await requireAgendaPermission();
+
+  const result = await rescheduleAppointmentCore(supabase, {
+    merchantId: merchant.id,
+    requestId,
+    startsAtIso,
+    durationMin,
+  });
+
+  if (!result.ok) {
+    redirect(
+      result.error === "not_found"
+        ? "/dashboard/modulos/agenda?error=invalid_request"
+        : result.error === "invalid_status"
+          ? "/dashboard/modulos/agenda?error=invalid_status"
+          : result.error === "invalid_slot"
+            ? "/dashboard/modulos/agenda?error=invalid_slot"
+            : "/dashboard/modulos/agenda?error=save_failed",
+    );
+  }
+
   redirect("/dashboard/modulos/agenda?saved=1");
 }

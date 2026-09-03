@@ -2,10 +2,12 @@ import Link from "next/link";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
 import {
+  bookAppointmentForCustomer,
   cancelAppointmentSlot,
   confirmAppointmentRequest,
   createAppointmentSlot,
   declineAppointmentRequest,
+  rescheduleAppointment,
 } from "@/lib/merchant/agendaActions";
 
 export const dynamic = "force-dynamic";
@@ -86,11 +88,13 @@ export default async function AgendaModulePage({
   }
 
   const supabase = await createClient();
+  const nowIso = new Date().toISOString();
 
   const [
     { data: queues },
     { data: slots },
     { data: pendingRequests },
+    { data: confirmedRequests },
     { data: services },
     { data: aestheticServices },
     { data: beautyServices },
@@ -117,6 +121,16 @@ export default async function AgendaModulePage({
       .eq("merchant_id", merchant.id)
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
+    supabase
+      .from("merchant_appointment_requests")
+      .select(
+        "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
+      )
+      .eq("merchant_id", merchant.id)
+      .eq("status", "confirmed")
+      .gte("slot_starts_at", nowIso)
+      .order("slot_starts_at", { ascending: true })
+      .limit(50),
     supabase
       .from("barbershop_services")
       .select("id, name")
@@ -165,11 +179,17 @@ export default async function AgendaModulePage({
         ? { kind: "error" as const, message: "Não foi possível criar o horário." }
         : error === "invalid_request"
           ? { kind: "error" as const, message: "Solicitação inválida." }
-          : error === "save_failed"
-            ? { kind: "error" as const, message: "Não foi possível salvar. Tente novamente." }
-            : saved
-              ? { kind: "success" as const, message: "Salvo." }
-              : null;
+          : error === "invalid_status"
+            ? { kind: "error" as const, message: "Esse agendamento não está mais pendente/confirmado — não foi alterado." }
+            : error === "invalid_booking"
+              ? { kind: "error" as const, message: "Preencha o nome do cliente e um horário válido." }
+              : error === "booking_failed"
+                ? { kind: "error" as const, message: "Não foi possível marcar o cliente. Tente novamente." }
+                : error === "save_failed"
+                  ? { kind: "error" as const, message: "Não foi possível salvar. Tente novamente." }
+                  : saved
+                    ? { kind: "success" as const, message: "Salvo." }
+                    : null;
 
   return (
     <div className="min-h-screen">
@@ -268,6 +288,103 @@ export default async function AgendaModulePage({
                     className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >
                     Publicar
+                  </button>
+                </form>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-zinc-200 bg-white/60 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/40">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  Marcar cliente diretamente
+                </h2>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Já confirma na hora — use quando o cliente marcar por telefone/balcão, sem passar pela reserva por QR.
+                </p>
+
+                <form action={bookAppointmentForCustomer} className="mt-4 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      Nome do cliente
+                    </label>
+                    <input
+                      name="customer_name"
+                      type="text"
+                      required
+                      className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      Contato (opcional)
+                    </label>
+                    <input
+                      name="customer_contact"
+                      type="text"
+                      className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      Profissional/especialidade
+                    </label>
+                    <select
+                      name="queue_id"
+                      defaultValue=""
+                      className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                    >
+                      <option value="">(Sem vínculo)</option>
+                      {(queues ?? []).map((q) => (
+                        <option key={q.id} value={q.id}>
+                          {q.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      Início
+                    </label>
+                    <input
+                      name="starts_at"
+                      type="datetime-local"
+                      required
+                      className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      Duração (min)
+                    </label>
+                    <input
+                      name="duration_min"
+                      type="number"
+                      min={5}
+                      max={24 * 60}
+                      defaultValue={30}
+                      required
+                      className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                      Observações (opcional)
+                    </label>
+                    <textarea
+                      name="customer_notes"
+                      rows={2}
+                      className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    Marcar e confirmar
                   </button>
                 </form>
               </div>
@@ -371,6 +488,114 @@ export default async function AgendaModulePage({
                               </button>
                             </form>
                           </div>
+
+                          <form
+                            action={rescheduleAppointment}
+                            className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800"
+                          >
+                            <input type="hidden" name="request_id" value={r.id} />
+                            <div>
+                              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                Novo horário
+                              </label>
+                              <input
+                                name="starts_at"
+                                type="datetime-local"
+                                required
+                                className="mt-1 block rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                Duração (min)
+                              </label>
+                              <input
+                                name="duration_min"
+                                type="number"
+                                min={5}
+                                max={24 * 60}
+                                placeholder="manter"
+                                className="mt-1 block w-24 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                            >
+                              Reagendar
+                            </button>
+                          </form>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-zinc-200 bg-white/60 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/40">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                  Atendimentos confirmados
+                </h2>
+
+                {(confirmedRequests ?? []).length === 0 ? (
+                  <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
+                    Nenhum atendimento confirmado a partir de agora.
+                  </p>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {(confirmedRequests ?? []).map((r) => {
+                      const queueName = r.queue_id ? (queueNameById.get(r.queue_id) ?? "") : "";
+                      return (
+                        <div
+                          key={r.id}
+                          className="rounded-2xl border border-zinc-200 bg-white/70 p-4 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60"
+                        >
+                          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                            {formatDateTime(r.slot_starts_at)} – {formatDateTime(r.slot_ends_at)}
+                          </div>
+                          {queueName ? (
+                            <div className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{queueName}</div>
+                          ) : null}
+                          <div className="mt-2 text-sm text-zinc-700 dark:text-zinc-200">
+                            <span className="font-semibold">Cliente:</span> {r.customer_name || "(sem nome)"}
+                          </div>
+
+                          <form
+                            action={rescheduleAppointment}
+                            className="mt-3 flex flex-wrap items-end gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800"
+                          >
+                            <input type="hidden" name="request_id" value={r.id} />
+                            <div>
+                              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                Novo horário
+                              </label>
+                              <input
+                                name="starts_at"
+                                type="datetime-local"
+                                required
+                                className="mt-1 block rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                Duração (min)
+                              </label>
+                              <input
+                                name="duration_min"
+                                type="number"
+                                min={5}
+                                max={24 * 60}
+                                placeholder="manter"
+                                className="mt-1 block w-24 rounded-lg border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                            >
+                              Reagendar
+                            </button>
+                          </form>
                         </div>
                       );
                     })}
