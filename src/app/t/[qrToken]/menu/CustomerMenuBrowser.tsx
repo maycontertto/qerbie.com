@@ -114,6 +114,89 @@ function normalize(s: string): string {
   return lowered.trim();
 }
 
+function ProductCard({
+  product,
+  lang,
+  buttonStyle,
+  addLabel,
+  prescriptionLabel,
+  documentLabel,
+  onAdd,
+  variant = "default",
+}: {
+  product: Product;
+  lang: string;
+  buttonStyle?: { backgroundColor: string };
+  addLabel: string;
+  prescriptionLabel: string;
+  documentLabel: string;
+  onAdd: () => void;
+  variant?: "default" | "care";
+}) {
+  const showBadges = product.requires_prescription || product.requires_document;
+
+  return (
+    <li
+      className={`group overflow-hidden rounded-2xl border bg-white shadow-sm transition-shadow hover:shadow-md dark:bg-zinc-900 ${
+        variant === "care"
+          ? "border-amber-200 dark:border-amber-900"
+          : "border-zinc-200 dark:border-zinc-800"
+      }`}
+    >
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+        {product.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-3xl text-zinc-300 dark:text-zinc-700">
+            🍽️
+          </div>
+        )}
+
+        {showBadges && (
+          <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+            {product.requires_prescription && (
+              <span className="rounded-full border border-amber-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-amber-900 backdrop-blur dark:border-amber-900 dark:bg-zinc-900/90 dark:text-amber-100">
+                {prescriptionLabel}
+              </span>
+            )}
+            {product.requires_document && (
+              <span className="rounded-full border border-amber-200 bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-amber-900 backdrop-blur dark:border-amber-900 dark:bg-zinc-900/90 dark:text-amber-100">
+                {documentLabel}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="p-3">
+        <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">{product.name}</p>
+        {product.description ? (
+          <p className="mt-0.5 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">{product.description}</p>
+        ) : null}
+
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          <span className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+            {formatBRL(Number(product.price ?? 0), lang)}
+          </span>
+          <button
+            type="button"
+            style={buttonStyle}
+            onClick={onAdd}
+            className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brandHover"
+          >
+            {addLabel}
+          </button>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function CustomerMenuBrowser({
   qrToken,
   tableLabel,
@@ -554,7 +637,7 @@ export function CustomerMenuBrowser({
             onClick={() => setSelectedCategoryId("__all__")}
             className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
               selectedCategoryId === "__all__"
-                ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                ? "border-brand bg-brand text-white"
                 : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
             }`}
           >
@@ -572,7 +655,7 @@ export function CustomerMenuBrowser({
                 onClick={() => setSelectedCategoryId(c.id)}
                 className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                   selectedCategoryId === c.id
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                    ? "border-brand bg-brand text-white"
                     : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
                 }`}
               >
@@ -587,7 +670,7 @@ export function CustomerMenuBrowser({
               onClick={() => setSelectedCategoryId("__uncategorized__")}
               className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                 selectedCategoryId === "__uncategorized__"
-                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                  ? "border-brand bg-brand text-white"
                   : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
               }`}
             >
@@ -652,60 +735,18 @@ export function CustomerMenuBrowser({
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
             {ui.highlights}
           </h2>
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {featured.slice(0, 6).map((p) => (
-              <li
+              <ProductCard
                 key={p.id}
-                className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                      {p.name}
-                    </p>
-                    {(p.requires_prescription || p.requires_document) && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {p.requires_prescription && (
-                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                            {tCustomer(lang, "restriction_badge_prescription")}
-                          </span>
-                        )}
-                        {p.requires_document && (
-                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                            {tCustomer(lang, "restriction_badge_document")}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {p.description ? (
-                      <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
-                        {p.description}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-50">
-                      {formatBRL(Number(p.price ?? 0), lang)}
-                    </p>
-                  </div>
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="h-14 w-14 shrink-0 rounded-xl border border-zinc-200 bg-white object-cover dark:border-zinc-800"
-                    />
-                  ) : (
-                    <div className="h-14 w-14 shrink-0 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900" />
-                  )}
-                </div>
-                <button
-                  type="button"
-                  style={buttonStyle}
-                  className="mt-3 w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  onClick={() => addToCart(p)}
-                >
-                  {ui.addToCart}
-                </button>
-              </li>
+                product={p}
+                lang={lang}
+                buttonStyle={buttonStyle}
+                addLabel={ui.addToCart}
+                prescriptionLabel={tCustomer(lang, "restriction_badge_prescription")}
+                documentLabel={tCustomer(lang, "restriction_badge_document")}
+                onAdd={() => addToCart(p)}
+              />
             ))}
           </ul>
         </div>
@@ -730,59 +771,19 @@ export function CustomerMenuBrowser({
             </a>
           </div>
 
-          <ul className="mt-3 divide-y divide-amber-200/60 dark:divide-amber-900/60">
+          <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {visibleSpecialCareProducts.map((p) => (
-              <li key={p.id} className="py-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                      {p.name}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {p.requires_prescription && (
-                        <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
-                          {tCustomer(lang, "restriction_badge_prescription")}
-                        </span>
-                      )}
-                      {p.requires_document && (
-                        <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-100">
-                          {tCustomer(lang, "restriction_badge_document")}
-                        </span>
-                      )}
-                    </div>
-                    {p.description ? (
-                      <p className="mt-1 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-300">
-                        {p.description}
-                      </p>
-                    ) : null}
-                    <p className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-50">
-                      {formatBRL(Number(p.price ?? 0), lang)}
-                    </p>
-                  </div>
-
-                  {p.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.image_url}
-                      alt={p.name}
-                      className="h-16 w-16 shrink-0 rounded-2xl border border-amber-200 bg-white object-cover dark:border-amber-900"
-                    />
-                  ) : (
-                    <div className="h-16 w-16 shrink-0 rounded-2xl border border-dashed border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950" />
-                  )}
-                </div>
-
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    style={buttonStyle}
-                    className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                    onClick={() => addToCart(p)}
-                  >
-                    {ui.addToCart}
-                  </button>
-                </div>
-              </li>
+              <ProductCard
+                key={p.id}
+                product={p}
+                lang={lang}
+                buttonStyle={buttonStyle}
+                addLabel={ui.addToCart}
+                prescriptionLabel={tCustomer(lang, "restriction_badge_prescription")}
+                documentLabel={tCustomer(lang, "restriction_badge_document")}
+                onAdd={() => addToCart(p)}
+                variant="care"
+              />
             ))}
           </ul>
         </section>
@@ -822,61 +823,18 @@ export function CustomerMenuBrowser({
                 </a>
               </div>
 
-              <ul className="mt-3 divide-y divide-zinc-200 dark:divide-zinc-800">
+              <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {items.map((p) => (
-                  <li key={p.id} className="py-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                          {p.name}
-                        </p>
-                        {(p.requires_prescription || p.requires_document) && (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {p.requires_prescription && (
-                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                                {tCustomer(lang, "restriction_badge_prescription")}
-                              </span>
-                            )}
-                            {p.requires_document && (
-                              <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-                                {tCustomer(lang, "restriction_badge_document")}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {p.description ? (
-                          <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
-                            {p.description}
-                          </p>
-                        ) : null}
-                        <p className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-50">
-                          {formatBRL(Number(p.price ?? 0), lang)}
-                        </p>
-                      </div>
-
-                      {p.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.image_url}
-                          alt={p.name}
-                          className="h-16 w-16 shrink-0 rounded-2xl border border-zinc-200 bg-white object-cover dark:border-zinc-800"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 shrink-0 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950" />
-                      )}
-                    </div>
-
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        style={buttonStyle}
-                        className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                        onClick={() => addToCart(p)}
-                      >
-                        {ui.addToCart}
-                      </button>
-                    </div>
-                  </li>
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    lang={lang}
+                    buttonStyle={buttonStyle}
+                    addLabel={ui.addToCart}
+                    prescriptionLabel={tCustomer(lang, "restriction_badge_prescription")}
+                    documentLabel={tCustomer(lang, "restriction_badge_document")}
+                    onAdd={() => addToCart(p)}
+                  />
                 ))}
               </ul>
             </section>
@@ -911,46 +869,18 @@ export function CustomerMenuBrowser({
             }
 
             return (
-              <ul className="mt-3 divide-y divide-zinc-200 dark:divide-zinc-800">
+              <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {items.map((p) => (
-                  <li key={p.id} className="py-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                          {p.name}
-                        </p>
-                        {p.description ? (
-                          <p className="mt-1 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
-                            {p.description}
-                          </p>
-                        ) : null}
-                        <p className="mt-2 text-sm font-bold text-zinc-900 dark:text-zinc-50">
-                          {formatBRL(Number(p.price ?? 0), lang)}
-                        </p>
-                      </div>
-
-                      {p.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.image_url}
-                          alt={p.name}
-                          className="h-16 w-16 shrink-0 rounded-2xl border border-zinc-200 bg-white object-cover dark:border-zinc-800"
-                        />
-                      ) : (
-                        <div className="h-16 w-16 shrink-0 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950" />
-                      )}
-                    </div>
-                    <div className="mt-3">
-                      <button
-                        type="button"
-                        style={buttonStyle}
-                        className="w-full rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                        onClick={() => addToCart(p)}
-                      >
-                        {ui.addToCart}
-                      </button>
-                    </div>
-                  </li>
+                  <ProductCard
+                    key={p.id}
+                    product={p}
+                    lang={lang}
+                    buttonStyle={buttonStyle}
+                    addLabel={ui.addToCart}
+                    prescriptionLabel={tCustomer(lang, "restriction_badge_prescription")}
+                    documentLabel={tCustomer(lang, "restriction_badge_document")}
+                    onAdd={() => addToCart(p)}
+                  />
                 ))}
               </ul>
             );
@@ -965,7 +895,7 @@ export function CustomerMenuBrowser({
           type="button"
           onClick={() => setCartOpen(true)}
           style={buttonStyle}
-          className="fixed bottom-4 left-1/2 z-40 w-[min(520px,calc(100%-2rem))] -translate-x-1/2 rounded-2xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="fixed bottom-4 left-1/2 z-40 w-[min(520px,calc(100%-2rem))] -translate-x-1/2 rounded-2xl bg-brand px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 hover:bg-brandHover"
         >
           {ui.viewCart}
         </button>

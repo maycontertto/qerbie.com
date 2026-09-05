@@ -93,8 +93,12 @@ export function CustomerMenuShell({
   );
 
   return (
-    <div id="top" className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-zinc-950">
-      <div className="mx-auto w-full max-w-2xl space-y-6">
+    <div id="top" className="relative min-h-screen overflow-hidden bg-linear-to-b from-brand/5 via-zinc-50 to-white px-4 py-8 dark:from-brand/10 dark:via-zinc-950 dark:to-zinc-950">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-brand/10 blur-3xl dark:bg-brand/10"
+      />
+      <div className="relative mx-auto w-full max-w-2xl space-y-6">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
