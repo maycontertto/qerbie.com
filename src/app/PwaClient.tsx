@@ -117,8 +117,8 @@ export function PwaInstallPrompt() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4">
-      <div className="mx-auto max-w-xl rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4">
+      <div className="pointer-events-auto mx-auto max-w-xl rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Instalar app</p>
