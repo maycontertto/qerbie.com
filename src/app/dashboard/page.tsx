@@ -382,7 +382,7 @@ export default async function DashboardPage({
                   {isOwner ? (
                     <>
                       <a
-                        href="/dashboard/segmento"
+                        href="/dashboard/segmento?choose=1"
                         className="text-sm font-medium text-zinc-500 hover:underline dark:text-zinc-400"
                       >
                         Trocar tipo

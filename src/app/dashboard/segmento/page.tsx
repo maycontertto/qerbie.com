@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 import { setBusinessCategory } from "@/lib/merchant/actions";
@@ -9,17 +10,19 @@ import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
 export default async function ChooseSegmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; category?: string }>;
+  searchParams: Promise<{ error?: string; category?: string; choose?: string }>;
 }) {
-  const { error, category } = await searchParams;
+  const { error, category, choose } = await searchParams;
   const { user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
   const isOwner = user.id === merchant.owner_user_id;
 
   const selectedKey = merchant.business_category ?? category ?? null;
   const selectedLabel = getBusinessCategoryLabel(selectedKey);
+  const wantsChoose = choose === "1" || choose === "true";
 
-  // Já tem segmento definido e não veio de um erro de gravação: nada a fazer aqui.
-  if (selectedLabel && !error) {
+  // Já tem segmento definido, não veio de um erro de gravação nem de um pedido
+  // explícito pra trocar (link "Trocar tipo"): não há nada a fazer aqui.
+  if (selectedLabel && !error && !wantsChoose) {
     redirect("/dashboard");
   }
 
@@ -40,7 +43,16 @@ export default async function ChooseSegmentPage({
       />
 
       <main className="relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="flex flex-col items-center text-center">
+        {selectedLabel && (
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1 text-sm font-medium text-zinc-500 hover:underline dark:text-zinc-400"
+          >
+            ← Voltar ao painel
+          </Link>
+        )}
+
+        <div className="mt-4 flex flex-col items-center text-center">
           <Image
             src="/qrbie.png"
             alt="Qerbie"
@@ -56,6 +68,12 @@ export default async function ChooseSegmentPage({
             Escolha o segmento de <strong>{merchant.name}</strong> para abrirmos seu
             painel já com as seções certas para o seu dia a dia.
           </p>
+          {selectedLabel && (
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+              Selecionado atualmente: <strong>{selectedLabel}</strong>. Escolher outra
+              opção abaixo troca o painel.
+            </p>
+          )}
         </div>
 
         {errorMessage && (
