@@ -1,7 +1,6 @@
+import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { signOut } from "@/lib/auth/actions";
-import { BUSINESS_CATEGORIES } from "@/lib/merchant/businessCategories";
-import { setBusinessCategory } from "@/lib/merchant/actions";
 import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
 import { getDashboardModules } from "@/lib/merchant/dashboardModules";
 import { HistoryRangePicker } from "./HistoryRangePicker";
@@ -57,10 +56,14 @@ export default async function DashboardPage({
   const selectedLabel = getBusinessCategoryLabel(selectedKey);
   const hasCategory = Boolean(selectedLabel);
   const wantsChoose = choose === "1" || choose === "true";
-  const showChooser = wantsChoose || !hasCategory;
-  const activeSection: DashboardSection = hasCategory
-    ? section ?? "catalogo"
-    : "catalogo";
+
+  // A escolha de segmento acontece numa tela dedicada, antes do dashboard.
+  if (!hasCategory || wantsChoose) {
+    const qs = error ? `?error=${encodeURIComponent(error)}` : "";
+    redirect(`/dashboard/segmento${qs}`);
+  }
+
+  const activeSection: DashboardSection = section ?? "catalogo";
   const historyRange: HistoryRange = range ?? "diario";
   const hasExplicitHistoryRange = Boolean(range);
 
@@ -364,83 +367,22 @@ export default async function DashboardPage({
             </div>
           )}
 
-          {showChooser && (
-            <section className="mt-8">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <section className="mt-10">
+            <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                  Tipo de negócio
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+                  Painel — {selectedLabel}
                 </h3>
                 <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  {selectedLabel
-                    ? `Selecionado: ${selectedLabel}`
-                    : "Você ainda não selecionou."}
+                  {modules.headerNudge}
                 </p>
               </div>
-
-              {!isOwner && (
-                <span className="text-sm text-zinc-500 dark:text-zinc-400">
-                  Somente o proprietário pode alterar.
-                </span>
-              )}
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {BUSINESS_CATEGORIES.map((c) => {
-                const selected = selectedKey === c.key;
-
-                return (
-                  <form key={c.key} action={setBusinessCategory}>
-                    <input type="hidden" name="category" value={c.key} />
-                    <button
-                      type="submit"
-                      disabled={!isOwner}
-                      className={`w-full rounded-lg border p-4 text-left transition-colors disabled:opacity-60 ${
-                        selected
-                          ? "border-zinc-900 bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-800"
-                          : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                            {c.label}
-                          </p>
-                          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            Configurar seções para {c.label.toLowerCase()}.
-                          </p>
-                        </div>
-                        {selected && (
-                          <span className="rounded bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white dark:bg-zinc-50 dark:text-zinc-900">
-                            ATIVO
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  </form>
-                );
-              })}
-            </div>
-          </section>
-          )}
-
-          {!showChooser && hasCategory && (
-            <section className="mt-10">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-                    Painel — {selectedLabel}
-                  </h3>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    {modules.headerNudge}
-                  </p>
-                </div>
 
                 <div className="flex flex-wrap gap-2">
                   {isOwner ? (
                     <>
                       <a
-                        href="/dashboard?choose=1"
+                        href="/dashboard/segmento"
                         className="text-sm font-medium text-zinc-500 hover:underline dark:text-zinc-400"
                       >
                         Trocar tipo
@@ -647,7 +589,6 @@ export default async function DashboardPage({
                 )}
               </div>
             </section>
-          )}
         </div>
       </main>
     </div>
