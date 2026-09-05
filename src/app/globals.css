@@ -10,6 +10,10 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Tailwind v4 não lê tailwind.config.ts sem @config; registradas aqui para bg-brand/border-brand/etc funcionarem. */
+  --color-brand: #22C55E;
+  --color-brandHover: #16A34A;
+  --color-accent: #2DD4BF;
 }
 
 @media (prefers-color-scheme: dark) {
