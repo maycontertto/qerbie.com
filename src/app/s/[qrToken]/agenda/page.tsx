@@ -56,7 +56,7 @@ export default async function SalaoAgendaPage({
   ]);
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
+    <div className="min-h-screen bg-linear-to-b from-brand/5 via-zinc-50 to-white px-4 py-10 dark:from-brand/10 dark:via-zinc-950 dark:to-zinc-950">
       <div className="mx-auto w-full max-w-md space-y-6">
         <Link
           href={`/s/${encodeURIComponent(qrToken)}/menu`}

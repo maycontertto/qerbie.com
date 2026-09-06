@@ -35,10 +35,17 @@ export function CustomerStart({
   }, [error, lang]);
 
   const button = getButtonStyle(merchantPrimaryColor ?? null);
+  const ctaClassName = merchantPrimaryColor
+    ? button.className
+    : "w-full rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brandHover";
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-10 dark:bg-zinc-950">
-      <div className="mx-auto w-full max-w-md space-y-6">
+    <div className="relative min-h-screen overflow-hidden bg-linear-to-b from-brand/5 via-zinc-50 to-white px-4 py-10 dark:from-brand/10 dark:via-zinc-950 dark:to-zinc-950">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-brand/10 blur-3xl dark:bg-brand/10"
+      />
+      <div className="relative mx-auto w-full max-w-md space-y-6">
         <div className="flex justify-end">
           <CustomerLanguagePicker value={lang} onChange={setLang} />
         </div>
@@ -90,7 +97,7 @@ export function CustomerStart({
                   onClick={() => setPlace("Recepção")}
                   className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
                     place === "Recepção"
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                      ? "border-brand bg-brand text-white"
                       : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
                   }`}
                 >
@@ -101,7 +108,7 @@ export function CustomerStart({
                   onClick={() => setPlace("Agendamento")}
                   className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
                     place === "Agendamento"
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                      ? "border-brand bg-brand text-white"
                       : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
                   }`}
                 >
@@ -112,7 +119,7 @@ export function CustomerStart({
                   onClick={() => setPlace("Serviço")}
                   className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
                     place === "Serviço"
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+                      ? "border-brand bg-brand text-white"
                       : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
                   }`}
                 >
@@ -148,7 +155,7 @@ export function CustomerStart({
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{tCustomer(lang, "name_helper")}</p>
           </div>
 
-          <button type="submit" className={button.className} style={button.style}>
+          <button type="submit" className={ctaClassName} style={button.style}>
             {tCustomer(lang, "continue")}
           </button>
         </form>

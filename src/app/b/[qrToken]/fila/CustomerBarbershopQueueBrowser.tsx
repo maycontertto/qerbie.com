@@ -327,7 +327,7 @@ export function CustomerBarbershopQueueBrowser({
           type="button"
           disabled={joining || !selectedQueueId || !selectedServiceId}
           onClick={joinQueue}
-          className="mt-4 w-full rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="mt-4 w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brandHover disabled:opacity-60"
         >
           {joining ? "Entrando..." : "Entrar na fila"}
         </button>

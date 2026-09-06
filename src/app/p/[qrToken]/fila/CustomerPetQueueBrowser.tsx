@@ -373,7 +373,7 @@ export function CustomerPetQueueBrowser({
             type="button"
             disabled={joining || Boolean(ticket)}
             onClick={joinQueue}
-            className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brandHover disabled:opacity-60"
           >
             {ticket ? "Você já está na fila" : joining ? "Entrando..." : "Entrar na fila"}
           </button>

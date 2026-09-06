@@ -405,7 +405,7 @@ export function CustomerAestheticAgendaBrowser({
                     type="button"
                     disabled={busy || !selectedServiceId || (eligibleQueueIds ? eligibleQueues.length === 0 : false)}
                     onClick={() => requestSlot(s.id)}
-                    className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                    className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:bg-brandHover disabled:opacity-60"
                   >
                     Solicitar
                   </button>
