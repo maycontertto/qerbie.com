@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
+import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
+import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
+import { DashboardShell } from "../DashboardShell";
 import { BILLING_PLAN, formatBrlFromCents } from "@/lib/billing/constants";
 import {
   createOrGetMonthlyInvoice,
@@ -86,16 +88,21 @@ export default async function PagamentoPage({
     recheck?: string;
   }>;
 }) {
-  const { supabase, user, merchant } = await getDashboardUserOrRedirect({ allowSuspended: true });
+  const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect({ allowSuspended: true });
   const { pay, mode, error, status, payment_id, collection_id, recheck } = await searchParams;
+
+  const isOwner = user.id === merchant.owner_user_id;
+  const canBranding =
+    isOwner ||
+    (membership ? hasMemberPermission(membership.role, membership.permissions, "dashboard_branding") : false);
+  const selectedKey = merchant.business_category ?? null;
+  const selectedLabel = getBusinessCategoryLabel(selectedKey);
 
   const callbackPaymentId = String(payment_id ?? collection_id ?? "").trim();
   const syncResult =
     status === "success" && callbackPaymentId
       ? await syncMercadoPagoApprovedPayment(callbackPaymentId)
       : null;
-
-  const isOwner = user.id === merchant.owner_user_id;
 
   const { data: sub } = await supabase
     .from("merchant_subscriptions")
@@ -191,7 +198,14 @@ export default async function PagamentoPage({
               : null;
 
   return (
-    <div className="min-h-screen">
+    <DashboardShell
+      merchantName={merchant.name}
+      userEmail={user.email ?? ""}
+      selectedLabel={selectedLabel}
+      selectedKey={selectedKey}
+      isOwner={isOwner}
+      canBranding={canBranding}
+    >
       <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
         <div className="rounded-2xl border border-zinc-200 bg-white/70 p-8 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
           <div>
@@ -428,6 +442,6 @@ export default async function PagamentoPage({
           )}
         </div>
       </main>
-    </div>
+    </DashboardShell>
   );
 }
