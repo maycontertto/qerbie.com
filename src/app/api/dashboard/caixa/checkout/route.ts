@@ -90,20 +90,18 @@ export async function POST(req: Request) {
 
   let cashSessionId: string | null = null;
   let cashRegisterAvailable = false;
-  if (paymentMethod === "cash") {
-    const { data: cashSession, error: cashSessionError } = await ctx.supabase
-      .from("cash_register_sessions")
-      .select("id")
-      .eq("merchant_id", ctx.merchant.id)
-      .eq("status", "open")
-      .limit(1)
-      .maybeSingle();
-    cashRegisterAvailable = !cashSessionError;
-    if (cashRegisterAvailable && !cashSession) {
-      return NextResponse.json({ error: "cash_register_closed" }, { status: 409 });
-    }
-    cashSessionId = cashSession?.id ?? null;
+  const { data: cashSession, error: cashSessionError } = await ctx.supabase
+    .from("cash_register_sessions")
+    .select("id")
+    .eq("merchant_id", ctx.merchant.id)
+    .eq("status", "open")
+    .limit(1)
+    .maybeSingle();
+  cashRegisterAvailable = !cashSessionError;
+  if (cashRegisterAvailable && paymentMethod === "cash" && !cashSession) {
+    return NextResponse.json({ error: "cash_register_closed" }, { status: 409 });
   }
+  cashSessionId = cashSession?.id ?? null;
 
   const todayUtc = new Date().toISOString().slice(0, 10);
   let lastError: string | null = null;

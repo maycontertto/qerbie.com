@@ -21,7 +21,7 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
 
   if (!session) return { session: null };
 
-  const [{ data: movements }, { data: cashOrders }, { count: orderCount }] = await Promise.all([
+  const [{ data: movements }, { data: sessionOrders }, { count: orderCount }] = await Promise.all([
     ctx.supabase
       .from("cash_register_movements")
       .select("id,movement_type,amount,reason,receipt_path,created_at")
@@ -30,9 +30,8 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
       .limit(12),
     ctx.supabase
       .from("orders")
-      .select("total")
+      .select("total,payment_method")
       .eq("cash_session_id", session.id)
-      .eq("payment_method", "cash")
       .neq("status", "cancelled"),
     ctx.supabase
       .from("orders")
@@ -41,7 +40,16 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
       .neq("status", "cancelled"),
   ]);
 
-  const cashSales = (cashOrders ?? []).reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+  const salesByPayment = (sessionOrders ?? []).reduce(
+    (totals, order) => {
+      const method = String(order.payment_method ?? "other");
+      const key = method === "cash" || method === "pix" || method === "card" ? method : "other";
+      totals[key] += Number(order.total ?? 0);
+      return totals;
+    },
+    { cash: 0, pix: 0, card: 0, other: 0 },
+  );
+  const cashSales = salesByPayment.cash;
   const withdrawals = (movements ?? [])
     .filter((movement) => movement.movement_type === "withdrawal")
     .reduce((sum, movement) => sum + Number(movement.amount ?? 0), 0);
@@ -49,6 +57,7 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
     .filter((movement) => movement.movement_type === "deposit")
     .reduce((sum, movement) => sum + Number(movement.amount ?? 0), 0);
   const expectedAmount = Number(session.opening_amount ?? 0) + cashSales + deposits - withdrawals;
+  const expectedTotal = expectedAmount + salesByPayment.pix + salesByPayment.card + salesByPayment.other;
 
   const signedMovements = await Promise.all(
     (movements ?? []).map(async (movement) => {
@@ -70,6 +79,10 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
       withdrawals,
       deposits,
       expectedAmount: Math.round(expectedAmount * 100) / 100,
+      expectedTotal: Math.round(expectedTotal * 100) / 100,
+      pixSales: Math.round(salesByPayment.pix * 100) / 100,
+      cardSales: Math.round(salesByPayment.card * 100) / 100,
+      otherSales: Math.round(salesByPayment.other * 100) / 100,
       orderCount: orderCount ?? 0,
       movements: signedMovements.map((movement) => ({
         id: movement.id,
@@ -166,21 +179,39 @@ export async function POST(req: Request) {
       });
       if (error) return NextResponse.json({ error: "movement_failed", detail: error.message }, { status: 500 });
     } else if (action === "close") {
-      const countedAmount = money(form.get("amount"));
+      const countedCash = money(form.get("cashAmount"));
+      const countedPix = money(form.get("pixAmount"));
+      const countedCard = money(form.get("cardAmount"));
+      const countedOther = money(form.get("otherAmount"));
       const notes = String(form.get("notes") ?? "").trim().slice(0, 300) || null;
-      if (countedAmount === null) return NextResponse.json({ error: "invalid_amount" }, { status: 400 });
+      if (countedCash === null || countedPix === null || countedCard === null || countedOther === null) {
+        return NextResponse.json({ error: "invalid_amount" }, { status: 400 });
+      }
 
       const summary = await getSessionSummary(ctx);
-      const expectedAmount = summary.session?.expectedAmount ?? 0;
+      const expectedCash = summary.session?.expectedAmount ?? 0;
+      const expectedPix = summary.session?.pixSales ?? 0;
+      const expectedCard = summary.session?.cardSales ?? 0;
+      const expectedOther = summary.session?.otherSales ?? 0;
+      const expectedTotal = expectedCash + expectedPix + expectedCard + expectedOther;
+      const countedTotal = countedCash + countedPix + countedCard + countedOther;
       const { error } = await ctx.supabase
         .from("cash_register_sessions")
         .update({
           status: "closed",
           closed_by_user_id: ctx.user.id,
           closed_at: new Date().toISOString(),
-          expected_amount: expectedAmount,
-          counted_amount: countedAmount,
-          difference_amount: Math.round((countedAmount - expectedAmount) * 100) / 100,
+          expected_amount: Math.round(expectedTotal * 100) / 100,
+          counted_amount: Math.round(countedTotal * 100) / 100,
+          difference_amount: Math.round((countedTotal - expectedTotal) * 100) / 100,
+          expected_cash_amount: expectedCash,
+          counted_cash_amount: countedCash,
+          expected_pix_amount: expectedPix,
+          counted_pix_amount: countedPix,
+          expected_card_amount: expectedCard,
+          counted_card_amount: countedCard,
+          expected_other_amount: expectedOther,
+          counted_other_amount: countedOther,
           closing_notes: notes,
           updated_at: new Date().toISOString(),
         })

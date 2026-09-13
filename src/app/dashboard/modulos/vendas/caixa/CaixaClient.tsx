@@ -76,6 +76,10 @@ type CashSession = {
   withdrawals: number;
   deposits: number;
   expectedAmount: number;
+  expectedTotal: number;
+  pixSales: number;
+  cardSales: number;
+  otherSales: number;
   orderCount: number;
   movements: Array<{
     id: string;
@@ -142,6 +146,7 @@ export function CaixaClient({
   const [cashUnavailable, setCashUnavailable] = useState(false);
   const [cashAction, setCashAction] = useState<CashAction | null>(null);
   const [cashAmount, setCashAmount] = useState("");
+  const [closingAmounts, setClosingAmounts] = useState({ cash: "", pix: "", card: "", other: "" });
   const [cashReason, setCashReason] = useState("");
   const [cashReceipt, setCashReceipt] = useState<File | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -679,6 +684,12 @@ export function CaixaClient({
     formData.set("amount", cashAmount);
     formData.set("notes", cashReason);
     formData.set("reason", cashReason);
+    if (cashAction === "close") {
+      formData.set("cashAmount", closingAmounts.cash);
+      formData.set("pixAmount", closingAmounts.pix);
+      formData.set("cardAmount", closingAmounts.card);
+      formData.set("otherAmount", closingAmounts.other);
+    }
     if (cashReceipt) formData.set("receipt", cashReceipt);
 
     try {
@@ -697,6 +708,7 @@ export function CaixaClient({
       setCashSession(payload.session ?? null);
       setCashAction(null);
       setCashAmount("");
+      setClosingAmounts({ cash: "", pix: "", card: "", other: "" });
       setCashReason("");
       setCashReceipt(null);
       setStatus({
@@ -974,13 +986,24 @@ export function CaixaClient({
       {cashAction ? (
         <div className="fixed inset-0 z-100 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
           <form onSubmit={submitCashAction} className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl dark:bg-zinc-900">
-            <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{cashAction === "open" ? "Abrir caixa" : cashAction === "withdrawal" ? "Registrar sangria" : cashAction === "deposit" ? "Adicionar reforço" : "Fechar caixa"}</h2><p className="mt-1 text-sm text-zinc-500">{cashAction === "close" ? `Saldo esperado: ${formatBrl(cashSession?.expectedAmount ?? 0)}` : cashAction === "withdrawal" ? "Registre o destino do dinheiro e anexe o comprovante." : "Informe o valor para manter o saldo conferido."}</p></div><button type="button" onClick={() => setCashAction(null)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Fechar"><X size={18} /></button></div>
-            <label className="mt-5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">{cashAction === "close" ? "Valor contado no caixa" : cashAction === "open" ? "Troco inicial" : "Valor"}</label>
-            <input autoFocus required type="number" min="0" step="0.01" value={cashAmount} onChange={(event) => setCashAmount(event.target.value)} placeholder="0,00" className="mt-2 h-12 w-full rounded-lg border border-zinc-300 px-3 text-lg font-semibold dark:border-zinc-700 dark:bg-zinc-950" />
+            <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{cashAction === "open" ? "Abrir caixa" : cashAction === "withdrawal" ? "Registrar sangria" : cashAction === "deposit" ? "Adicionar reforço" : "Fechar caixa"}</h2><p className="mt-1 text-sm text-zinc-500">{cashAction === "close" ? `Total esperado no turno: ${formatBrl(cashSession?.expectedTotal ?? 0)}` : cashAction === "withdrawal" ? "Registre o destino do dinheiro e anexe o comprovante." : "Informe o valor para manter o saldo conferido."}</p></div><button type="button" onClick={() => setCashAction(null)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Fechar"><X size={18} /></button></div>
+            {cashAction === "close" ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <ReconciliationField label="Dinheiro contado" expected={cashSession?.expectedAmount ?? 0} value={closingAmounts.cash} onChange={(value) => setClosingAmounts((current) => ({ ...current, cash: value }))} autoFocus />
+                <ReconciliationField label="Pix conferido" expected={cashSession?.pixSales ?? 0} value={closingAmounts.pix} onChange={(value) => setClosingAmounts((current) => ({ ...current, pix: value }))} />
+                <ReconciliationField label="Cartão conferido" expected={cashSession?.cardSales ?? 0} value={closingAmounts.card} onChange={(value) => setClosingAmounts((current) => ({ ...current, card: value }))} />
+                <ReconciliationField label="Outros conferidos" expected={cashSession?.otherSales ?? 0} value={closingAmounts.other} onChange={(value) => setClosingAmounts((current) => ({ ...current, other: value }))} />
+              </div>
+            ) : (
+              <>
+                <label className="mt-5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">{cashAction === "open" ? "Troco inicial" : "Valor"}</label>
+                <input autoFocus required type="number" min="0" step="0.01" value={cashAmount} onChange={(event) => setCashAmount(event.target.value)} placeholder="0,00" className="mt-2 h-12 w-full rounded-lg border border-zinc-300 px-3 text-lg font-semibold dark:border-zinc-700 dark:bg-zinc-950" />
+              </>
+            )}
             <label className="mt-4 block text-sm font-medium text-zinc-700 dark:text-zinc-200">{cashAction === "withdrawal" || cashAction === "deposit" ? "Motivo" : "Observação"}</label>
             <textarea required={cashAction === "withdrawal" || cashAction === "deposit"} value={cashReason} onChange={(event) => setCashReason(event.target.value)} placeholder={cashAction === "withdrawal" ? "Ex: compra de lâmpada para o estoque" : "Opcional"} className="mt-2 min-h-20 w-full resize-none rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
             {cashAction === "withdrawal" ? <div className="mt-4"><label className="block text-sm font-medium text-zinc-700 dark:text-zinc-200">Comprovante obrigatório</label><input required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setCashReceipt(event.target.files?.[0] ?? null)} className="mt-2 block w-full text-sm text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:font-semibold dark:file:bg-zinc-800" /></div> : null}
-            <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setCashAction(null)} className="h-10 rounded-lg border border-zinc-300 px-4 text-sm font-semibold dark:border-zinc-700">Voltar</button><button type="submit" disabled={busy || !cashAmount} className={`h-10 rounded-lg px-4 text-sm font-semibold text-white disabled:opacity-50 ${cashAction === "close" ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>Confirmar</button></div>
+            <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setCashAction(null)} className="h-10 rounded-lg border border-zinc-300 px-4 text-sm font-semibold dark:border-zinc-700">Voltar</button><button type="submit" disabled={busy || (cashAction === "close" ? Object.values(closingAmounts).some((value) => value === "") : !cashAmount)} className={`h-10 rounded-lg px-4 text-sm font-semibold text-white disabled:opacity-50 ${cashAction === "close" ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>Confirmar</button></div>
           </form>
         </div>
       ) : null}
@@ -1006,4 +1029,20 @@ function Metric({ label, value, tone = "default" }: { label: string; value: stri
 
 function ActionButton({ icon: Icon, label, onClick, primary, danger }: { icon: typeof UnlockKeyhole; label: string; onClick: () => void; primary?: boolean; danger?: boolean }) {
   return <button type="button" onClick={onClick} className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${primary ? "bg-emerald-400 text-zinc-950 hover:bg-emerald-300" : danger ? "border border-red-900 bg-red-950/60 text-red-200 hover:bg-red-950" : "border border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"}`}><Icon size={16} aria-hidden />{label}</button>;
+}
+
+function ReconciliationField({ label, expected, value, onChange, autoFocus = false }: { label: string; expected: number; value: string; onChange: (value: string) => void; autoFocus?: boolean }) {
+  const counted = value === "" ? null : Number(value);
+  const difference = counted === null || !Number.isFinite(counted) ? null : counted - expected;
+
+  return (
+    <label className="rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-950">
+      <span className="text-sm font-medium text-zinc-700 dark:text-zinc-200">{label}</span>
+      <span className="mt-1 block text-xs text-zinc-500">Esperado: {formatBrl(expected)}</span>
+      <input autoFocus={autoFocus} required type="number" min="0" step="0.01" value={value} onChange={(event) => onChange(event.target.value)} placeholder="0,00" className="mt-2 h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-base font-semibold dark:border-zinc-700 dark:bg-zinc-900" />
+      <span className={`mt-1 block text-xs font-medium ${difference === null || difference === 0 ? "text-zinc-500" : difference > 0 ? "text-sky-700 dark:text-sky-300" : "text-red-700 dark:text-red-300"}`}>
+        {difference === null ? "Informe o valor conferido" : difference === 0 ? "Sem diferença" : `Diferença: ${difference > 0 ? "+" : ""}${formatBrl(difference)}`}
+      </span>
+    </label>
+  );
 }
