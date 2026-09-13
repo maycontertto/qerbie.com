@@ -88,6 +88,23 @@ export async function POST(req: Request) {
   const discount = 0;
   const total = round2(subtotal);
 
+  let cashSessionId: string | null = null;
+  let cashRegisterAvailable = false;
+  if (paymentMethod === "cash") {
+    const { data: cashSession, error: cashSessionError } = await ctx.supabase
+      .from("cash_register_sessions")
+      .select("id")
+      .eq("merchant_id", ctx.merchant.id)
+      .eq("status", "open")
+      .limit(1)
+      .maybeSingle();
+    cashRegisterAvailable = !cashSessionError;
+    if (cashRegisterAvailable && !cashSession) {
+      return NextResponse.json({ error: "cash_register_closed" }, { status: 409 });
+    }
+    cashSessionId = cashSession?.id ?? null;
+  }
+
   const todayUtc = new Date().toISOString().slice(0, 10);
   let lastError: string | null = null;
 
@@ -121,6 +138,7 @@ export async function POST(req: Request) {
         total,
         payment_method: paymentMethod,
         payment_notes: paymentNotes,
+        ...(cashRegisterAvailable ? { cash_session_id: cashSessionId } : {}),
         completed_at: new Date().toISOString(),
         completed_by_user_id: ctx.user.id,
       })

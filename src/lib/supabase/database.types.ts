@@ -2414,6 +2414,70 @@ export interface Database {
         ];
       };
 
+      cash_register_sessions: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          opened_by_user_id: string;
+          opened_at: string;
+          opening_amount: number;
+          opening_notes: string | null;
+          status: "open" | "closed";
+          closed_by_user_id: string | null;
+          closed_at: string | null;
+          expected_amount: number | null;
+          counted_amount: number | null;
+          difference_amount: number | null;
+          closing_notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          opened_by_user_id: string;
+          opened_at?: string;
+          opening_amount?: number;
+          opening_notes?: string | null;
+          status?: "open" | "closed";
+          closed_by_user_id?: string | null;
+          closed_at?: string | null;
+          expected_amount?: number | null;
+          counted_amount?: number | null;
+          difference_amount?: number | null;
+          closing_notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["cash_register_sessions"]["Insert"]>;
+        Relationships: [];
+      };
+      cash_register_movements: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          session_id: string;
+          movement_type: "withdrawal" | "deposit";
+          amount: number;
+          reason: string;
+          receipt_path: string | null;
+          created_by_user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          session_id: string;
+          movement_type: "withdrawal" | "deposit";
+          amount: number;
+          reason: string;
+          receipt_path?: string | null;
+          created_by_user_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["cash_register_movements"]["Insert"]>;
+        Relationships: [];
+      };
       orders: {
         Row: {
           id: string;
@@ -2440,6 +2504,7 @@ export interface Database {
           completed_by_user_id: string | null;
           cancelled_at: string | null;
           cancellation_reason: string | null;
+          cash_session_id: string | null;
           created_at: string;
           created_day: string;
           updated_at: string;
@@ -2469,6 +2534,7 @@ export interface Database {
           completed_by_user_id?: string | null;
           cancelled_at?: string | null;
           cancellation_reason?: string | null;
+          cash_session_id?: string | null;
           created_at?: string;
           created_day?: string;
           updated_at?: string;
@@ -2498,6 +2564,7 @@ export interface Database {
           completed_by_user_id?: string | null;
           cancelled_at?: string | null;
           cancellation_reason?: string | null;
+          cash_session_id?: string | null;
           created_at?: string;
           created_day?: string;
           updated_at?: string;

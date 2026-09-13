@@ -36,7 +36,7 @@ export default async function CaixaPage() {
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+      <main className="mx-auto max-w-400 px-4 py-6 sm:px-6">
         <Link
           href="/dashboard"
           className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
@@ -51,8 +51,8 @@ export default async function CaixaPage() {
           </p>
         </div>
 
-        <div className="mt-8">
-          <CaixaClient />
+        <div className="mt-6">
+          <CaixaClient merchantName={merchant.name} operatorName={user.email ?? "Operador"} />
         </div>
       </main>
     </div>

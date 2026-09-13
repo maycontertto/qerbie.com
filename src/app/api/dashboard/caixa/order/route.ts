@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
   const { data: order, error: orderError } = await ctx.supabase
     .from("orders")
-    .select("id, order_number, created_at, status, subtotal, discount, total, payment_method, payment_notes")
+    .select("id, order_number, created_at, status, subtotal, discount, total, payment_method, payment_notes, cancellation_reason")
     .eq("merchant_id", ctx.merchant.id)
     .eq("order_number", orderNumber)
     .order("created_at", { ascending: false })
@@ -86,6 +86,7 @@ export async function GET(req: Request) {
       total: Number(order.total ?? 0),
       paymentMethod: order.payment_method ? String(order.payment_method) : null,
       paymentNotes: order.payment_notes ? String(order.payment_notes) : null,
+      cancellationReason: order.cancellation_reason ? String(order.cancellation_reason) : null,
       items: (items ?? []).map((i) => {
         const productId = String(i.product_id ?? "").trim();
         return {

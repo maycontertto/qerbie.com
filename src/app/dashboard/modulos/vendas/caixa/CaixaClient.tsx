@@ -1,6 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Banknote,
+  CheckCircle2,
+  CircleDollarSign,
+  Clock3,
+  CreditCard,
+  ExternalLink,
+  LockKeyhole,
+  MessageCircle,
+  Minus,
+  Plus,
+  QrCode,
+  ReceiptText,
+  ScanLine,
+  Search,
+  ShoppingCart,
+  Trash2,
+  UnlockKeyhole,
+  X,
+} from "lucide-react";
 
 type CartItem = {
   productId: string;
@@ -32,6 +54,7 @@ type LoadedOrder =
         total: number;
         paymentMethod: string | null;
         paymentNotes: string | null;
+        cancellationReason: string | null;
         items: Array<{
           productId: string | null;
           name: string;
@@ -43,6 +66,28 @@ type LoadedOrder =
       };
     }
   | { error: string; detail?: string };
+
+type CashSession = {
+  id: string;
+  openedAt: string;
+  openingAmount: number;
+  openingNotes: string | null;
+  cashSales: number;
+  withdrawals: number;
+  deposits: number;
+  expectedAmount: number;
+  orderCount: number;
+  movements: Array<{
+    id: string;
+    type: "withdrawal" | "deposit";
+    amount: number;
+    reason: string;
+    createdAt: string;
+    receiptUrl: string | null;
+  }>;
+};
+
+type CashAction = "open" | "withdrawal" | "deposit" | "close";
 
 type ScannerControls = {
   stop: () => void;
@@ -59,7 +104,13 @@ function formatBrl(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 }
 
-export function CaixaClient() {
+export function CaixaClient({
+  merchantName,
+  operatorName,
+}: {
+  merchantName: string;
+  operatorName: string;
+}) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const busyRef = useRef(false);
@@ -86,6 +137,37 @@ export function CaixaClient() {
     kind: "idle",
   });
   const [busy, setBusy] = useState(false);
+  const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const [cashLoading, setCashLoading] = useState(true);
+  const [cashUnavailable, setCashUnavailable] = useState(false);
+  const [cashAction, setCashAction] = useState<CashAction | null>(null);
+  const [cashAmount, setCashAmount] = useState("");
+  const [cashReason, setCashReason] = useState("");
+  const [cashReceipt, setCashReceipt] = useState<File | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelOpen, setCancelOpen] = useState(false);
+
+  async function refreshCashSession() {
+    setCashLoading(true);
+    try {
+      const response = await fetch("/api/dashboard/caixa/session", { cache: "no-store" });
+      const payload = (await response.json()) as { ok?: boolean; session?: CashSession | null };
+      if (!response.ok || !payload.ok) {
+        setCashUnavailable(true);
+        return;
+      }
+      setCashSession(payload.session ?? null);
+      setCashUnavailable(false);
+    } catch {
+      setCashUnavailable(true);
+    } finally {
+      setCashLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshCashSession();
+  }, []);
 
   useEffect(() => {
     busyRef.current = busy;
@@ -552,7 +634,11 @@ export function CaixaClient() {
         | { error: string; detail?: string };
 
       if (!res.ok || !("ok" in json)) {
-        setStatus({ kind: "error", message: "Não foi possível finalizar a venda." });
+        const message =
+          "error" in json && json.error === "cash_register_closed"
+            ? "Abra o caixa antes de receber uma venda em dinheiro."
+            : "Não foi possível finalizar a venda.";
+        setStatus({ kind: "error", message });
         return;
       }
 
@@ -573,6 +659,7 @@ export function CaixaClient() {
                 : "Outro"
         }.`,
       });
+      void refreshCashSession();
     } catch {
       setStatus({ kind: "error", message: "Não foi possível finalizar a venda." });
     } finally {
@@ -581,405 +668,342 @@ export function CaixaClient() {
     }
   }
 
+  async function submitCashAction(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!cashAction) return;
+    setBusy(true);
+    setStatus({ kind: "idle" });
+
+    const formData = new FormData();
+    formData.set("action", cashAction);
+    formData.set("amount", cashAmount);
+    formData.set("notes", cashReason);
+    formData.set("reason", cashReason);
+    if (cashReceipt) formData.set("receipt", cashReceipt);
+
+    try {
+      const response = await fetch("/api/dashboard/caixa/session", { method: "POST", body: formData });
+      const payload = (await response.json()) as { ok?: boolean; error?: string; session?: CashSession | null };
+      if (!response.ok || !payload.ok) {
+        const messages: Record<string, string> = {
+          receipt_required: "Anexe o comprovante da sangria.",
+          invalid_movement: "Informe um valor e um motivo válido.",
+          cash_register_closed: "O caixa já está fechado.",
+          open_failed: "Já existe um caixa aberto ou não foi possível abrir.",
+        };
+        setStatus({ kind: "error", message: messages[payload.error ?? ""] ?? "Operação não concluída." });
+        return;
+      }
+      setCashSession(payload.session ?? null);
+      setCashAction(null);
+      setCashAmount("");
+      setCashReason("");
+      setCashReceipt(null);
+      setStatus({
+        kind: "success",
+        message:
+          cashAction === "open"
+            ? "Caixa aberto com sucesso."
+            : cashAction === "close"
+              ? "Caixa fechado e conferência registrada."
+              : cashAction === "withdrawal"
+                ? "Sangria registrada com comprovante."
+                : "Entrada de dinheiro registrada.",
+      });
+    } catch {
+      setStatus({ kind: "error", message: "Não foi possível concluir a operação do caixa." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelLoadedOrder() {
+    if (!loadedOrder || cancelReason.trim().length < 3) return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/dashboard/caixa/cancel", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ orderId: loadedOrder.order.id, reason: cancelReason }),
+      });
+      if (!response.ok) {
+        setStatus({ kind: "error", message: "Não foi possível cancelar este pedido." });
+        return;
+      }
+      setCancelOpen(false);
+      setCancelReason("");
+      await loadOrder(String(loadedOrder.order.orderNumber));
+      await refreshCashSession();
+      setStatus({ kind: "success", message: `Pedido #${loadedOrder.order.orderNumber} cancelado e auditado.` });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const runSearch = () => {
+    const query = itemQuery.trim();
+    if (!query) return;
+    if (isLikelyBarcode(query)) void addByBarcode(query);
+    else void searchProducts(query);
+  };
+
   return (
-    <div className="grid gap-6">
-      <section className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Adicionar item</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Digite o nome para buscar, ou um código de barras para adicionar direto (Enter).
-        </p>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="flex-1">
-            <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Nome ou código
-            </label>
-            <input
-              ref={inputRef}
-              value={itemQuery}
-              onChange={(e) => setItemQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                e.preventDefault();
-                if (busy) return;
-
-                const q = itemQuery.trim();
-                if (!q) return;
-                if (isLikelyBarcode(q)) {
-                  void addByBarcode(q);
-                } else {
-                  void searchProducts(q);
-                }
-              }}
-              placeholder="Ex: Coca-Cola 2L ou 7891234567890"
-              inputMode="search"
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-            />
+    <div className="space-y-4 pb-10">
+      <section className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 text-white shadow-lg">
+        <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-400 text-zinc-950">
+                <CircleDollarSign size={22} aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold">{merchantName}</p>
+                <p className="truncate text-xs text-zinc-400">Operador: {operatorName}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const q = itemQuery.trim();
-                if (!q) return;
-                if (isLikelyBarcode(q)) {
-                  void addByBarcode(q);
-                } else {
-                  void searchProducts(q);
-                }
-              }}
-              disabled={busy || !itemQuery.trim()}
-              className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Buscar / adicionar
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setScannerOn((v) => !v)}
-              disabled={busy}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-            >
-              {scannerOn ? "Parar câmera" : "Ler com câmera"}
-            </button>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Metric label="Status" value={cashLoading ? "Verificando" : cashSession ? "Caixa aberto" : "Caixa fechado"} tone={cashSession ? "success" : "neutral"} />
+            <Metric label="Saldo esperado" value={cashSession ? formatBrl(cashSession.expectedAmount) : "—"} />
+            <Metric label="Vendas no turno" value={cashSession ? String(cashSession.orderCount) : "0"} />
+            <Metric label="Em dinheiro" value={cashSession ? formatBrl(cashSession.cashSales) : formatBrl(0)} />
           </div>
         </div>
 
-        {searchResults.length ? (
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Resultados
-            </p>
-            <ul className="mt-3 space-y-2">
-              {searchResults.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <div>
-                    <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{p.name}</div>
-                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {formatBrl(Number(p.price ?? 0))}{p.barcode ? ` • ${p.barcode}` : ""}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      addProductToCart({
-                        id: p.id,
-                        name: p.name,
-                        price: Number(p.price ?? 0),
-                        unitLabel: String(p.unitLabel ?? "un"),
-                      });
-                      setItemQuery("");
-                      setSearchResults([]);
-                      inputRef.current?.focus();
-                    }}
-                    className="rounded-xl bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  >
-                    Adicionar
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        <div className="flex flex-wrap gap-2 border-t border-zinc-800 bg-zinc-900/80 px-5 py-3">
+          {!cashSession ? (
+            <ActionButton icon={UnlockKeyhole} label="Abrir caixa" onClick={() => setCashAction("open")} primary />
+          ) : (
+            <>
+              <ActionButton icon={ArrowDownToLine} label="Sangria" onClick={() => setCashAction("withdrawal")} />
+              <ActionButton icon={ArrowUpFromLine} label="Reforço" onClick={() => setCashAction("deposit")} />
+              <ActionButton icon={LockKeyhole} label="Fechar caixa" onClick={() => setCashAction("close")} danger />
+            </>
+          )}
+          <span className="ml-auto flex items-center gap-2 text-xs text-zinc-400">
+            <Clock3 size={14} aria-hidden />
+            {cashSession ? `Aberto às ${new Date(cashSession.openedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Nenhum turno em andamento"}
+          </span>
+        </div>
+      </section>
 
-        {scannerOn ? (
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Leitor por câmera
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                {scannerTorchSupported ? (
-                  <button
-                    type="button"
-                    onClick={() => setScannerTorchOn((v) => !v)}
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                  >
-                    {scannerTorchOn ? "Lanterna: ligada" : "Lanterna: desligada"}
-                  </button>
-                ) : null}
+      {cashUnavailable ? (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+          O controle de caixa ainda não foi configurado no banco de dados. Aplique a migração 053 para habilitar abertura, sangria e fechamento.
+        </div>
+      ) : null}
 
-                <button
-                  type="button"
-                  onClick={() => setScannerOn(false)}
-                  className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                >
-                  Parar
+      {status.kind !== "idle" && status.message ? (
+        <div className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm ${status.kind === "error" ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200" : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"}`}>
+          {status.kind === "success" ? <CheckCircle2 size={17} aria-hidden /> : <X size={17} aria-hidden />}
+          {status.message}
+        </div>
+      ) : null}
+
+      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="space-y-4">
+          <section className="rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="border-b border-zinc-200 p-5 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <Search size={18} className="text-emerald-600" aria-hidden />
+                <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Localizar produto</h2>
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <input
+                  ref={inputRef}
+                  value={itemQuery}
+                  onChange={(event) => setItemQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") { event.preventDefault(); runSearch(); }
+                  }}
+                  placeholder="Digite o produto ou leia o código de barras"
+                  className="h-12 min-w-0 flex-1 rounded-lg border border-zinc-300 bg-white px-4 text-base text-zinc-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+                />
+                <button type="button" onClick={runSearch} disabled={busy || !itemQuery.trim()} className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50">
+                  <Search size={17} aria-hidden /> Buscar
+                </button>
+                <button type="button" onClick={() => setScannerOn((value) => !value)} disabled={busy} className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-zinc-300 px-4 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">
+                  <ScanLine size={17} aria-hidden /> {scannerOn ? "Parar câmera" : "Usar câmera"}
                 </button>
               </div>
             </div>
 
-            {scannerError ? (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-                {scannerError}
-              </div>
-            ) : null}
-
-            <video
-              ref={videoRef}
-              className="mt-3 w-full rounded-xl border border-zinc-200 bg-zinc-950 dark:border-zinc-800"
-              muted
-              playsInline
-              autoPlay
-            />
-
-            <div className="mt-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
-              <span className="font-semibold">Último lido:</span> {scannerLastRead ? scannerLastRead : "—"}
-            </div>
-
-            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-              Aponte para o código de barras. Ao ler, ele adiciona no carrinho automaticamente.
-            </p>
-          </div>
-        ) : null}
-
-        {status.kind !== "idle" && status.message ? (
-          <div
-            className={`mt-4 rounded-2xl border p-3 text-sm ${
-              status.kind === "error"
-                ? "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
-            }`}
-          >
-            {status.message}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Pedido (QR / comprovante)</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Busque pelo número do pedido e envie o cupom não fiscal no WhatsApp.
-        </p>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Número do pedido
-            </label>
-            <input
-              value={orderNumber}
-              onChange={(e) => setOrderNumber(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                e.preventDefault();
-                if (busy) return;
-                void loadOrder(orderNumber);
-              }}
-              placeholder="Ex: 12"
-              inputMode="numeric"
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Telefone do cliente
-            </label>
-            <input
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="Ex: (11) 99999-9999"
-              inputMode="tel"
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void loadOrder(orderNumber)}
-            disabled={busy || !orderNumber.trim()}
-            className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Carregar pedido
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openWhatsAppWithReceipt()}
-            disabled={busy || !loadedOrder}
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Enviar cupom no WhatsApp
-          </button>
-        </div>
-
-        {loadedOrder ? (
-          <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                Pedido #{loadedOrder.order.orderNumber}
-              </p>
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                {formatBrl(Number(loadedOrder.order.total ?? 0))}
-              </p>
-            </div>
-
-            <ul className="mt-3 space-y-1">
-              {loadedOrder.order.items.map((i, idx) => (
-                <li key={`${i.productId ?? "item"}-${idx}`} className="text-xs text-zinc-600 dark:text-zinc-300">
-                  {formatQty(Number(i.quantity ?? 0))} {String(i.unitLabel ?? "un")} × {i.name}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Pagamento</h2>
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Selecione como o cliente pagou para registrar na venda.
-        </p>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Forma
-            </label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-            >
-              <option value="cash">Dinheiro</option>
-              <option value="pix">Pix</option>
-              <option value="card">Cartão</option>
-              <option value="other">Outro</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Observação
-            </label>
-            <input
-              value={paymentNotes}
-              onChange={(e) => setPaymentNotes(e.target.value)}
-              placeholder="Opcional (ex: Pix Nubank, débito, 2x)"
-              className="mt-2 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Carrinho</h2>
-          <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Total: {formatBrl(total)}</div>
-        </div>
-
-        {cart.length === 0 ? (
-          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">Nenhum item ainda.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-zinc-200 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">
-            {cart.map((item) => (
-              <li key={item.productId} className="flex flex-wrap items-center justify-between gap-3 p-3">
+            {searchResults.length ? (
+              <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {searchResults.map((product) => (
+                  <li key={product.id} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">{product.name}</p>
+                      <p className="mt-1 text-xs text-zinc-500">{product.barcode || "Sem código"} · {product.unitLabel}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-4">
+                      <strong className="text-sm text-zinc-900 dark:text-zinc-50">{formatBrl(product.price)}</strong>
+                      <button type="button" onClick={() => { addProductToCart({ id: product.id, name: product.name, price: product.price, unitLabel: product.unitLabel }); setSearchResults([]); setItemQuery(""); }} className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-900 text-white hover:bg-emerald-600 dark:bg-zinc-50 dark:text-zinc-900" title="Adicionar ao carrinho">
+                        <Plus size={17} aria-hidden />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="grid min-h-48 place-items-center px-5 py-10 text-center">
                 <div>
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{item.name}</div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {formatQty(item.quantity)} {item.unitLabel} × {formatBrl(item.unitPrice)} = {formatBrl(item.unitPrice * item.quantity)}
+                  <ScanLine size={34} className="mx-auto text-zinc-300 dark:text-zinc-700" aria-hidden />
+                  <p className="mt-3 text-sm font-medium text-zinc-600 dark:text-zinc-300">Pronto para a próxima leitura</p>
+                  <p className="mt-1 text-xs text-zinc-400">Use o leitor, a câmera ou pesquise pelo nome.</p>
+                </div>
+              </div>
+            )}
+
+            {scannerOn ? (
+              <div className="border-t border-zinc-200 p-5 dark:border-zinc-800">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Leitor por câmera</span>
+                  <div className="flex gap-2">
+                    {scannerTorchSupported ? <button type="button" onClick={() => setScannerTorchOn((value) => !value)} className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs dark:border-zinc-700">Lanterna {scannerTorchOn ? "ligada" : "desligada"}</button> : null}
+                    <button type="button" onClick={() => setScannerOn(false)} className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs dark:border-zinc-700">Parar</button>
                   </div>
                 </div>
+                {scannerError ? <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-200">{scannerError}</p> : null}
+                <video ref={videoRef} className="mt-3 max-h-80 w-full rounded-lg bg-black object-cover" muted playsInline autoPlay />
+                <p className="mt-2 text-xs text-zinc-500">Último código: {scannerLastRead || "—"}</p>
+              </div>
+            ) : null}
+          </section>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min={0.001}
-                    step={0.001}
-                    value={String(item.quantity)}
-                    disabled={busy}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      const n = Number(raw);
-                      const qty = Number.isFinite(n) ? Math.max(0.001, Math.round(n * 1000) / 1000) : 1;
-                      setCart((prev) =>
-                        prev.map((p) => (p.productId === item.productId ? { ...p, quantity: qty } : p)),
-                      );
-                    }}
-                    className="h-9 w-24 rounded-lg border border-zinc-300 bg-white px-2 text-sm text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                    aria-label={`Quantidade (${item.unitLabel})`}
-                  />
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setCart((prev) => {
-                        const next = prev
-                          .map((p) =>
-                            p.productId === item.productId
-                              ? { ...p, quantity: Math.max(0.001, Math.round((p.quantity - 1) * 1000) / 1000) }
-                              : p,
-                          )
-                          .filter(Boolean);
-                        return next;
-                      });
-                    }}
-                    className="h-9 w-9 rounded-lg border border-zinc-300 bg-white text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setCart((prev) =>
-                        prev.map((p) =>
-                          p.productId === item.productId ? { ...p, quantity: p.quantity + 1 } : p,
-                        ),
-                      );
-                    }}
-                    className="h-9 w-9 rounded-lg border border-zinc-300 bg-white text-sm font-semibold text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setCart((prev) => prev.filter((p) => p.productId !== item.productId))}
-                    className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                  >
-                    Remover
-                  </button>
+          <section className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center gap-2">
+              <ReceiptText size={18} className="text-sky-600" aria-hidden />
+              <h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Consultar ou corrigir venda</h2>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-[180px_1fr_auto]">
+              <input value={orderNumber} onChange={(event) => setOrderNumber(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void loadOrder(orderNumber); }} placeholder="Nº do pedido" inputMode="numeric" className="h-11 rounded-lg border border-zinc-300 px-3 dark:border-zinc-700 dark:bg-zinc-950" />
+              <input value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="Telefone para enviar o cupom" inputMode="tel" className="h-11 rounded-lg border border-zinc-300 px-3 dark:border-zinc-700 dark:bg-zinc-950" />
+              <button type="button" onClick={() => void loadOrder(orderNumber)} disabled={busy || !orderNumber.trim()} className="h-11 rounded-lg bg-zinc-900 px-4 text-sm font-semibold text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900">Consultar</button>
+            </div>
+
+            {loadedOrder ? (
+              <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-zinc-900 dark:text-zinc-50">Pedido #{loadedOrder.order.orderNumber}</p>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${loadedOrder.order.status === "cancelled" ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"}`}>{loadedOrder.order.status === "cancelled" ? "Cancelado" : "Concluído"}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-zinc-500">{loadedOrder.order.items.length} item(ns) · {paymentLabel(loadedOrder.order.paymentMethod)}</p>
+                    {loadedOrder.order.cancellationReason ? <p className="mt-2 text-sm text-red-700 dark:text-red-300">Motivo: {loadedOrder.order.cancellationReason}</p> : null}
+                  </div>
+                  <strong className="text-lg text-zinc-900 dark:text-zinc-50">{formatBrl(loadedOrder.order.total)}</strong>
                 </div>
-              </li>
-            ))}
-          </ul>
-        )}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" onClick={openWhatsAppWithReceipt} className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold dark:border-zinc-700"><MessageCircle size={16} aria-hidden /> Enviar cupom</button>
+                  {loadedOrder.order.status !== "cancelled" ? <button type="button" onClick={() => setCancelOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300"><X size={16} aria-hidden /> Cancelar pedido</button> : null}
+                </div>
+              </div>
+            ) : null}
+          </section>
 
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={() => void finalizeSale()}
-            disabled={busy || cart.length === 0}
-            className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Finalizar venda
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setCart([]);
-              setStatus({ kind: "idle" });
-              setItemQuery("");
-              setSearchResults([]);
-              inputRef.current?.focus();
-            }}
-            disabled={busy || cart.length === 0}
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Limpar
-          </button>
+          {cashSession?.movements.length ? (
+            <section className="rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="border-b border-zinc-200 px-5 py-4 dark:border-zinc-800"><h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Movimentações do turno</h2></div>
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                {cashSession.movements.map((movement) => (
+                  <div key={movement.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${movement.type === "withdrawal" ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"}`}>{movement.type === "withdrawal" ? <ArrowDownToLine size={16} /> : <ArrowUpFromLine size={16} />}</span>
+                      <div className="min-w-0"><p className="truncate text-sm font-medium text-zinc-800 dark:text-zinc-100">{movement.reason}</p><p className="text-xs text-zinc-500">{new Date(movement.createdAt).toLocaleString("pt-BR")}</p></div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      {movement.receiptUrl ? <a href={movement.receiptUrl} target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-zinc-700" title="Abrir comprovante"><ExternalLink size={16} /></a> : null}
+                      <strong className={movement.type === "withdrawal" ? "text-red-700 dark:text-red-300" : "text-sky-700 dark:text-sky-300"}>{movement.type === "withdrawal" ? "−" : "+"}{formatBrl(movement.amount)}</strong>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
-      </section>
+
+        <aside className="rounded-lg border border-zinc-200 bg-white shadow-sm xl:sticky xl:top-24 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex items-center justify-between border-b border-zinc-200 p-5 dark:border-zinc-800">
+            <div className="flex items-center gap-2"><ShoppingCart size={18} className="text-emerald-600" /><h2 className="font-semibold text-zinc-900 dark:text-zinc-50">Venda atual</h2></div>
+            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">{cart.length} itens</span>
+          </div>
+
+          <div className="max-h-[42vh] min-h-48 overflow-y-auto">
+            {cart.length === 0 ? (
+              <div className="grid min-h-48 place-items-center p-6 text-center"><div><ShoppingCart size={30} className="mx-auto text-zinc-300" /><p className="mt-2 text-sm text-zinc-500">O carrinho está vazio.</p></div></div>
+            ) : cart.map((item) => (
+              <div key={item.productId} className="border-b border-zinc-100 p-4 last:border-b-0 dark:border-zinc-800">
+                <div className="flex justify-between gap-3"><div><p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{item.name}</p><p className="mt-1 text-xs text-zinc-500">{formatBrl(item.unitPrice)} / {item.unitLabel}</p></div><strong className="text-sm text-zinc-900 dark:text-zinc-50">{formatBrl(item.unitPrice * item.quantity)}</strong></div>
+                <div className="mt-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setCart((previous) => previous.map((product) => product.productId === item.productId ? { ...product, quantity: Math.max(0.001, Math.round((product.quantity - 1) * 1000) / 1000) } : product))} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-300 dark:border-zinc-700" title="Diminuir"><Minus size={14} /></button>
+                    <input type="number" min="0.001" step="0.001" value={item.quantity} onChange={(event) => { const quantity = Math.max(0.001, Number(event.target.value) || 1); setCart((previous) => previous.map((product) => product.productId === item.productId ? { ...product, quantity } : product)); }} className="h-8 w-16 rounded-lg border border-zinc-300 bg-white text-center text-sm dark:border-zinc-700 dark:bg-zinc-950" aria-label={`Quantidade de ${item.name}`} />
+                    <button type="button" onClick={() => setCart((previous) => previous.map((product) => product.productId === item.productId ? { ...product, quantity: product.quantity + 1 } : product))} className="grid h-8 w-8 place-items-center rounded-lg border border-zinc-300 dark:border-zinc-700" title="Aumentar"><Plus size={14} /></button>
+                  </div>
+                  <button type="button" onClick={() => setCart((previous) => previous.filter((product) => product.productId !== item.productId))} className="grid h-8 w-8 place-items-center text-red-500 hover:text-red-700" title="Remover item"><Trash2 size={15} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-zinc-200 p-5 dark:border-zinc-800">
+            <p className="text-xs font-semibold uppercase text-zinc-500">Pagamento</p>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {([
+                ["cash", "Dinheiro", Banknote], ["pix", "Pix", QrCode], ["card", "Cartão", CreditCard], ["other", "Outro", CircleDollarSign],
+              ] as const).map(([value, label, Icon]) => (
+                <button key={value} type="button" onClick={() => setPaymentMethod(value)} className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-lg border px-1 text-xs font-semibold transition ${paymentMethod === value ? "border-emerald-600 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600 dark:bg-emerald-950 dark:text-emerald-200" : "border-zinc-200 text-zinc-500 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"}`}><Icon size={18} /><span>{label}</span></button>
+              ))}
+            </div>
+            <input value={paymentNotes} onChange={(event) => setPaymentNotes(event.target.value)} placeholder="Observação do pagamento (opcional)" className="mt-3 h-10 w-full rounded-lg border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+
+            <div className="mt-5 flex items-end justify-between border-t border-dashed border-zinc-300 pt-4 dark:border-zinc-700">
+              <span className="text-sm text-zinc-500">Total a receber</span>
+              <strong className="text-2xl text-zinc-950 dark:text-white">{formatBrl(total)}</strong>
+            </div>
+            <button type="button" onClick={() => void finalizeSale()} disabled={busy || cart.length === 0 || (paymentMethod === "cash" && !cashSession && !cashUnavailable)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700"><CheckCircle2 size={19} /> Finalizar venda</button>
+            {paymentMethod === "cash" && !cashSession && !cashUnavailable ? <p className="mt-2 text-center text-xs font-medium text-amber-700 dark:text-amber-300">Abra o caixa para receber em dinheiro.</p> : null}
+            <button type="button" onClick={() => { setCart([]); setStatus({ kind: "idle" }); inputRef.current?.focus(); }} disabled={!cart.length || busy} className="mt-2 h-10 w-full text-sm font-semibold text-zinc-500 hover:text-red-600 disabled:opacity-40">Cancelar venda atual</button>
+          </div>
+        </aside>
+      </div>
+
+      {cashAction ? (
+        <div className="fixed inset-0 z-100 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <form onSubmit={submitCashAction} className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl dark:bg-zinc-900">
+            <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{cashAction === "open" ? "Abrir caixa" : cashAction === "withdrawal" ? "Registrar sangria" : cashAction === "deposit" ? "Adicionar reforço" : "Fechar caixa"}</h2><p className="mt-1 text-sm text-zinc-500">{cashAction === "close" ? `Saldo esperado: ${formatBrl(cashSession?.expectedAmount ?? 0)}` : cashAction === "withdrawal" ? "Registre o destino do dinheiro e anexe o comprovante." : "Informe o valor para manter o saldo conferido."}</p></div><button type="button" onClick={() => setCashAction(null)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800" title="Fechar"><X size={18} /></button></div>
+            <label className="mt-5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">{cashAction === "close" ? "Valor contado no caixa" : cashAction === "open" ? "Troco inicial" : "Valor"}</label>
+            <input autoFocus required type="number" min="0" step="0.01" value={cashAmount} onChange={(event) => setCashAmount(event.target.value)} placeholder="0,00" className="mt-2 h-12 w-full rounded-lg border border-zinc-300 px-3 text-lg font-semibold dark:border-zinc-700 dark:bg-zinc-950" />
+            <label className="mt-4 block text-sm font-medium text-zinc-700 dark:text-zinc-200">{cashAction === "withdrawal" || cashAction === "deposit" ? "Motivo" : "Observação"}</label>
+            <textarea required={cashAction === "withdrawal" || cashAction === "deposit"} value={cashReason} onChange={(event) => setCashReason(event.target.value)} placeholder={cashAction === "withdrawal" ? "Ex: compra de lâmpada para o estoque" : "Opcional"} className="mt-2 min-h-20 w-full resize-none rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+            {cashAction === "withdrawal" ? <div className="mt-4"><label className="block text-sm font-medium text-zinc-700 dark:text-zinc-200">Comprovante obrigatório</label><input required type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setCashReceipt(event.target.files?.[0] ?? null)} className="mt-2 block w-full text-sm text-zinc-500 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:font-semibold dark:file:bg-zinc-800" /></div> : null}
+            <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setCashAction(null)} className="h-10 rounded-lg border border-zinc-300 px-4 text-sm font-semibold dark:border-zinc-700">Voltar</button><button type="submit" disabled={busy || !cashAmount} className={`h-10 rounded-lg px-4 text-sm font-semibold text-white disabled:opacity-50 ${cashAction === "close" ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>Confirmar</button></div>
+          </form>
+        </div>
+      ) : null}
+
+      {cancelOpen && loadedOrder ? (
+        <div className="fixed inset-0 z-100 grid place-items-center bg-black/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Cancelar pedido #{loadedOrder.order.orderNumber}</h2>
+            <p className="mt-2 text-sm text-zinc-500">O pedido será mantido no histórico como cancelado e sairá do total do caixa.</p>
+            <label className="mt-5 block text-sm font-medium text-zinc-700 dark:text-zinc-200">Motivo do cancelamento</label>
+            <textarea autoFocus required value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} placeholder="Ex: item lançado incorretamente" className="mt-2 min-h-24 w-full resize-none rounded-lg border border-zinc-300 p-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+            <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setCancelOpen(false)} className="h-10 rounded-lg border border-zinc-300 px-4 text-sm font-semibold dark:border-zinc-700">Voltar</button><button type="button" onClick={() => void cancelLoadedOrder()} disabled={busy || cancelReason.trim().length < 3} className="h-10 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50">Cancelar pedido</button></div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function Metric({ label, value, tone = "default" }: { label: string; value: string; tone?: "default" | "success" | "neutral" }) {
+  return <div className="min-w-28 border-l border-zinc-800 pl-3"><p className="text-[11px] font-medium uppercase text-zinc-500">{label}</p><p className={`mt-1 truncate text-sm font-semibold ${tone === "success" ? "text-emerald-400" : tone === "neutral" ? "text-amber-300" : "text-white"}`}>{value}</p></div>;
+}
+
+function ActionButton({ icon: Icon, label, onClick, primary, danger }: { icon: typeof UnlockKeyhole; label: string; onClick: () => void; primary?: boolean; danger?: boolean }) {
+  return <button type="button" onClick={onClick} className={`inline-flex h-9 items-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${primary ? "bg-emerald-400 text-zinc-950 hover:bg-emerald-300" : danger ? "border border-red-900 bg-red-950/60 text-red-200 hover:bg-red-950" : "border border-zinc-700 bg-zinc-800 text-zinc-100 hover:bg-zinc-700"}`}><Icon size={16} aria-hidden />{label}</button>;
 }
