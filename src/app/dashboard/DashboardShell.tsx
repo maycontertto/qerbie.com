@@ -64,7 +64,7 @@ export function DashboardShell({
       />
 
       <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-480 items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5">
               <Image
@@ -106,7 +106,7 @@ export function DashboardShell({
         </div>
       </header>
 
-      <div className="relative mx-auto flex max-w-7xl gap-6 px-4 py-8 sm:px-6 sm:py-10">
+      <div className="relative mx-auto flex w-full max-w-480 gap-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <aside className="hidden w-64 shrink-0 lg:block">
           <nav className="sticky top-24 rounded-2xl border border-zinc-200 bg-white/80 p-4 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
             <p className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">

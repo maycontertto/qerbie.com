@@ -36,7 +36,7 @@ export default async function CaixaPage() {
 
   return (
     <div className="min-h-screen">
-      <main className="mx-auto max-w-400 px-4 py-6 sm:px-6">
+      <main className="w-full py-6">
         <Link
           href="/dashboard"
           className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
