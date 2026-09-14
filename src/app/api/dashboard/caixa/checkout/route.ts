@@ -7,6 +7,7 @@ type CheckoutItem = {
 };
 
 type PaymentMethod = "cash" | "pix" | "card" | "other";
+type ReceiptType = "non_fiscal" | "fiscal_requested";
 
 function asPaymentMethod(value: unknown): PaymentMethod | null {
   const s = String(value ?? "").trim().toLowerCase();
@@ -25,14 +26,41 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function hasValidTaxIdCheckDigits(value: string): boolean {
+  if (/^(\d)\1+$/.test(value)) return false;
+  const calculateDigit = (base: string, weights: number[]) => {
+    const sum = base.split("").reduce((total, digit, index) => total + Number(digit) * weights[index], 0);
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+  if (value.length === 11) {
+    const first = calculateDigit(value.slice(0, 9), [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const second = calculateDigit(value.slice(0, 9) + first, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return value.endsWith(`${first}${second}`);
+  }
+  if (value.length === 14) {
+    const first = calculateDigit(value.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const second = calculateDigit(value.slice(0, 12) + first, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return value.endsWith(`${first}${second}`);
+  }
+  return false;
+}
+
 export async function POST(req: Request) {
   const ctx = await getDashboardContextForApi();
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!ctx.canSales) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  let body: { items?: CheckoutItem[]; paymentMethod?: unknown; paymentNotes?: unknown };
+  let body: {
+    items?: CheckoutItem[];
+    paymentMethod?: unknown;
+    paymentNotes?: unknown;
+    receiptType?: unknown;
+    customerName?: unknown;
+    customerTaxId?: unknown;
+  };
   try {
-    body = (await req.json()) as { items?: CheckoutItem[]; paymentMethod?: unknown; paymentNotes?: unknown };
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
@@ -40,6 +68,14 @@ export async function POST(req: Request) {
   const paymentMethod = asPaymentMethod(body.paymentMethod) ?? "cash";
   const paymentNotesRaw = typeof body.paymentNotes === "string" ? body.paymentNotes : "";
   const paymentNotes = paymentNotesRaw.trim().slice(0, 200) || null;
+  const receiptType: ReceiptType = body.receiptType === "fiscal_requested" ? "fiscal_requested" : "non_fiscal";
+  const customerName = typeof body.customerName === "string" ? body.customerName.trim().slice(0, 120) || null : null;
+  const customerTaxIdDigits = String(body.customerTaxId ?? "").replace(/\D/g, "");
+  const customerTaxId = customerTaxIdDigits || null;
+
+  if (customerTaxId && !hasValidTaxIdCheckDigits(customerTaxId)) {
+    return NextResponse.json({ error: "invalid_tax_id" }, { status: 400 });
+  }
 
   const items: CheckoutItem[] = Array.isArray(body.items)
     ? body.items
@@ -103,6 +139,9 @@ export async function POST(req: Request) {
   }
   cashSessionId = cashSession?.id ?? null;
 
+  const { error: receiptSchemaError } = await ctx.supabase.from("orders").select("receipt_type").limit(1);
+  const receiptFeaturesAvailable = !receiptSchemaError;
+
   const todayUtc = new Date().toISOString().slice(0, 10);
   let lastError: string | null = null;
 
@@ -129,8 +168,15 @@ export async function POST(req: Request) {
         session_token: sessionToken,
         order_type: "takeaway",
         status: "completed",
-        customer_name: null,
+        customer_name: customerName,
         customer_notes: null,
+        ...(receiptFeaturesAvailable
+          ? {
+              customer_tax_id: customerTaxId,
+              receipt_type: receiptType,
+              fiscal_status: receiptType === "fiscal_requested" ? "requested" : null,
+            }
+          : {}),
         subtotal,
         discount,
         total,
@@ -180,6 +226,7 @@ export async function POST(req: Request) {
       orderId: order.id,
       orderNumber: order.order_number,
       total: order.total,
+      receiptFeaturesAvailable,
     });
   }
 

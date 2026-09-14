@@ -29,14 +29,29 @@ export async function GET(req: Request) {
     .eq("id", ctx.merchant.id)
     .maybeSingle();
 
-  const { data: order, error: orderError } = await ctx.supabase
+  let { data: order, error: orderError } = await ctx.supabase
     .from("orders")
-    .select("id, order_number, created_at, status, subtotal, discount, total, payment_method, payment_notes, cancellation_reason")
+    .select("id, order_number, created_at, status, subtotal, discount, total, payment_method, payment_notes, cancellation_reason, receipt_type, customer_name, customer_tax_id, fiscal_status")
     .eq("merchant_id", ctx.merchant.id)
     .eq("order_number", orderNumber)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  if (orderError?.code === "42703") {
+    const fallback = await ctx.supabase
+      .from("orders")
+      .select("id, order_number, created_at, status, subtotal, discount, total, payment_method, payment_notes, cancellation_reason, customer_name")
+      .eq("merchant_id", ctx.merchant.id)
+      .eq("order_number", orderNumber)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    order = fallback.data
+      ? { ...fallback.data, receipt_type: "non_fiscal", customer_tax_id: null, fiscal_status: null }
+      : null;
+    orderError = fallback.error;
+  }
 
   if (orderError) {
     return NextResponse.json({ error: "order_fetch_failed", detail: orderError.message }, { status: 500 });
@@ -87,6 +102,10 @@ export async function GET(req: Request) {
       paymentMethod: order.payment_method ? String(order.payment_method) : null,
       paymentNotes: order.payment_notes ? String(order.payment_notes) : null,
       cancellationReason: order.cancellation_reason ? String(order.cancellation_reason) : null,
+      receiptType: String(order.receipt_type ?? "non_fiscal"),
+      customerName: order.customer_name ? String(order.customer_name) : null,
+      customerTaxId: order.customer_tax_id ? String(order.customer_tax_id) : null,
+      fiscalStatus: order.fiscal_status ? String(order.fiscal_status) : null,
       items: (items ?? []).map((i) => {
         const productId = String(i.product_id ?? "").trim();
         return {

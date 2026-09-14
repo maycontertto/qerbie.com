@@ -2521,6 +2521,9 @@ export interface Database {
           cancelled_at: string | null;
           cancellation_reason: string | null;
           cash_session_id: string | null;
+          receipt_type: string;
+          customer_tax_id: string | null;
+          fiscal_status: string | null;
           created_at: string;
           created_day: string;
           updated_at: string;
@@ -2551,6 +2554,9 @@ export interface Database {
           cancelled_at?: string | null;
           cancellation_reason?: string | null;
           cash_session_id?: string | null;
+          receipt_type?: string;
+          customer_tax_id?: string | null;
+          fiscal_status?: string | null;
           created_at?: string;
           created_day?: string;
           updated_at?: string;
@@ -2581,6 +2587,9 @@ export interface Database {
           cancelled_at?: string | null;
           cancellation_reason?: string | null;
           cash_session_id?: string | null;
+          receipt_type?: string;
+          customer_tax_id?: string | null;
+          fiscal_status?: string | null;
           created_at?: string;
           created_day?: string;
           updated_at?: string;

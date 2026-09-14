@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Minus,
   Plus,
+  Printer,
   QrCode,
   ReceiptText,
   ScanLine,
@@ -55,6 +56,10 @@ type LoadedOrder =
         paymentMethod: string | null;
         paymentNotes: string | null;
         cancellationReason: string | null;
+        receiptType: string;
+        customerName: string | null;
+        customerTaxId: string | null;
+        fiscalStatus: string | null;
         items: Array<{
           productId: string | null;
           name: string;
@@ -92,6 +97,8 @@ type CashSession = {
 };
 
 type CashAction = "open" | "withdrawal" | "deposit" | "close";
+type ReceiptType = "non_fiscal" | "fiscal_requested";
+type PaperSize = "58mm" | "80mm" | "a4";
 
 type ScannerControls = {
   stop: () => void;
@@ -106,6 +113,42 @@ function formatQty(qty: number): string {
 
 function formatBrl(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function maskTaxId(value: string | null): string {
+  const digits = String(value ?? "").replace(/\D/g, "");
+  if (digits.length === 11) return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  if (digits.length === 14) return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5");
+  return digits;
+}
+
+function hasValidTaxIdCheckDigits(value: string): boolean {
+  if (/^(\d)\1+$/.test(value)) return false;
+  const calculateDigit = (base: string, weights: number[]) => {
+    const sum = base.split("").reduce((total, digit, index) => total + Number(digit) * weights[index], 0);
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+  if (value.length === 11) {
+    const first = calculateDigit(value.slice(0, 9), [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const second = calculateDigit(value.slice(0, 9) + first, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return value.endsWith(`${first}${second}`);
+  }
+  if (value.length === 14) {
+    const first = calculateDigit(value.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    const second = calculateDigit(value.slice(0, 12) + first, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+    return value.endsWith(`${first}${second}`);
+  }
+  return false;
 }
 
 export function CaixaClient({
@@ -128,6 +171,11 @@ export function CaixaClient({
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "pix" | "card" | "other">("cash");
   const [paymentNotes, setPaymentNotes] = useState("");
+  const [receiptType, setReceiptType] = useState<ReceiptType>("non_fiscal");
+  const [customerName, setCustomerName] = useState("");
+  const [customerTaxId, setCustomerTaxId] = useState("");
+  const [printAfterSale, setPrintAfterSale] = useState(true);
+  const [paperSize, setPaperSize] = useState<PaperSize>("80mm");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderNumber, setOrderNumber] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -151,6 +199,62 @@ export function CaixaClient({
   const [cashReceipt, setCashReceipt] = useState<File | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
+
+  function openPrintDialog({
+    orderNumber: receiptOrderNumber,
+    receiptTotal,
+    receiptItems,
+    type,
+    name,
+    taxId,
+    test = false,
+    targetWindow,
+  }: {
+    orderNumber: number;
+    receiptTotal: number;
+    receiptItems: CartItem[];
+    type: ReceiptType;
+    name: string;
+    taxId: string;
+    test?: boolean;
+    targetWindow?: Window | null;
+  }) {
+    const popup = targetWindow === undefined
+      ? window.open("", "qerbie-print", "width=460,height=720")
+      : targetWindow;
+    if (!popup) {
+      setStatus({ kind: "error", message: "O navegador bloqueou a janela de impressão. Autorize pop-ups para este site." });
+      return;
+    }
+
+    const width = paperSize === "58mm" ? "58mm" : paperSize === "80mm" ? "80mm" : "210mm";
+    const title = type === "fiscal_requested" ? "SOLICITAÇÃO DE NOTA FISCAL" : "COMPROVANTE NÃO FISCAL";
+    const itemsHtml = receiptItems
+      .map((item) => `<tr><td>${escapeHtml(`${formatQty(item.quantity)} ${item.unitLabel} ${item.name}`)}</td><td>${escapeHtml(formatBrl(item.quantity * item.unitPrice))}</td></tr>`)
+      .join("");
+    const customerHtml = [
+      name ? `<div><strong>Cliente:</strong> ${escapeHtml(name)}</div>` : "",
+      taxId ? `<div><strong>CPF/CNPJ:</strong> ${escapeHtml(maskTaxId(taxId))}</div>` : "",
+    ].join("");
+
+    popup.document.open();
+    popup.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+      @page { size: ${width} auto; margin: ${paperSize === "a4" ? "12mm" : "4mm"}; }
+      * { box-sizing: border-box; } body { width: ${width}; margin: 0 auto; padding: ${paperSize === "a4" ? "12mm" : "3mm"}; color: #111; font: 12px Arial, sans-serif; }
+      h1 { margin: 0; font-size: 16px; text-align: center; } .center { text-align: center; } .muted { color: #555; } hr { border: 0; border-top: 1px dashed #777; margin: 10px 0; }
+      table { width: 100%; border-collapse: collapse; } td { padding: 3px 0; vertical-align: top; } td:last-child { text-align: right; white-space: nowrap; } .total { font-size: 17px; font-weight: 700; text-align: right; }
+      .warning { margin-top: 12px; border: 1px solid #111; padding: 7px; text-align: center; font-weight: 700; }
+    </style></head><body>
+      <h1>${escapeHtml(merchantName)}</h1><div class="center muted">${escapeHtml(title)}</div><hr>
+      <div><strong>Pedido:</strong> #${receiptOrderNumber || "TESTE"}</div><div><strong>Data:</strong> ${escapeHtml(new Date().toLocaleString("pt-BR"))}</div>${customerHtml}<hr>
+      <table>${itemsHtml || `<tr><td>Impressão de teste</td><td>${escapeHtml(formatBrl(0))}</td></tr>`}</table><hr>
+      <div><strong>Pagamento:</strong> ${escapeHtml(paymentLabel(paymentMethod))}</div><div class="total">TOTAL ${escapeHtml(formatBrl(receiptTotal))}</div>
+      <div class="warning">${type === "fiscal_requested" ? "SOLICITAÇÃO REGISTRADA — AGUARDANDO EMISSÃO FISCAL" : "ESTE COMPROVANTE NÃO É DOCUMENTO FISCAL"}</div>
+      ${test ? '<p class="center">Impressora configurada com sucesso.</p>' : ""}
+      <script>window.addEventListener('load',()=>{window.print();});window.addEventListener('afterprint',()=>{window.close();});<\/script>
+    </body></html>`);
+    popup.document.close();
+  }
 
   async function refreshCashSession() {
     setCashLoading(true);
@@ -620,6 +724,16 @@ export function CaixaClient({
 
   async function finalizeSale() {
     if (cart.length === 0) return;
+    const taxIdDigits = customerTaxId.replace(/\D/g, "");
+    if (taxIdDigits && !hasValidTaxIdCheckDigits(taxIdDigits)) {
+      setStatus({ kind: "error", message: "CPF/CNPJ inválido. Confira os dígitos informados." });
+      return;
+    }
+
+    const cartSnapshot = cart.map((item) => ({ ...item }));
+    const printWindow = printAfterSale
+      ? window.open("", "qerbie-print", "width=460,height=720")
+      : undefined;
     setBusy(true);
     setStatus({ kind: "idle" });
 
@@ -631,18 +745,24 @@ export function CaixaClient({
           items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity })),
           paymentMethod,
           paymentNotes: paymentNotes.trim() || null,
+          receiptType,
+          customerName: customerName.trim() || null,
+          customerTaxId: taxIdDigits || null,
         }),
       });
 
       const json = (await res.json()) as
-        | { ok: true; orderNumber: number; total: number }
+        | { ok: true; orderNumber: number; total: number; receiptFeaturesAvailable: boolean }
         | { error: string; detail?: string };
 
       if (!res.ok || !("ok" in json)) {
+        printWindow?.close();
         const message =
           "error" in json && json.error === "cash_register_closed"
             ? "Abra o caixa antes de receber uma venda em dinheiro."
-            : "Não foi possível finalizar a venda.";
+            : "error" in json && json.error === "invalid_tax_id"
+              ? "CPF/CNPJ inválido. Confira os dados do cliente."
+              : "Não foi possível finalizar a venda.";
         setStatus({ kind: "error", message });
         return;
       }
@@ -652,6 +772,19 @@ export function CaixaClient({
       setSearchResults([]);
       setOrderNumber(String(json.orderNumber ?? ""));
       setLoadedOrder(null);
+      if (printAfterSale) {
+        openPrintDialog({
+          orderNumber: Number(json.orderNumber ?? 0),
+          receiptTotal: Number(json.total ?? 0),
+          receiptItems: cartSnapshot,
+          type: receiptType,
+          name: customerName.trim(),
+          taxId: taxIdDigits,
+          targetWindow: printWindow,
+        });
+      }
+      setCustomerName("");
+      setCustomerTaxId("");
       setStatus({
         kind: "success",
         message: `Venda registrada. Pedido #${json.orderNumber} (${formatBrl(Number(json.total ?? 0))}) — ${
@@ -662,10 +795,11 @@ export function CaixaClient({
               : paymentMethod === "card"
                 ? "Cartão"
                 : "Outro"
-        }.`,
+              }.${receiptType === "fiscal_requested" ? (json.receiptFeaturesAvailable ? " Solicitação de nota fiscal registrada." : " A migração 055 precisa ser aplicada para registrar a solicitação fiscal.") : ""}`,
       });
       void refreshCashSession();
     } catch {
+      printWindow?.close();
       setStatus({ kind: "error", message: "Não foi possível finalizar a venda." });
     } finally {
       setBusy(false);
@@ -904,12 +1038,18 @@ export function CaixaClient({
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${loadedOrder.order.status === "cancelled" ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-200" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"}`}>{loadedOrder.order.status === "cancelled" ? "Cancelado" : "Concluído"}</span>
                     </div>
                     <p className="mt-1 text-sm text-zinc-500">{loadedOrder.order.items.length} item(ns) · {paymentLabel(loadedOrder.order.paymentMethod)}</p>
+                    {loadedOrder.order.customerName || loadedOrder.order.customerTaxId ? (
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {[loadedOrder.order.customerName, maskTaxId(loadedOrder.order.customerTaxId)].filter(Boolean).join(" · ")}
+                      </p>
+                    ) : null}
                     {loadedOrder.order.cancellationReason ? <p className="mt-2 text-sm text-red-700 dark:text-red-300">Motivo: {loadedOrder.order.cancellationReason}</p> : null}
                   </div>
                   <strong className="text-lg text-zinc-900 dark:text-zinc-50">{formatBrl(loadedOrder.order.total)}</strong>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button type="button" onClick={openWhatsAppWithReceipt} className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold dark:border-zinc-700"><MessageCircle size={16} aria-hidden /> Enviar cupom</button>
+                  <button type="button" onClick={() => openPrintDialog({ orderNumber: loadedOrder.order.orderNumber, receiptTotal: loadedOrder.order.total, receiptItems: loadedOrder.order.items.map((item, index) => ({ productId: item.productId ?? `item-${index}`, name: item.name, unitPrice: item.unitPrice, quantity: item.quantity, unitLabel: item.unitLabel })), type: loadedOrder.order.receiptType === "fiscal_requested" ? "fiscal_requested" : "non_fiscal", name: loadedOrder.order.customerName ?? "", taxId: loadedOrder.order.customerTaxId ?? "" })} className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-3 py-2 text-sm font-semibold dark:border-zinc-700"><Printer size={16} aria-hidden /> Reimprimir</button>
                   {loadedOrder.order.status !== "cancelled" ? <button type="button" onClick={() => setCancelOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-300"><X size={16} aria-hidden /> Cancelar pedido</button> : null}
                 </div>
               </div>
@@ -971,6 +1111,54 @@ export function CaixaClient({
               ))}
             </div>
             <input value={paymentNotes} onChange={(event) => setPaymentNotes(event.target.value)} placeholder="Observação do pagamento (opcional)" className="mt-3 h-10 w-full rounded-lg border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+
+            <div className="mt-5 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase text-zinc-500">Documento da venda</p>
+                <span className="text-[11px] text-zinc-400">Escolha obrigatória</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setReceiptType("non_fiscal")} className={`min-h-16 rounded-lg border px-3 text-left transition ${receiptType === "non_fiscal" ? "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600 dark:bg-emerald-950" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"}`}>
+                  <span className="flex items-center gap-2 text-sm font-semibold text-zinc-800 dark:text-zinc-100"><ReceiptText size={16} /> Não fiscal</span>
+                  <span className="mt-1 block text-[11px] text-zinc-500">Comprovante simples</span>
+                </button>
+                <button type="button" onClick={() => setReceiptType("fiscal_requested")} className={`min-h-16 rounded-lg border px-3 text-left transition ${receiptType === "fiscal_requested" ? "border-sky-600 bg-sky-50 ring-1 ring-sky-600 dark:bg-sky-950" : "border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"}`}>
+                  <span className="flex items-center gap-2 text-sm font-semibold text-zinc-800 dark:text-zinc-100"><ReceiptText size={16} /> Nota fiscal</span>
+                  <span className="mt-1 block text-[11px] text-zinc-500">Registrar solicitação</span>
+                </button>
+              </div>
+              {receiptType === "fiscal_requested" ? (
+                <p className="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+                  A solicitação será registrada. A emissão fiscal válida depende da integração NFC-e/SEFAZ do estabelecimento.
+                </p>
+              ) : null}
+
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} maxLength={120} placeholder="Nome do cliente (opcional)" className="h-10 min-w-0 rounded-lg border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+                <input value={customerTaxId} onChange={(event) => setCustomerTaxId(event.target.value)} maxLength={18} inputMode="numeric" placeholder="CPF/CNPJ (opcional)" className="h-10 min-w-0 rounded-lg border border-zinc-300 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950" />
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-950">
+              <div className="flex items-center justify-between gap-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                  <input type="checkbox" checked={printAfterSale} onChange={(event) => setPrintAfterSale(event.target.checked)} className="h-4 w-4 accent-emerald-600" />
+                  Imprimir ao finalizar
+                </label>
+                <Printer size={17} className="text-zinc-400" aria-hidden />
+              </div>
+              <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                <select value={paperSize} onChange={(event) => setPaperSize(event.target.value as PaperSize)} className="h-9 min-w-0 rounded-lg border border-zinc-300 bg-white px-2 text-xs dark:border-zinc-700 dark:bg-zinc-900">
+                  <option value="80mm">Bobina 80 mm</option>
+                  <option value="58mm">Bobina 58 mm</option>
+                  <option value="a4">Folha A4</option>
+                </select>
+                <button type="button" onClick={() => openPrintDialog({ orderNumber: 0, receiptTotal: 0, receiptItems: [], type: "non_fiscal", name: "", taxId: "", test: true })} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-zinc-300 px-3 text-xs font-semibold text-zinc-700 hover:bg-white dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">
+                  <Printer size={14} /> Testar
+                </button>
+              </div>
+              <p className="mt-2 text-[11px] text-zinc-500">O seletor do navegador mostra as impressoras instaladas ou disponíveis na rede.</p>
+            </div>
 
             <div className="mt-5 flex items-end justify-between border-t border-dashed border-zinc-300 pt-4 dark:border-zinc-700">
               <span className="text-sm text-zinc-500">Total a receber</span>
