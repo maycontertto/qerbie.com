@@ -23,11 +23,15 @@ export function CategorySelect({
   name,
   categories,
   defaultValue,
+  value,
+  onValueChange,
   className,
 }: {
   name: string;
   categories: Category[];
   defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
   className?: string;
 }) {
   const [filter, setFilter] = useState("");
@@ -48,7 +52,9 @@ export function CategorySelect({
       />
       <select
         name={name}
-        defaultValue={defaultValue ?? ""}
+        value={value}
+        defaultValue={value === undefined ? defaultValue ?? "" : undefined}
+        onChange={onValueChange ? (event) => onValueChange(event.target.value) : undefined}
         className={
           className ??
           "block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import {
   createMenuCategory,
   createProduct,
-  createQuickProduct,
   deleteProduct,
   createSuggestedMenuCategories,
   importProductsSpreadsheet,
@@ -13,6 +12,7 @@ import { DEFAULT_MENU_NAME, DEFAULT_MENU_SLUG } from "@/lib/catalog/templates";
 import { BarcodeScannerField } from "./BarcodeScannerField";
 import { CategorySelect } from "./CategorySelect";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
+import { QuickProductForm } from "./QuickProductForm";
 
 export const dynamic = "force-dynamic";
 
@@ -525,130 +525,13 @@ export default async function ProdutosModulePage({
                 </span>
               </div>
 
-              <form action={createQuickProduct} className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <input type="hidden" name="menu_id" value={menu.id} />
-                <input type="hidden" name="redirect_to" value="/dashboard/modulos/produtos" />
-                <input type="hidden" name="return_to" value={returnTo} />
-
-                <div className="sm:col-span-2 xl:col-span-2">
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Nome do item
-                  </label>
-                  <input
-                    name="name"
-                    type="text"
-                    required
-                    minLength={2}
-                    placeholder="Ex: Dipirona 1g"
-                    className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                  />
-                </div>
-
-                <BarcodeScannerField
-                  name="barcode"
-                  label="Código de barras"
-                  placeholder="Opcional"
-                  helperText="Você pode digitar manualmente ou usar a câmera do celular."
-                />
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Código interno
-                  </label>
-                  <input
-                    name="internal_code"
-                    type="text"
-                    placeholder="Opcional"
-                    className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Categoria
-                  </label>
-                  <div className="mt-1">
-                    <CategorySelect
-                      name="category_id"
-                      categories={(categories ?? []).map((c) => ({ id: c.id, name: c.name }))}
-                      defaultValue={selectedCategoryId}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Unidade
-                  </label>
-                  <select
-                    name="unit_label"
-                    defaultValue="un"
-                    className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                  >
-                    {UNIT_OPTIONS.map((u) => (
-                      <option key={u.value} value={u.value}>
-                        {u.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Preço de venda
-                  </label>
-                  <input
-                    name="price"
-                    type="text"
-                    placeholder="Ex: 19,90"
-                    className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Custo atual
-                  </label>
-                  <input
-                    name="cost_price"
-                    type="text"
-                    placeholder="Ex: 12,40"
-                    className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                  />
-                </div>
-
-                {isOwner ? (
-                  <>
-                    <label className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-                      <input name="track_stock" type="checkbox" defaultChecked className="h-4 w-4" />
-                      Controlar estoque
-                    </label>
-
-                    <div>
-                      <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                        Estoque inicial
-                      </label>
-                      <input
-                        name="stock_quantity"
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        placeholder="Ex: 20"
-                        className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                      />
-                    </div>
-                  </>
-                ) : null}
-
-                <div className="sm:col-span-2 xl:col-span-4 flex justify-end">
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 dark:bg-emerald-500 dark:text-zinc-950 dark:hover:bg-emerald-400"
-                  >
-                    Criar item rápido
-                  </button>
-                </div>
-              </form>
+              <QuickProductForm
+                menuId={menu.id}
+                returnTo={returnTo}
+                categories={(categories ?? []).map((c) => ({ id: c.id, name: c.name }))}
+                defaultCategoryId={selectedCategoryId}
+                isOwner={isOwner}
+              />
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
