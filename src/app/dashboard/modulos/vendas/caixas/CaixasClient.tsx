@@ -85,7 +85,13 @@ export function CaixasClient() {
               <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">A associação libera acesso ao PDV e identifica as vendas desse operador.</p>
             </div>
           ))}
-          {payload.registers.length === 0 ? <p className="text-sm text-zinc-500">Nenhum caixa cadastrado.</p> : null}
+          {payload.registers.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-zinc-300 p-4 dark:border-zinc-700">
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">Comece pelo computador principal</p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Crie o Caixa principal para o dono ou gerente. Depois, adicione os outros computadores e vincule cada funcionário.</p>
+              <button disabled={busy} onClick={() => void act({ action: "create", name: "Caixa principal" }, "Caixa principal criado.")} className="mt-3 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900">Criar caixa principal</button>
+            </div>
+          ) : null}
         </div>
       </section>
 
