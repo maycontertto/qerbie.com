@@ -218,3 +218,59 @@ export async function getDashboardUserOrRedirect(options?: { allowSuspended?: bo
   await enforceBillingOrRedirect(memberMerchant.id, options);
   return { supabase, user, merchant: memberMerchant, membership };
 }
+
+/** PDV access is independent from general dashboard access for cashier accounts. */
+export async function getSalesUserOrRedirect() {
+  const { supabase, user } = await getSessionOrRedirect();
+  const { data: ownedMerchant } = await supabase
+    .from("merchants")
+    .select("*")
+    .eq("owner_user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (ownedMerchant) {
+    const { data: subscription } = await supabase
+      .from("merchant_subscriptions")
+      .select("status,trial_ends_at,current_period_end,grace_until")
+      .eq("merchant_id", ownedMerchant.id)
+      .maybeSingle();
+    if (subscription && subscription.status !== "active") {
+      const end = subscription.current_period_end ? new Date(subscription.current_period_end) : new Date(subscription.trial_ends_at);
+      const graceUntil = subscription.grace_until
+        ? new Date(subscription.grace_until)
+        : new Date(end.getTime() + 3 * 24 * 60 * 60 * 1000);
+      if (subscription.status === "suspended" || Date.now() > graceUntil.getTime()) redirect("/dashboard/pagamento");
+    }
+    return { supabase, user, merchant: ownedMerchant, membership: null };
+  }
+
+  const { data: membership } = await supabase
+    .from("merchant_members")
+    .select("merchant_id, role, permissions, cash_register_device_id, job_title")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (!membership || !hasMemberPermission(membership.role, membership.permissions, "dashboard_sales")) {
+    redirect("/atendente");
+  }
+  if (membership.job_title === "Caixa" && !membership.cash_register_device_id) redirect("/atendente");
+  const { data: merchant } = await supabase
+    .from("merchants")
+    .select("*")
+    .eq("id", membership.merchant_id)
+    .maybeSingle();
+  if (!merchant) redirect("/atendente/vincular");
+  const { data: subscription } = await supabase
+    .from("merchant_subscriptions")
+    .select("status,trial_ends_at,current_period_end,grace_until")
+    .eq("merchant_id", merchant.id)
+    .maybeSingle();
+  if (subscription && subscription.status !== "active") {
+    const end = subscription.current_period_end ? new Date(subscription.current_period_end) : new Date(subscription.trial_ends_at);
+    const graceUntil = subscription.grace_until
+      ? new Date(subscription.grace_until)
+      : new Date(end.getTime() + 3 * 24 * 60 * 60 * 1000);
+    if (subscription.status === "suspended" || Date.now() > graceUntil.getTime()) redirect("/atendente");
+  }
+  return { supabase, user, merchant, membership };
+}

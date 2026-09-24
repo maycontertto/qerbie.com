@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDashboardContextForApi } from "../_helpers";
+import { signOfflinePrice } from "@/lib/merchant/offlinePriceToken";
 
 export async function GET(req: Request) {
   const ctx = await getDashboardContextForApi();
@@ -27,6 +28,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
+  let offlinePriceToken: string | null = null;
+  try { offlinePriceToken = signOfflinePrice(ctx.merchant.id, product.id, Number(product.price ?? 0)); } catch { /* offline sync requires a configured signing secret */ }
   return NextResponse.json({
     ok: true,
     product: {
@@ -34,6 +37,7 @@ export async function GET(req: Request) {
       name: product.name,
       price: Number(product.price ?? 0),
       unitLabel: String((product as { unit_label?: string | null }).unit_label ?? "un"),
+      offlinePriceToken,
     },
   });
 }

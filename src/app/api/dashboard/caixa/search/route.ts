@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDashboardContextForApi } from "../_helpers";
+import { signOfflinePrice } from "@/lib/merchant/offlinePriceToken";
 
 function normalizeQuery(value: string | null): string {
   return String(value ?? "").trim().slice(0, 80);
@@ -41,12 +42,11 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
-    results: (rows ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      price: Number(p.price ?? 0),
-      barcode: (p as { barcode?: string | null }).barcode ?? null,
-      unitLabel: String((p as { unit_label?: string | null }).unit_label ?? "un"),
-    })),
+    results: (rows ?? []).map((p) => {
+      const price = Number(p.price ?? 0);
+      let offlinePriceToken: string | null = null;
+      try { offlinePriceToken = signOfflinePrice(ctx.merchant.id, p.id, price); } catch { /* offline sync requires a configured signing secret */ }
+      return { id: p.id, name: p.name, price, barcode: (p as { barcode?: string | null }).barcode ?? null, unitLabel: String((p as { unit_label?: string | null }).unit_label ?? "un"), offlinePriceToken };
+    }),
   });
 }

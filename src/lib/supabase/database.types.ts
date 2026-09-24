@@ -267,6 +267,7 @@ export interface Database {
           login: string | null;
           avatar_url: string | null;
           job_title: string | null;
+          cash_register_device_id: string | null;
           permissions: Json;
           created_at: string;
           updated_at: string;
@@ -280,6 +281,7 @@ export interface Database {
           login?: string | null;
           avatar_url?: string | null;
           job_title?: string | null;
+          cash_register_device_id?: string | null;
           permissions?: Json;
           created_at?: string;
           updated_at?: string;
@@ -293,6 +295,7 @@ export interface Database {
           login?: string | null;
           avatar_url?: string | null;
           job_title?: string | null;
+          cash_register_device_id?: string | null;
           permissions?: Json;
           created_at?: string;
           updated_at?: string;
@@ -2507,10 +2510,33 @@ export interface Database {
         ];
       };
 
+      cash_register_devices: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          name: string;
+          is_active: boolean;
+          created_by_user_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          name: string;
+          is_active?: boolean;
+          created_by_user_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["cash_register_devices"]["Insert"]>;
+        Relationships: [];
+      };
       cash_register_sessions: {
         Row: {
           id: string;
           merchant_id: string;
+          cash_register_device_id: string;
           opened_by_user_id: string;
           opened_at: string;
           opening_amount: number;
@@ -2536,6 +2562,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          cash_register_device_id: string;
           opened_by_user_id: string;
           opened_at?: string;
           opening_amount?: number;
@@ -2614,6 +2641,10 @@ export interface Database {
           cancelled_at: string | null;
           cancellation_reason: string | null;
           cash_session_id: string | null;
+          cash_register_device_id: string | null;
+          cashier_user_id: string | null;
+          client_sale_id: string | null;
+          offline_synced_at: string | null;
           receipt_type: string;
           customer_tax_id: string | null;
           fiscal_status: string | null;
@@ -2647,6 +2678,10 @@ export interface Database {
           cancelled_at?: string | null;
           cancellation_reason?: string | null;
           cash_session_id?: string | null;
+          cash_register_device_id?: string | null;
+          cashier_user_id?: string | null;
+          client_sale_id?: string | null;
+          offline_synced_at?: string | null;
           receipt_type?: string;
           customer_tax_id?: string | null;
           fiscal_status?: string | null;
@@ -2680,6 +2715,10 @@ export interface Database {
           cancelled_at?: string | null;
           cancellation_reason?: string | null;
           cash_session_id?: string | null;
+          cash_register_device_id?: string | null;
+          cashier_user_id?: string | null;
+          client_sale_id?: string | null;
+          offline_synced_at?: string | null;
           receipt_type?: string;
           customer_tax_id?: string | null;
           fiscal_status?: string | null;

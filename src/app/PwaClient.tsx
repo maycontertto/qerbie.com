@@ -27,12 +27,16 @@ export function PwaServiceWorkerRegister() {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
 
-    const onLoad = () => {
+    const register = () => {
       navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     };
 
-    window.addEventListener("load", onLoad);
-    return () => window.removeEventListener("load", onLoad);
+    if (document.readyState === "complete") {
+      register();
+      return;
+    }
+    window.addEventListener("load", register, { once: true });
+    return () => window.removeEventListener("load", register);
   }, []);
 
   return null;

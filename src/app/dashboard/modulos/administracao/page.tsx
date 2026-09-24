@@ -268,6 +268,16 @@ export default async function AdministracaoModulePage({
           </div>
         </section>
 
+        <section className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/30">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Caixas e computadores</h2>
+              <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">Cadastre os pontos de venda, associe os funcionários da função Caixa e acompanhe as vendas de cada um.</p>
+            </div>
+            <Link href="/dashboard/modulos/vendas/caixas" className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 dark:bg-emerald-500 dark:text-zinc-950">Configurar caixas</Link>
+          </div>
+        </section>
+
         <section className="mt-8 rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
             Atendentes cadastrados
@@ -316,6 +326,11 @@ export default async function AdministracaoModulePage({
                     <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                       Categoria: {m.job_title ?? "—"}
                     </div>
+                    {m.job_title === "Caixa" ? (
+                      <Link href={`/auth/sign-in?next=${encodeURIComponent("/dashboard/modulos/vendas/caixa")}${m.login ? `&login=${encodeURIComponent(m.login)}` : ""}`} className="mt-2 inline-block text-xs font-semibold text-emerald-700 underline dark:text-emerald-300">
+                        Link de acesso ao caixa
+                      </Link>
+                    ) : null}
                   </div>
                 </div>
 

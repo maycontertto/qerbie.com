@@ -7,11 +7,41 @@ function money(value: unknown): number | null {
   return Math.round(parsed * 100) / 100;
 }
 
-async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getDashboardContextForApi>>>) {
+async function resolveRegisterId(ctx: NonNullable<Awaited<ReturnType<typeof getDashboardContextForApi>>>, requested?: string | null) {
+  const forced = ctx.membership?.cash_register_device_id;
+  if (forced) {
+    const { data: assigned } = await ctx.supabase.from("cash_register_devices")
+      .select("id").eq("merchant_id", ctx.merchant.id).eq("id", forced).eq("is_active", true).maybeSingle();
+    return assigned?.id ?? null;
+  }
+  if (requested && ctx.canManage) {
+    const { data: selected } = await ctx.supabase.from("cash_register_devices")
+      .select("id").eq("merchant_id", ctx.merchant.id).eq("id", requested).eq("is_active", true).maybeSingle();
+    if (selected) return selected.id;
+  }
+  const { data } = await ctx.supabase
+    .from("cash_register_devices")
+    .select("id")
+    .eq("merchant_id", ctx.merchant.id)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getDashboardContextForApi>>>, registerId: string | null) {
+  if (!registerId) return { session: null, registers: [], selectedRegisterId: null };
+  const [{ data: registers }, { data: register }] = await Promise.all([
+    ctx.supabase.from("cash_register_devices").select("id,name,is_active").eq("merchant_id", ctx.merchant.id).eq("is_active", true).order("name"),
+    ctx.supabase.from("cash_register_devices").select("id,name,is_active").eq("merchant_id", ctx.merchant.id).eq("id", registerId).maybeSingle(),
+  ]);
+  if (!register || !register.is_active) return { session: null, registers: registers ?? [], selectedRegisterId: null };
   const { data: session, error: sessionError } = await ctx.supabase
     .from("cash_register_sessions")
-    .select("id,opened_at,opening_amount,opening_notes,status")
+    .select("id,opened_at,opening_amount,opening_notes,status,cash_register_device_id")
     .eq("merchant_id", ctx.merchant.id)
+    .eq("cash_register_device_id", registerId)
     .eq("status", "open")
     .order("opened_at", { ascending: false })
     .limit(1)
@@ -19,7 +49,7 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
 
   if (sessionError) throw sessionError;
 
-  if (!session) return { session: null };
+  if (!session) return { session: null, registers: registers ?? [], selectedRegisterId: registerId, registerName: register.name };
 
   const [{ data: movements }, { data: sessionOrders }, { count: orderCount }] = await Promise.all([
     ctx.supabase
@@ -70,6 +100,9 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
   );
 
   return {
+    registers: registers ?? [],
+    selectedRegisterId: registerId,
+    registerName: register.name,
     session: {
       id: session.id,
       openedAt: session.opened_at,
@@ -96,13 +129,15 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const ctx = await getDashboardContextForApi();
   if (!ctx) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!ctx.canSales) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   try {
-    return NextResponse.json({ ok: true, ...(await getSessionSummary(ctx)) });
+    const requested = new URL(req.url).searchParams.get("registerId");
+    const registerId = await resolveRegisterId(ctx, requested);
+    return NextResponse.json({ ok: true, ...(await getSessionSummary(ctx, registerId)) });
   } catch {
     return NextResponse.json({ error: "cash_register_unavailable" }, { status: 503 });
   }
@@ -115,6 +150,9 @@ export async function POST(req: Request) {
 
   const form = await req.formData();
   const action = String(form.get("action") ?? "");
+  const requestedRegisterId = String(form.get("registerId") ?? "").trim() || null;
+  const registerId = await resolveRegisterId(ctx, requestedRegisterId);
+  if (!registerId) return NextResponse.json({ error: "cash_register_not_found" }, { status: 409 });
 
   if (action === "open") {
     const openingAmount = money(form.get("amount"));
@@ -123,6 +161,7 @@ export async function POST(req: Request) {
 
     const { error } = await ctx.supabase.from("cash_register_sessions").insert({
       merchant_id: ctx.merchant.id,
+      cash_register_device_id: registerId,
       opened_by_user_id: ctx.user.id,
       opening_amount: openingAmount,
       opening_notes: notes,
@@ -133,6 +172,7 @@ export async function POST(req: Request) {
       .from("cash_register_sessions")
       .select("id")
       .eq("merchant_id", ctx.merchant.id)
+      .eq("cash_register_device_id", registerId)
       .eq("status", "open")
       .limit(1)
       .maybeSingle();
@@ -188,7 +228,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "invalid_amount" }, { status: 400 });
       }
 
-      const summary = await getSessionSummary(ctx);
+      const summary = await getSessionSummary(ctx, registerId);
       const expectedCash = summary.session?.expectedAmount ?? 0;
       const expectedPix = summary.session?.pixSales ?? 0;
       const expectedCard = summary.session?.cardSales ?? 0;
@@ -223,5 +263,5 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ ok: true, ...(await getSessionSummary(ctx)) });
+  return NextResponse.json({ ok: true, ...(await getSessionSummary(ctx, registerId)) });
 }

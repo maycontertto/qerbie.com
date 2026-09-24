@@ -7,6 +7,8 @@ type ApiDashboardContext = {
   merchant: { id: string; owner_user_id: string };
   isOwner: boolean;
   canSales: boolean;
+  canManage: boolean;
+  membership: { id: string; role: string; permissions: unknown; cash_register_device_id: string | null; job_title: string | null } | null;
 };
 
 export async function getDashboardContextForApi(): Promise<ApiDashboardContext | null> {
@@ -32,12 +34,14 @@ export async function getDashboardContextForApi(): Promise<ApiDashboardContext |
       merchant: ownedMerchant,
       isOwner: true,
       canSales: true,
+      canManage: true,
+      membership: null,
     };
   }
 
   const { data: membership } = await supabase
     .from("merchant_members")
-    .select("merchant_id, role, permissions")
+    .select("id, merchant_id, role, permissions, cash_register_device_id, job_title")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -45,8 +49,9 @@ export async function getDashboardContextForApi(): Promise<ApiDashboardContext |
   const merchantId = membership?.merchant_id ?? "";
   if (!merchantId || !membership) return null;
 
-  const canDashboard = hasMemberPermission(membership.role, membership.permissions, "dashboard_access");
-  if (!canDashboard) return null;
+  const canSales = hasMemberPermission(membership.role, membership.permissions, "dashboard_sales");
+  if (!canSales) return null;
+  if (membership.job_title === "Caixa" && !membership.cash_register_device_id) return null;
 
   const { data: merchant } = await supabase
     .from("merchants")
@@ -56,13 +61,13 @@ export async function getDashboardContextForApi(): Promise<ApiDashboardContext |
 
   if (!merchant) return null;
 
-  const canSales = hasMemberPermission(membership.role, membership.permissions, "dashboard_sales");
-
   return {
     supabase,
     user: { id: user.id },
     merchant,
     isOwner: false,
     canSales,
+    canManage: hasMemberPermission(membership.role, membership.permissions, "manage_attendants"),
+    membership,
   };
 }

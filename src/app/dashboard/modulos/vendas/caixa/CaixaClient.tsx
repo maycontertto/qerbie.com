@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -31,6 +31,7 @@ type CartItem = {
   unitPrice: number;
   quantity: number;
   unitLabel: string;
+  offlinePriceToken?: string | null;
 };
 
 type SearchResult = {
@@ -39,7 +40,91 @@ type SearchResult = {
   price: number;
   barcode: string | null;
   unitLabel: string;
+  offlinePriceToken?: string | null;
 };
+type OfflineSale = {
+  clientSaleId: string;
+  merchantId: string;
+  registerId: string | null;
+  sessionId: string | null;
+  createdAt: string;
+  items: CartItem[];
+  paymentMethod: "cash" | "pix" | "card" | "other";
+  paymentNotes: string | null;
+  receiptType: ReceiptType;
+  customerName: string | null;
+  customerTaxId: string | null;
+};
+type CachedProduct = { key: string; merchantId: string; product: SearchResult };
+
+function openPosDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("qerbie-pos", 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("products")) db.createObjectStore("products", { keyPath: "key" });
+      if (!db.objectStoreNames.contains("sales")) db.createObjectStore("sales", { keyPath: "clientSaleId" });
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveCachedProducts(merchantId: string, products: SearchResult[]) {
+  const db = await openPosDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction("products", "readwrite");
+    const store = transaction.objectStore("products");
+    for (const product of products) store.put({ key: `${merchantId}:${product.id}`, merchantId, product } satisfies CachedProduct);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+  db.close();
+}
+
+async function getCachedProducts(merchantId: string): Promise<SearchResult[]> {
+  const db = await openPosDatabase();
+  const records = await new Promise<CachedProduct[]>((resolve, reject) => {
+    const request = db.transaction("products", "readonly").objectStore("products").getAll();
+    request.onsuccess = () => resolve(request.result as CachedProduct[]);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return records.filter((record) => record.merchantId === merchantId).map((record) => record.product);
+}
+
+async function saveOfflineSale(sale: OfflineSale) {
+  const db = await openPosDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction("sales", "readwrite");
+    transaction.objectStore("sales").put(sale);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+  db.close();
+}
+
+async function getOfflineSales(merchantId: string): Promise<OfflineSale[]> {
+  const db = await openPosDatabase();
+  const records = await new Promise<OfflineSale[]>((resolve, reject) => {
+    const request = db.transaction("sales", "readonly").objectStore("sales").getAll();
+    request.onsuccess = () => resolve(request.result as OfflineSale[]);
+    request.onerror = () => reject(request.error);
+  });
+  db.close();
+  return records.filter((sale) => sale.merchantId === merchantId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+}
+
+async function removeOfflineSale(clientSaleId: string) {
+  const db = await openPosDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction("sales", "readwrite");
+    transaction.objectStore("sales").delete(clientSaleId);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error);
+  });
+  db.close();
+}
 
 type LoadedOrder =
   | {
@@ -95,6 +180,7 @@ type CashSession = {
     receiptUrl: string | null;
   }>;
 };
+type CashRegisterOption = { id: string; name: string; is_active: boolean };
 
 type CashAction = "open" | "withdrawal" | "deposit" | "close";
 type ReceiptType = "non_fiscal" | "fiscal_requested";
@@ -152,11 +238,15 @@ function hasValidTaxIdCheckDigits(value: string): boolean {
 }
 
 export function CaixaClient({
+  merchantId,
   merchantName,
   operatorName,
+  initialRegisterId,
 }: {
+  merchantId: string;
   merchantName: string;
   operatorName: string;
+  initialRegisterId: string | null;
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -190,9 +280,16 @@ export function CaixaClient({
   });
   const [busy, setBusy] = useState(false);
   const [cashSession, setCashSession] = useState<CashSession | null>(null);
+  const [registers, setRegisters] = useState<CashRegisterOption[]>([]);
+  const [selectedRegisterId, setSelectedRegisterId] = useState<string | null>(initialRegisterId);
+  const [registerName, setRegisterName] = useState("Caixa");
   const [cashLoading, setCashLoading] = useState(true);
   const [cashUnavailable, setCashUnavailable] = useState(false);
   const [cashAction, setCashAction] = useState<CashAction | null>(null);
+  const [pendingOfflineSales, setPendingOfflineSales] = useState(0);
+  const [syncingOfflineSales, setSyncingOfflineSales] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const syncBusyRef = useRef(false);
   const [cashAmount, setCashAmount] = useState("");
   const [closingAmounts, setClosingAmounts] = useState({ cash: "", pix: "", card: "", other: "" });
   const [cashReason, setCashReason] = useState("");
@@ -208,6 +305,7 @@ export function CaixaClient({
     name,
     taxId,
     test = false,
+    offlinePending = false,
     targetWindow,
   }: {
     orderNumber: number;
@@ -217,6 +315,7 @@ export function CaixaClient({
     name: string;
     taxId: string;
     test?: boolean;
+    offlinePending?: boolean;
     targetWindow?: Window | null;
   }) {
     const popup = targetWindow === undefined
@@ -228,7 +327,7 @@ export function CaixaClient({
     }
 
     const width = paperSize === "58mm" ? "58mm" : paperSize === "80mm" ? "80mm" : "210mm";
-    const title = type === "fiscal_requested" ? "SOLICITAÇÃO DE NOTA FISCAL" : "COMPROVANTE NÃO FISCAL";
+    const title = offlinePending ? "VENDA PENDENTE DE SINCRONIZAÇÃO" : type === "fiscal_requested" ? "SOLICITAÇÃO DE NOTA FISCAL" : "COMPROVANTE NÃO FISCAL";
     const itemsHtml = receiptItems
       .map((item) => `<tr><td>${escapeHtml(`${formatQty(item.quantity)} ${item.unitLabel} ${item.name}`)}</td><td>${escapeHtml(formatBrl(item.quantity * item.unitPrice))}</td></tr>`)
       .join("");
@@ -249,34 +348,122 @@ export function CaixaClient({
       <div><strong>Pedido:</strong> #${receiptOrderNumber || "TESTE"}</div><div><strong>Data:</strong> ${escapeHtml(new Date().toLocaleString("pt-BR"))}</div>${customerHtml}<hr>
       <table>${itemsHtml || `<tr><td>Impressão de teste</td><td>${escapeHtml(formatBrl(0))}</td></tr>`}</table><hr>
       <div><strong>Pagamento:</strong> ${escapeHtml(paymentLabel(paymentMethod))}</div><div class="total">TOTAL ${escapeHtml(formatBrl(receiptTotal))}</div>
-      <div class="warning">${type === "fiscal_requested" ? "SOLICITAÇÃO REGISTRADA — AGUARDANDO EMISSÃO FISCAL" : "ESTE COMPROVANTE NÃO É DOCUMENTO FISCAL"}</div>
+      <div class="warning">${offlinePending ? "VENDA REGISTRADA NESTE COMPUTADOR — SINCRONIZAÇÃO PENDENTE" : type === "fiscal_requested" ? "SOLICITAÇÃO REGISTRADA — AGUARDANDO EMISSÃO FISCAL" : "ESTE COMPROVANTE NÃO É DOCUMENTO FISCAL"}</div>
       ${test ? '<p class="center">Impressora configurada com sucesso.</p>' : ""}
       <script>window.addEventListener('load',()=>{window.print();});window.addEventListener('afterprint',()=>{window.close();});<\/script>
     </body></html>`);
     popup.document.close();
   }
 
-  async function refreshCashSession() {
+  const refreshCashSession = useCallback(async () => {
     setCashLoading(true);
     try {
-      const response = await fetch("/api/dashboard/caixa/session", { cache: "no-store" });
-      const payload = (await response.json()) as { ok?: boolean; session?: CashSession | null };
+      const query = selectedRegisterId ? `?registerId=${encodeURIComponent(selectedRegisterId)}` : "";
+      const response = await fetch(`/api/dashboard/caixa/session${query}`, { cache: "no-store" });
+      const payload = (await response.json()) as { ok?: boolean; session?: CashSession | null; registers?: CashRegisterOption[]; selectedRegisterId?: string | null; registerName?: string };
       if (!response.ok || !payload.ok) {
         setCashUnavailable(true);
         return;
       }
       setCashSession(payload.session ?? null);
+      setRegisters(payload.registers ?? []);
+      setRegisterName(payload.registerName ?? "Caixa");
+      if (!initialRegisterId && payload.selectedRegisterId && payload.selectedRegisterId !== selectedRegisterId) {
+        setSelectedRegisterId(payload.selectedRegisterId);
+        window.localStorage.setItem("qerbie:cash-register", payload.selectedRegisterId);
+      }
       setCashUnavailable(false);
     } catch {
       setCashUnavailable(true);
     } finally {
       setCashLoading(false);
     }
-  }
+  }, [initialRegisterId, selectedRegisterId]);
+
+  const refreshPendingCount = useCallback(async () => {
+    try {
+      const pending = await getOfflineSales(merchantId);
+      setPendingOfflineSales(pending.length);
+    } catch {
+      setPendingOfflineSales(0);
+    }
+  }, [merchantId]);
+
+  const syncPendingSales = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.onLine || syncBusyRef.current) return;
+    syncBusyRef.current = true;
+    setSyncingOfflineSales(true);
+    let synced = 0;
+    try {
+      const pending = await getOfflineSales(merchantId);
+      for (const sale of pending) {
+        const response = await fetch("/api/dashboard/caixa/checkout", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            items: sale.items.map((item) => ({ productId: item.productId, quantity: item.quantity, unitPrice: item.unitPrice, offlinePriceToken: item.offlinePriceToken })),
+            paymentMethod: sale.paymentMethod,
+            paymentNotes: sale.paymentNotes,
+            receiptType: sale.receiptType,
+            customerName: sale.customerName,
+            customerTaxId: sale.customerTaxId,
+            registerDeviceId: sale.registerId,
+            clientSaleId: sale.clientSaleId,
+            cashSessionId: sale.sessionId,
+            saleCreatedAt: sale.createdAt,
+            offlineSync: true,
+          }),
+        });
+        if (!response.ok) break;
+        const result = await response.json() as { ok?: boolean };
+        if (!result.ok) break;
+        await removeOfflineSale(sale.clientSaleId);
+        synced += 1;
+      }
+      await refreshPendingCount();
+      if (synced) setStatus({ kind: "success", message: `${synced} venda(s) sem conexão sincronizada(s) com o servidor.` });
+    } catch {
+      // Keep the pending records on this device and retry on the next online event.
+    } finally {
+      syncBusyRef.current = false;
+      setSyncingOfflineSales(false);
+    }
+  }, [merchantId, refreshPendingCount]);
+
+  const cacheProductCatalog = useCallback(async () => {
+    if (typeof navigator === "undefined" || !navigator.onLine) return;
+    try {
+      const response = await fetch("/api/dashboard/caixa/catalog", { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = await response.json() as { ok?: boolean; products?: SearchResult[] };
+      if (payload.ok && payload.products) await saveCachedProducts(merchantId, payload.products);
+    } catch {
+      // A previously cached product list remains available while offline.
+    }
+  }, [merchantId]);
+
+  useEffect(() => {
+    if (!initialRegisterId) {
+      const saved = window.localStorage.getItem("qerbie:cash-register");
+      if (saved) setSelectedRegisterId(saved);
+    }
+  }, [initialRegisterId]);
 
   useEffect(() => {
     void refreshCashSession();
-  }, []);
+  }, [refreshCashSession]);
+
+  useEffect(() => {
+    void refreshPendingCount();
+    void cacheProductCatalog();
+    void syncPendingSales();
+    const onOnline = () => { setIsOnline(true); void cacheProductCatalog(); void syncPendingSales(); };
+    const onOffline = () => setIsOnline(false);
+    setIsOnline(navigator.onLine);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
+  }, [cacheProductCatalog, merchantId, refreshPendingCount, syncPendingSales]);
 
   useEffect(() => {
     busyRef.current = busy;
@@ -510,7 +697,7 @@ export function CaixaClient({
     return /^\d{4,}$/.test(q.trim());
   }
 
-  function addProductToCart(product: { id: string; name: string; price: number; unitLabel: string }) {
+  function addProductToCart(product: { id: string; name: string; price: number; unitLabel: string; offlinePriceToken?: string | null }) {
     setCart((prev) => {
       const idx = prev.findIndex((p) => p.productId === product.id);
       if (idx >= 0) {
@@ -526,6 +713,7 @@ export function CaixaClient({
           unitPrice: Number(product.price ?? 0),
           quantity: 1,
           unitLabel: String(product.unitLabel ?? "un"),
+          offlinePriceToken: product.offlinePriceToken ?? null,
         },
       ];
     });
@@ -540,6 +728,16 @@ export function CaixaClient({
     setLoadedOrder(null);
 
     try {
+      if (!navigator.onLine) {
+        const cached = await getCachedProducts(merchantId);
+        const normalized = q.toLocaleLowerCase("pt-BR");
+        const results = cached.filter((product) => /^\d{4,}$/.test(q)
+          ? product.barcode === q || product.name.toLocaleLowerCase("pt-BR").includes(normalized)
+          : product.name.toLocaleLowerCase("pt-BR").includes(normalized)).slice(0, 12);
+        setSearchResults(results);
+        setStatus(results.length ? { kind: "success", message: "Catálogo local: preços e estoque serão sincronizados ao voltar a conexão." } : { kind: "error", message: "Produto não está no catálogo salvo neste computador." });
+        return;
+      }
       const res = await fetch(`/api/dashboard/caixa/search?q=${encodeURIComponent(q)}`);
       const json = (await res.json()) as
         | { ok: true; results: SearchResult[] }
@@ -551,12 +749,23 @@ export function CaixaClient({
       }
 
       const results = Array.isArray(json.results) ? json.results : [];
+      if (results.length) await saveCachedProducts(merchantId, results);
       setSearchResults(results);
       if (results.length === 0) {
         setStatus({ kind: "error", message: "Nenhum item encontrado." });
       }
     } catch {
-      setStatus({ kind: "error", message: "Falha ao buscar itens." });
+      try {
+        const normalized = q.toLocaleLowerCase("pt-BR");
+        const cached = await getCachedProducts(merchantId);
+        const results = cached.filter((product) => /^\d{4,}$/.test(q)
+          ? product.barcode === q || product.name.toLocaleLowerCase("pt-BR").includes(normalized)
+          : product.name.toLocaleLowerCase("pt-BR").includes(normalized)).slice(0, 12);
+        setSearchResults(results);
+        setStatus(results.length ? { kind: "success", message: "Usando catálogo local enquanto a conexão está indisponível." } : { kind: "error", message: "Falha ao buscar itens e nenhum correspondente está salvo neste computador." });
+      } catch {
+        setStatus({ kind: "error", message: "Falha ao buscar itens." });
+      }
     } finally {
       setBusy(false);
       if (!scannerOnRef.current) {
@@ -685,29 +894,63 @@ export function CaixaClient({
     setStatus({ kind: "idle" });
 
     try {
+      if (!navigator.onLine) {
+        const cached = await getCachedProducts(merchantId);
+        const product = cached.find((entry) => entry.barcode === code);
+        if (!product) {
+          setStatus({ kind: "error", message: "Esse código não está salvo neste computador. Pesquise ou leia o produto quando a conexão voltar." });
+          return;
+        }
+        addProductToCart({ id: product.id, name: product.name, price: product.price, unitLabel: product.unitLabel, offlinePriceToken: product.offlinePriceToken });
+        setItemQuery("");
+        setStatus({ kind: "success", message: "Produto do catálogo local adicionado." });
+        return;
+      }
       const res = await fetch(`/api/dashboard/caixa/lookup?barcode=${encodeURIComponent(code)}`);
       const json = (await res.json()) as
-        | { ok: true; product: { id: string; name: string; price: number; unitLabel: string } }
+        | { ok: true; product: { id: string; name: string; price: number; unitLabel: string; offlinePriceToken?: string | null } }
         | { error: string; detail?: string };
 
       if (!res.ok || !("ok" in json)) {
+        if (res.status >= 500) {
+          const cached = await getCachedProducts(merchantId);
+          const product = cached.find((entry) => entry.barcode === code);
+          if (product) {
+            addProductToCart({ id: product.id, name: product.name, price: product.price, unitLabel: product.unitLabel, offlinePriceToken: product.offlinePriceToken });
+            setItemQuery("");
+            setStatus({ kind: "success", message: "Produto do catálogo local adicionado." });
+            return;
+          }
+        }
         const msg = "error" in json && json.error === "not_found" ? "Item não encontrado." : "Falha ao buscar item.";
         setStatus({ kind: "error", message: msg });
         return;
       }
+      await saveCachedProducts(merchantId, [{ ...json.product, barcode: code }]);
 
       addProductToCart({
         id: json.product.id,
         name: json.product.name,
         price: Number(json.product.price ?? 0),
         unitLabel: String(json.product.unitLabel ?? "un"),
+        offlinePriceToken: json.product.offlinePriceToken,
       });
 
       setItemQuery("");
       setSearchResults([]);
       setStatus({ kind: "idle" });
     } catch {
-      setStatus({ kind: "error", message: "Falha ao buscar item." });
+      try {
+        const cached = await getCachedProducts(merchantId);
+        const product = cached.find((entry) => entry.barcode === code);
+        if (product) {
+          addProductToCart({ id: product.id, name: product.name, price: product.price, unitLabel: product.unitLabel, offlinePriceToken: product.offlinePriceToken });
+          setItemQuery("");
+          setStatus({ kind: "success", message: "Produto do catálogo local adicionado." });
+        } else setStatus({ kind: "error", message: "Falha ao buscar item. Código não encontrado no catálogo local." });
+      } catch {
+        setStatus({ kind: "error", message: "Falha ao buscar item." });
+      }
     } finally {
       setBusy(false);
       if (!scannerOnRef.current) {
@@ -731,13 +974,51 @@ export function CaixaClient({
     }
 
     const cartSnapshot = cart.map((item) => ({ ...item }));
+    const clientSaleId = crypto.randomUUID();
     const printWindow = printAfterSale
       ? window.open("", "qerbie-print", "width=460,height=720")
       : undefined;
     setBusy(true);
     setStatus({ kind: "idle" });
 
+    const queueOfflineSale = async () => {
+      if (cartSnapshot.some((item) => !item.offlinePriceToken)) {
+        printWindow?.close();
+        setStatus({ kind: "error", message: "O preço de algum produto não foi preparado para uso offline. Conecte-se para atualizar o catálogo antes de vender." });
+        return false;
+      }
+      const pending: OfflineSale = {
+        clientSaleId,
+        merchantId,
+        registerId: selectedRegisterId,
+        sessionId: cashSession?.id ?? null,
+        createdAt: new Date().toISOString(),
+        items: cartSnapshot,
+        paymentMethod,
+        paymentNotes: paymentNotes.trim() || null,
+        receiptType,
+        customerName: customerName.trim() || null,
+        customerTaxId: taxIdDigits || null,
+      };
+      await saveOfflineSale(pending);
+      await refreshPendingCount();
+      setCart([]);
+      setItemQuery("");
+      setSearchResults([]);
+      setOrderNumber("Pendente");
+      setLoadedOrder(null);
+      setCustomerName("");
+      setCustomerTaxId("");
+      if (printAfterSale) openPrintDialog({ orderNumber: 0, receiptTotal: cartSnapshot.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0), receiptItems: cartSnapshot, type: receiptType, name: customerName.trim(), taxId: taxIdDigits, offlinePending: true, targetWindow: printWindow });
+      setStatus({ kind: "success", message: "Venda guardada neste computador. Ela será enviada automaticamente quando a internet voltar." });
+      return true;
+    };
+
     try {
+      if (!navigator.onLine) {
+        await queueOfflineSale();
+        return;
+      }
       const res = await fetch("/api/dashboard/caixa/checkout", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -748,6 +1029,9 @@ export function CaixaClient({
           receiptType,
           customerName: customerName.trim() || null,
           customerTaxId: taxIdDigits || null,
+          registerDeviceId: selectedRegisterId,
+          clientSaleId,
+          saleCreatedAt: new Date().toISOString(),
         }),
       });
 
@@ -756,6 +1040,10 @@ export function CaixaClient({
         | { error: string; detail?: string };
 
       if (!res.ok || !("ok" in json)) {
+        if (res.status >= 500) {
+          await queueOfflineSale();
+          return;
+        }
         printWindow?.close();
         const message =
           "error" in json && json.error === "cash_register_closed"
@@ -800,7 +1088,11 @@ export function CaixaClient({
       void refreshCashSession();
     } catch {
       printWindow?.close();
-      setStatus({ kind: "error", message: "Não foi possível finalizar a venda." });
+      try {
+        await queueOfflineSale();
+      } catch {
+        setStatus({ kind: "error", message: "Não foi possível salvar a venda neste computador. Mantenha esta tela aberta e tente novamente." });
+      }
     } finally {
       setBusy(false);
       inputRef.current?.focus();
@@ -815,6 +1107,7 @@ export function CaixaClient({
 
     const formData = new FormData();
     formData.set("action", cashAction);
+    if (selectedRegisterId) formData.set("registerId", selectedRegisterId);
     formData.set("amount", cashAmount);
     formData.set("notes", cashReason);
     formData.set("reason", cashReason);
@@ -904,7 +1197,7 @@ export function CaixaClient({
               </div>
               <div className="min-w-0">
                 <p className="truncate text-lg font-semibold">{merchantName}</p>
-                <p className="truncate text-xs text-zinc-400">Operador: {operatorName}</p>
+                <p className="truncate text-xs text-zinc-400">{registerName} · Operador: {operatorName}</p>
               </div>
             </div>
           </div>
@@ -918,6 +1211,13 @@ export function CaixaClient({
         </div>
 
         <div className="flex flex-wrap gap-2 border-t border-zinc-800 bg-zinc-900/80 px-5 py-3">
+          {!initialRegisterId && registers.length > 1 ? (
+            <label className="flex items-center gap-2 text-xs text-zinc-300">Ponto de venda
+              <select value={selectedRegisterId ?? ""} onChange={(event) => { const id = event.target.value || null; setSelectedRegisterId(id); if (id) window.localStorage.setItem("qerbie:cash-register", id); }} className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-xs text-white">
+                {registers.map((register) => <option key={register.id} value={register.id}>{register.name}</option>)}
+              </select>
+            </label>
+          ) : null}
           {!cashSession ? (
             <ActionButton icon={UnlockKeyhole} label="Abrir caixa" onClick={() => setCashAction("open")} primary />
           ) : (
@@ -934,9 +1234,16 @@ export function CaixaClient({
         </div>
       </section>
 
+      {!isOnline || pendingOfflineSales > 0 ? (
+        <div className={`rounded-lg border px-4 py-3 text-sm ${!isOnline ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" : "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-100"}`}>
+          {!isOnline ? "Sem internet: vendas e produtos já salvos neste computador continuam disponíveis." : syncingOfflineSales ? "Internet restabelecida: sincronizando vendas pendentes…" : `${pendingOfflineSales} venda(s) aguardando sincronização com a conta principal.`}
+        </div>
+      ) : null}
+      {isOnline ? <p className="px-1 text-xs text-zinc-500 dark:text-zinc-400">Para preparar este computador para quedas de internet, instale o Qerbie pelo Chrome/Edge e abra esta tela conectado para salvar o catálogo local.</p> : null}
+
       {cashUnavailable ? (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-          O controle de caixa ainda não foi configurado no banco de dados. Aplique a migração 053 para habilitar abertura, sangria e fechamento.
+          O controle de caixa ainda não está disponível. Verifique se as migrações 053 e 058 foram aplicadas no Supabase.
         </div>
       ) : null}
 
@@ -985,7 +1292,7 @@ export function CaixaClient({
                     </div>
                     <div className="flex shrink-0 items-center gap-4">
                       <strong className="text-sm text-zinc-900 dark:text-zinc-50">{formatBrl(product.price)}</strong>
-                      <button type="button" onClick={() => { addProductToCart({ id: product.id, name: product.name, price: product.price, unitLabel: product.unitLabel }); setSearchResults([]); setItemQuery(""); }} className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-900 text-white hover:bg-emerald-600 dark:bg-zinc-50 dark:text-zinc-900" title="Adicionar ao carrinho">
+          <button type="button" onClick={() => { addProductToCart({ id: product.id, name: product.name, price: product.price, unitLabel: product.unitLabel, offlinePriceToken: product.offlinePriceToken }); setSearchResults([]); setItemQuery(""); }} className="grid h-9 w-9 place-items-center rounded-lg bg-zinc-900 text-white hover:bg-emerald-600 dark:bg-zinc-50 dark:text-zinc-900" title="Adicionar ao carrinho">
                         <Plus size={17} aria-hidden />
                       </button>
                     </div>
@@ -1164,8 +1471,8 @@ export function CaixaClient({
               <span className="text-sm text-zinc-500">Total a receber</span>
               <strong className="text-2xl text-zinc-950 dark:text-white">{formatBrl(total)}</strong>
             </div>
-            <button type="button" onClick={() => void finalizeSale()} disabled={busy || cart.length === 0 || (paymentMethod === "cash" && !cashSession && !cashUnavailable)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700"><CheckCircle2 size={19} /> Finalizar venda</button>
-            {paymentMethod === "cash" && !cashSession && !cashUnavailable ? <p className="mt-2 text-center text-xs font-medium text-amber-700 dark:text-amber-300">Abra o caixa para receber em dinheiro.</p> : null}
+            <button type="button" onClick={() => void finalizeSale()} disabled={busy || cart.length === 0 || (isOnline && paymentMethod === "cash" && !cashSession && !cashUnavailable)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 text-base font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:disabled:bg-zinc-700"><CheckCircle2 size={19} /> {isOnline ? "Finalizar venda" : "Registrar venda offline"}</button>
+            {isOnline && paymentMethod === "cash" && !cashSession && !cashUnavailable ? <p className="mt-2 text-center text-xs font-medium text-amber-700 dark:text-amber-300">Abra o caixa para receber em dinheiro.</p> : null}
             <button type="button" onClick={() => { setCart([]); setStatus({ kind: "idle" }); inputRef.current?.focus(); }} disabled={!cart.length || busy} className="mt-2 h-10 w-full text-sm font-semibold text-zinc-500 hover:text-red-600 disabled:opacity-40">Cancelar venda atual</button>
           </div>
         </aside>
