@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { buildAssistantContext } from "@ai/core/context";
 import { buildSystemPrompt } from "@ai/core/prompt";
 import { toolRegistry } from "@ai/core/registry";
+import type { Json } from "@/lib/supabase/database.types";
 import { getConfiguredProvider } from "@ai/providers";
 import { registerAllTools } from "@ai/tools";
 import { AIProviderRateLimitError } from "@ai/core/provider";
@@ -271,7 +272,7 @@ async function proposeWriteAction({
       user_id: ctx.userId,
       conversation_id: conversationId,
       tool_name: tool.name,
-      arguments: call.arguments,
+      arguments: call.arguments as Json,
       preview_text: previewText,
     })
     .select("id, preview_text")

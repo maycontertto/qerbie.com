@@ -86,10 +86,11 @@ export default async function PagamentoPage({
     payment_id?: string;
     collection_id?: string;
     recheck?: string;
+    manual_payment?: string;
   }>;
 }) {
   const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect({ allowSuspended: true });
-  const { pay, mode, error, status, payment_id, collection_id, recheck } = await searchParams;
+  const { pay, mode, error, status, payment_id, collection_id, recheck, manual_payment } = await searchParams;
 
   const isOwner = user.id === merchant.owner_user_id;
   const canBranding =
@@ -190,7 +191,7 @@ export default async function PagamentoPage({
               }
             : status === "failure"
               ? { kind: "error" as const, message: "Pagamento não aprovado." }
-              : searchParams.manual_payment === "success"
+              : manual_payment === "success"
                 ? {
                     kind: "success" as const,
                     message: "Pagamento confirmado manualmente e assinatura liberada com sucesso.",
@@ -437,7 +438,7 @@ export default async function PagamentoPage({
             </div>
           ) : (
             <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-              Nenhuma cobrança gerada ainda. Use o botão "Gerar link de pagamento" acima para criar a primeira.
+              Nenhuma cobrança gerada ainda. Use o botão &quot;Gerar link de pagamento&quot; acima para criar a primeira.
             </p>
           )}
         </div>

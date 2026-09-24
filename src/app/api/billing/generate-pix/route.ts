@@ -1,11 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
 import { getDashboardUserOrRedirect } from "@/lib/auth/guard";
 
 export async function POST(req: Request) {
   try {
-    const user = await getDashboardUserOrRedirect();
-    const supabase = createClient({}, { withAuth: true });
-
+    const { user, merchant } = await getDashboardUserOrRedirect();
+    if (user.id !== merchant.owner_user_id) {
+      return Response.json({ error: "Apenas o proprietário pode gerar esta cobrança" }, { status: 403 });
+    }
     const body = await req.json();
     const { amount, description } = body;
 
@@ -16,21 +16,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Pega o merchant
-    const { data: merchant, error: merchErr } = await supabase
-      .from("merchants")
-      .select("id, user_id, pix_key")
-      .eq("user_id", user.id)
-      .single();
-
-    if (merchErr || !merchant) {
-      return Response.json(
-        { error: "Comerciante não encontrado" },
-        { status: 404 }
-      );
-    }
-
-    if (!merchant.pix_key) {
+    if (!merchant.payment_pix_key) {
       return Response.json(
         { error: "Chave PIX não configurada na conta" },
         { status: 400 }
@@ -42,7 +28,7 @@ export async function POST(req: Request) {
       merchant_id: merchant.id,
       amount: amount.toFixed(2),
       description: description || "Pagamento Qerbie",
-      pix_key: merchant.pix_key,
+      pix_key: merchant.payment_pix_key,
       timestamp: new Date().toISOString(),
     };
 
@@ -59,7 +45,7 @@ export async function POST(req: Request) {
         "4. Volte aqui e clique 'Confirmar Pagamento Manual'",
       ],
       pix_display: {
-        chave: merchant.pix_key,
+        chave: merchant.payment_pix_key,
         beneficiario: "Qerbie",
         valor: "R$ " + amount.toFixed(2),
         descricao: description,

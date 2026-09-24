@@ -23,6 +23,8 @@ export type Json =
 
 export type MerchantStatus = "active" | "paused" | "disabled";
 export type MerchantMemberRole = "admin" | "staff";
+export type GymAccessMethod = "manual" | "qr" | "facial" | "fingerprint";
+export type GymAccessResult = "accepted" | "denied" | "expired" | "manual_override";
 export type TableStatus = "available" | "occupied" | "reserved" | "inactive";
 export type QueueStatus = "open" | "paused" | "closed";
 export type QueueTicketStatus =
@@ -478,6 +480,15 @@ export interface Database {
           student_id: string;
           checkin_date: string;
           created_at: string;
+          checked_out_at: string | null;
+          checkout_verification_method: GymAccessMethod | null;
+          checkout_verification_confidence: number | null;
+          checkout_verified_by: string | null;
+          verification_method: GymAccessMethod;
+          verification_confidence: number | null;
+          face_profile_id: string | null;
+          fingerprint_template_id: string | null;
+          verified_by: string | null;
         };
         Insert: {
           id?: string;
@@ -485,6 +496,15 @@ export interface Database {
           student_id: string;
           checkin_date?: string;
           created_at?: string;
+          checked_out_at?: string | null;
+          checkout_verification_method?: GymAccessMethod | null;
+          checkout_verification_confidence?: number | null;
+          checkout_verified_by?: string | null;
+          verification_method?: GymAccessMethod;
+          verification_confidence?: number | null;
+          face_profile_id?: string | null;
+          fingerprint_template_id?: string | null;
+          verified_by?: string | null;
         };
         Update: {
           id?: string;
@@ -492,6 +512,15 @@ export interface Database {
           student_id?: string;
           checkin_date?: string;
           created_at?: string;
+          checked_out_at?: string | null;
+          checkout_verification_method?: GymAccessMethod | null;
+          checkout_verification_confidence?: number | null;
+          checkout_verified_by?: string | null;
+          verification_method?: GymAccessMethod;
+          verification_confidence?: number | null;
+          face_profile_id?: string | null;
+          fingerprint_template_id?: string | null;
+          verified_by?: string | null;
         };
         Relationships: [
           {
@@ -745,6 +774,8 @@ export interface Database {
           login: string;
           password_hash: string;
           session_token: string | null;
+          phone: string | null;
+          address: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -756,6 +787,8 @@ export interface Database {
           login: string;
           password_hash: string;
           session_token?: string | null;
+          phone?: string | null;
+          address?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -767,6 +800,8 @@ export interface Database {
           login?: string;
           password_hash?: string;
           session_token?: string | null;
+          phone?: string | null;
+          address?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -780,6 +815,147 @@ export interface Database {
             referencedColumns: ["id"];
           },
         ];
+      };
+
+      gym_face_profiles: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          student_id: string;
+          face_label: string;
+          embedding: string | null;
+          image_url: string | null;
+          image_storage_path: string | null;
+          recognition_score: number | null;
+          quality_score: number | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          student_id: string;
+          face_label?: string;
+          embedding?: string | null;
+          image_url?: string | null;
+          image_storage_path?: string | null;
+          recognition_score?: number | null;
+          quality_score?: number | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          student_id?: string;
+          face_label?: string;
+          embedding?: string | null;
+          image_url?: string | null;
+          image_storage_path?: string | null;
+          recognition_score?: number | null;
+          quality_score?: number | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
+      gym_fingerprint_templates: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          student_id: string;
+          finger_name: string;
+          template_text: string;
+          template_hash: string | null;
+          quality_score: number | null;
+          device_name: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+          device_user_code: string | null;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          student_id: string;
+          finger_name: string;
+          template_text: string;
+          template_hash?: string | null;
+          quality_score?: number | null;
+          device_name?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          device_user_code?: string | null;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          student_id?: string;
+          finger_name?: string;
+          template_text?: string;
+          template_hash?: string | null;
+          quality_score?: number | null;
+          device_name?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          device_user_code?: string | null;
+        };
+        Relationships: [];
+      };
+
+      gym_access_logs: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          student_id: string;
+          checkin_id: string | null;
+          method: GymAccessMethod;
+          result: GymAccessResult;
+          confidence: number | null;
+          device_name: string | null;
+          notes: string | null;
+          created_at: string;
+          evidence_image_url: string | null;
+          evidence_image_path: string | null;
+          direction: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          student_id: string;
+          checkin_id?: string | null;
+          method?: GymAccessMethod;
+          result?: GymAccessResult;
+          confidence?: number | null;
+          device_name?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          evidence_image_url?: string | null;
+          evidence_image_path?: string | null;
+          direction?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          student_id?: string;
+          checkin_id?: string | null;
+          method?: GymAccessMethod;
+          result?: GymAccessResult;
+          confidence?: number | null;
+          device_name?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          evidence_image_url?: string | null;
+          evidence_image_path?: string | null;
+          direction?: string;
+        };
+        Relationships: [];
       };
 
       barbershop_services: {
@@ -3486,6 +3662,8 @@ export interface Database {
     Enums: {
       merchant_status: MerchantStatus;
       merchant_member_role: MerchantMemberRole;
+      gym_access_method: GymAccessMethod;
+      gym_access_result: GymAccessResult;
       table_status: TableStatus;
       queue_status: QueueStatus;
       queue_ticket_status: QueueTicketStatus;

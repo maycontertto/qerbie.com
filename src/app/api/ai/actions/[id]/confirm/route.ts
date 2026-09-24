@@ -9,6 +9,7 @@ import { buildAssistantContext } from "@ai/core/context";
 import { fetchPendingAction } from "@ai/core/pendingActions";
 import { toolRegistry } from "@ai/core/registry";
 import { registerAllTools } from "@ai/tools";
+import type { Json } from "@/lib/supabase/database.types";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const ctx = await buildAssistantContext();
@@ -60,7 +61,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     .from("ai_pending_actions")
     .update({
       status: toolResult.ok ? "executed" : "failed",
-      result: toolResult.ok ? (toolResult.data ?? null) : null,
+      result: toolResult.ok ? ((toolResult.data ?? null) as Json) : null,
       error_message: toolResult.ok ? null : (toolResult.error ?? "Falha desconhecida ao executar a ação."),
       resolved_at: new Date().toISOString(),
       resolved_by_user_id: ctx.userId,

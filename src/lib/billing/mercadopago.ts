@@ -33,10 +33,6 @@ export async function createMercadoPagoCheckoutPreference(input: {
     },
   };
 
-  if (input.payerEmail) {
-    (body.payer as any).email = input.payerEmail;
-  }
-
   if (input.notificationUrl) {
     body.notification_url = input.notificationUrl;
   }

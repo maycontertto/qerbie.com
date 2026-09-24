@@ -1,5 +1,25 @@
 export const dynamic = "force-dynamic";
 
+type SettlementTransaction = {
+  status?: string;
+  date?: string;
+  gross_amount?: number;
+  net_amount?: number;
+  fee_amount?: number;
+  type?: string;
+};
+
+type MercadoPagoBalance = {
+  available_balance?: number;
+  unavailable_balance?: number;
+};
+
+type MercadoPagoRestriction = {
+  reason?: string;
+  status?: string;
+  type?: string;
+};
+
 export async function GET() {
   const accessToken = process.env.MERCADOPAGO_ACCESS_TOKEN;
 
@@ -16,10 +36,10 @@ export async function GET() {
       }
     );
 
-    let transactions = [];
+    let transactions: SettlementTransaction[] = [];
     if (transactionsRes.ok) {
-      const data = await transactionsRes.json();
-      transactions = data.results || [];
+      const data = (await transactionsRes.json()) as { results?: SettlementTransaction[] };
+      transactions = data.results ?? [];
     }
 
     // Pega saldo da conta
@@ -27,20 +47,9 @@ export async function GET() {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    let balance = null;
+    let balance: MercadoPagoBalance | null = null;
     if (balanceRes.ok) {
-      balance = await balanceRes.json();
-    }
-
-    // Pega status da conta
-    const statusRes = await fetch("https://api.mercadopago.com/v1/accounts/search", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-
-    let accountStatus = null;
-    if (statusRes.ok) {
-      const data = await statusRes.json();
-      accountStatus = data;
+      balance = (await balanceRes.json()) as MercadoPagoBalance;
     }
 
     // Pega informações do usuário (para ver restrições)
@@ -48,42 +57,41 @@ export async function GET() {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
 
-    let user = null;
-    let restrictions = [];
+    let restrictions: MercadoPagoRestriction[] = [];
     if (userRes.ok) {
-      user = await userRes.json();
-      restrictions = user.restrictions || [];
+      const user = (await userRes.json()) as { restrictions?: MercadoPagoRestriction[] };
+      restrictions = user.restrictions ?? [];
     }
 
     // Analisa se há problemas
     const hasProblems = {
       account_restricted: restrictions.length > 0,
-      negative_balance: balance && balance.available_balance < 0,
-      pending_charges: transactions.some((t: any) => t.status === "pending"),
+      negative_balance: Boolean(balance && (balance.available_balance ?? 0) < 0),
+      pending_charges: transactions.some((transaction) => transaction.status === "pending"),
     };
 
     return Response.json({
       ok: true,
       account_health: {
         has_restrictions: restrictions.length > 0,
-        restrictions: restrictions.map((r: any) => ({
-          reason: r.reason,
-          status: r.status,
-          type: r.type,
+        restrictions: restrictions.map((restriction) => ({
+          reason: restriction.reason,
+          status: restriction.status,
+          type: restriction.type,
         })),
         balance: balance ? {
-          available: balance.available_balance || 0,
-          unavailable: balance.unavailable_balance || 0,
-          total: (balance.available_balance || 0) + (balance.unavailable_balance || 0),
+          available: balance.available_balance ?? 0,
+          unavailable: balance.unavailable_balance ?? 0,
+          total: (balance.available_balance ?? 0) + (balance.unavailable_balance ?? 0),
         } : null,
       },
-      recent_transactions: transactions.slice(0, 10).map((t: any) => ({
-        date: t.date,
-        gross_amount: t.gross_amount,
-        net_amount: t.net_amount,
-        fee_amount: t.fee_amount,
-        status: t.status,
-        type: t.type,
+      recent_transactions: transactions.slice(0, 10).map((transaction) => ({
+        date: transaction.date,
+        gross_amount: transaction.gross_amount,
+        net_amount: transaction.net_amount,
+        fee_amount: transaction.fee_amount,
+        status: transaction.status,
+        type: transaction.type,
       })),
       problems_detected: hasProblems,
       solutions: [
