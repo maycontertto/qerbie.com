@@ -7,6 +7,8 @@ import { encryptFiscalValue } from "@/lib/merchant/fiscalEncryption";
 import { getBrazilianTaxIdType, isValidBrazilianTaxId, normalizeBrazilianTaxId } from "@/lib/merchant/taxId";
 import { queryInvoiceXml, queryReceivedNfe } from "@/lib/merchant/sefazDistribution";
 
+const RECEIVED_INVOICES_BASE = "/dashboard/modulos/notas_fiscais";
+
 async function requireBrandingAccess() {
   const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
@@ -171,16 +173,16 @@ export async function saveFiscalCertificate(formData: FormData): Promise<void> {
 
 export async function syncReceivedInvoices(): Promise<void> {
   const { supabase, merchant, user } = await getDashboardUserOrRedirect();
-  if (user.id !== merchant.owner_user_id) redirect("/dashboard/modulos/compras?invoice_error=owner_only");
+  if (user.id !== merchant.owner_user_id) redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=owner_only`);
   const { data: profile } = await supabase.from("merchant_fiscal_profiles")
     .select("tax_id_ciphertext, tax_id_type, certificate_ciphertext, certificate_password_ciphertext, last_nsu, last_query_at")
     .eq("merchant_id", merchant.id)
     .maybeSingle();
   if (!profile?.tax_id_ciphertext || !profile.tax_id_type || !profile.certificate_ciphertext || !profile.certificate_password_ciphertext) {
-    redirect("/dashboard/modulos/compras?invoice_error=setup_required");
+    redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=setup_required`);
   }
   if (profile.last_query_at && Date.now() - Date.parse(profile.last_query_at) < 60 * 60 * 1000) {
-    redirect("/dashboard/modulos/compras?invoice_error=query_wait");
+    redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=query_wait`);
   }
   try {
     const response = await queryReceivedNfe({
@@ -215,14 +217,14 @@ export async function syncReceivedInvoices(): Promise<void> {
     }).eq("merchant_id", merchant.id);
     if (error) throw error;
   } catch {
-    redirect("/dashboard/modulos/compras?invoice_error=query_failed");
+    redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=query_failed`);
   }
-  redirect("/dashboard/modulos/compras?invoice_synced=1");
+  redirect(`${RECEIVED_INVOICES_BASE}?invoice_synced=1`);
 }
 
 export async function fetchReceivedInvoiceXml(invoiceId: string): Promise<void> {
   const { supabase, merchant, user } = await getDashboardUserOrRedirect();
-  if (user.id !== merchant.owner_user_id) redirect("/dashboard/modulos/compras?invoice_error=owner_only");
+  if (user.id !== merchant.owner_user_id) redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=owner_only`);
   const { data: profile } = await supabase.from("merchant_fiscal_profiles")
     .select("certificate_ciphertext, certificate_password_ciphertext")
     .eq("merchant_id", merchant.id)
@@ -233,9 +235,9 @@ export async function fetchReceivedInvoiceXml(invoiceId: string): Promise<void> 
     .eq("id", invoiceId)
     .maybeSingle();
   if (!profile?.certificate_ciphertext || !profile.certificate_password_ciphertext || !invoice) {
-    redirect("/dashboard/modulos/compras?invoice_error=setup_required");
+    redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=setup_required`);
   }
-  if (invoice.status === "entered") redirect("/dashboard/modulos/compras?invoice_error=already_entered");
+  if (invoice.status === "entered") redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=already_entered`);
   let encryptedXml: string;
   try {
     ({ encryptedXml } = await queryInvoiceXml({
@@ -244,13 +246,13 @@ export async function fetchReceivedInvoiceXml(invoiceId: string): Promise<void> 
       accessKey: invoice.access_key,
     }));
   } catch {
-    redirect("/dashboard/modulos/compras?invoice_error=xml_unavailable");
+    redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=xml_unavailable`);
   }
   const { error } = await supabase.from("merchant_received_invoices").update({
     full_xml_ciphertext: encryptedXml!,
     status: "ready_for_review",
     updated_at: new Date().toISOString(),
   }).eq("merchant_id", merchant.id).eq("id", invoice.id);
-  if (error) redirect("/dashboard/modulos/compras?invoice_error=xml_unavailable");
-  redirect(`/dashboard/modulos/compras?review_invoice=${encodeURIComponent(invoice.id)}`);
+  if (error) redirect(`${RECEIVED_INVOICES_BASE}?invoice_error=xml_unavailable`);
+  redirect(`${RECEIVED_INVOICES_BASE}?review_invoice=${encodeURIComponent(invoice.id)}`);
 }

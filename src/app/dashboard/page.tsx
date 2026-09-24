@@ -67,6 +67,14 @@ export default async function DashboardPage({
   const hasExplicitHistoryRange = Boolean(range);
 
   const modules = getDashboardModules(selectedKey);
+  const supportsInvoiceCatalog = ["mercado", "acaiteria_sorveteria", "bares", "restaurante", "farmacia"].includes(selectedKey ?? "");
+  const { count: pendingInvoiceCount } = isOwner && supportsInvoiceCatalog
+    ? await supabase
+        .from("merchant_received_invoices")
+        .select("id", { count: "exact", head: true })
+        .eq("merchant_id", merchant.id)
+        .in("status", ["available", "xml_requested", "ready_for_review"])
+    : { count: null };
 
   const canSales = isOwner || can("dashboard_sales");
 
@@ -163,6 +171,7 @@ export default async function DashboardPage({
       if (c.href.startsWith("/dashboard/modulos/servicos")) return can("dashboard_products");
       if (c.href.startsWith("/dashboard/modulos/variacoes")) return can("dashboard_products");
       if (c.href.startsWith("/dashboard/modulos/compras")) return isOwner;
+      if (c.href.startsWith("/dashboard/modulos/notas_fiscais")) return isOwner;
       if (c.href.startsWith("/dashboard/modulos/mesas"))
         return can("dashboard_orders") || can("dashboard_products");
       if (c.href.startsWith("/dashboard/modulos/quartos")) return can("dashboard_products");
@@ -371,7 +380,11 @@ export default async function DashboardPage({
                       key={c.title}
                       title={c.title}
                       description={c.description}
-                      hint={c.hint}
+                      hint={c.href === "/dashboard/modulos/notas_fiscais" && isOwner
+                        ? pendingInvoiceCount
+                          ? `${pendingInvoiceCount} aguardando entrada`
+                          : "Sem pendências"
+                        : c.hint}
                       href={c.href}
                       ctaLabel={c.ctaLabel}
                     />

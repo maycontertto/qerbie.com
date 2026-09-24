@@ -7,6 +7,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { supportsPurchaseEntries } from "@/lib/merchant/purchaseCategories";
 
 const PURCHASES_BASE = "/dashboard/modulos/compras";
+const RECEIVED_INVOICES_BASE = "/dashboard/modulos/notas_fiscais";
 
 export type QuickPurchaseProductInput = {
   name: string;
@@ -211,6 +212,10 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
   const invoiceNumber = String(formData.get("invoice_number") ?? "").trim();
   const rawInvoiceAccessKey = String(formData.get("invoice_access_key") ?? "").trim();
   const receivedInvoiceId = String(formData.get("received_invoice_id") ?? "").trim();
+  const actionBase = receivedInvoiceId
+    ? `${RECEIVED_INVOICES_BASE}?review_invoice=${encodeURIComponent(receivedInvoiceId)}`
+    : PURCHASES_BASE;
+  const errorUrl = (code: string) => `${actionBase}${actionBase.includes("?") ? "&" : "?"}error=${encodeURIComponent(code)}`;
   const issueDate = String(formData.get("issue_date") ?? "").trim() || null;
   const entryDate = String(formData.get("entry_date") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
@@ -218,22 +223,22 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
   const invoiceAccessKey = rawInvoiceAccessKey ? normalizeInvoiceAccessKey(rawInvoiceAccessKey) : null;
 
   if (!invoiceNumber) {
-    redirect(PURCHASES_BASE + "?error=invalid_invoice_number");
+    redirect(errorUrl("invalid_invoice_number"));
   }
 
   if (rawInvoiceAccessKey && !invoiceAccessKey) {
-    redirect(PURCHASES_BASE + "?error=invalid_invoice_access_key");
+    redirect(errorUrl("invalid_invoice_access_key"));
   }
 
   if (receivedInvoiceId) {
-    if (!invoiceAccessKey) redirect(PURCHASES_BASE + "?error=invalid_invoice_access_key");
+    if (!invoiceAccessKey) redirect(errorUrl("invalid_invoice_access_key"));
     const { data: receivedInvoice } = await supabase.from("merchant_received_invoices")
       .select("id, access_key, status")
       .eq("merchant_id", merchant.id)
       .eq("id", receivedInvoiceId)
       .maybeSingle();
-    if (!receivedInvoice || receivedInvoice.access_key !== invoiceAccessKey || receivedInvoice.status === "entered") {
-      redirect(PURCHASES_BASE + "?error=already_entered");
+    if (!receivedInvoice || receivedInvoice.access_key !== invoiceAccessKey || receivedInvoice.status !== "ready_for_review") {
+      redirect(errorUrl("already_entered"));
     }
     const { data: priorEntry } = await supabase.from("purchase_entries")
       .select("id")
@@ -241,12 +246,12 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
       .eq("invoice_access_key", invoiceAccessKey)
       .limit(1)
       .maybeSingle();
-    if (priorEntry) redirect(PURCHASES_BASE + "?error=already_entered");
+    if (priorEntry) redirect(errorUrl("already_entered"));
   }
 
   const items = normalizeItems(itemsJson);
   if (items.length === 0) {
-    redirect(PURCHASES_BASE + "?error=invalid_items");
+    redirect(errorUrl("invalid_items"));
   }
 
   const { error } = await supabase.rpc("record_purchase_entry", {
@@ -263,18 +268,18 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
 
   if (error) {
     const message = String(error.message ?? "").toLowerCase();
-    if (message.includes("invalid_supplier")) redirect(PURCHASES_BASE + "?error=invalid_supplier");
-    if (message.includes("invalid_product")) redirect(PURCHASES_BASE + "?error=invalid_product");
-    if (message.includes("invalid_items")) redirect(PURCHASES_BASE + "?error=invalid_items");
-    if (message.includes("invalid_invoice_number")) redirect(PURCHASES_BASE + "?error=invalid_invoice_number");
-    if (message.includes("not_owner")) redirect(PURCHASES_BASE + "?error=not_owner");
+    if (message.includes("invalid_supplier")) redirect(errorUrl("invalid_supplier"));
+    if (message.includes("invalid_product")) redirect(errorUrl("invalid_product"));
+    if (message.includes("invalid_items")) redirect(errorUrl("invalid_items"));
+    if (message.includes("invalid_invoice_number")) redirect(errorUrl("invalid_invoice_number"));
+    if (message.includes("not_owner")) redirect(errorUrl("not_owner"));
 
     console.error("createPurchaseEntry failed", {
       code: error.code,
       message: error.message,
       details: (error as { details?: string | null }).details,
     });
-    redirect(PURCHASES_BASE + "?error=save_failed");
+    redirect(errorUrl("save_failed"));
   }
 
   if (receivedInvoiceId) {
@@ -285,7 +290,7 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
     if (invoiceUpdateError) console.error("purchase entry saved but received invoice status update failed", invoiceUpdateError.code);
   }
 
-  redirect(PURCHASES_BASE + "?saved=1");
+  redirect(receivedInvoiceId ? `${RECEIVED_INVOICES_BASE}?saved=1` : `${PURCHASES_BASE}?saved=1`);
 }
 
 export async function createQuickPurchaseProduct(

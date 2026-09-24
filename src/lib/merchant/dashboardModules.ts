@@ -1,4 +1,5 @@
 import type { BusinessCategoryKey } from "@/lib/merchant/businessCategories";
+import { supportsPurchaseEntries } from "@/lib/merchant/purchaseCategories";
 
 export type DashboardSectionKey =
   | "catalogo"
@@ -50,6 +51,21 @@ const PURCHASES_CARD: DashboardCardModel = {
   href: "/dashboard/modulos/compras",
   ctaLabel: "Abrir",
 };
+
+const RECEIVED_INVOICES_CARD: DashboardCardModel = {
+  title: "Notas fiscais",
+  description: "Notas recebidas aguardando confirmação de entrada",
+  hint: "Acompanhar",
+  href: "/dashboard/modulos/notas_fiscais",
+  ctaLabel: "Ver notas",
+};
+
+function withReceivedInvoicesInCatalog(modules: DashboardModules, categoryKey: string | null | undefined): DashboardModules {
+  if (!supportsPurchaseEntries(categoryKey)) return modules;
+  const catalog = modules.sections.catalogo ?? [];
+  if (catalog.some((card) => card.href === RECEIVED_INVOICES_CARD.href)) return modules;
+  return { ...modules, sections: { ...modules.sections, catalogo: [...catalog, RECEIVED_INVOICES_CARD] } };
+}
 
 function withStockInCatalog(modules: DashboardModules): DashboardModules {
   const catalog = modules.sections.catalogo ?? [];
@@ -1580,5 +1596,5 @@ export function getDashboardModules(
       break;
   }
 
-  return withStockInCatalog(withProductsInCatalog(modules));
+  return withReceivedInvoicesInCatalog(withStockInCatalog(withProductsInCatalog(modules)), categoryKey);
 }
