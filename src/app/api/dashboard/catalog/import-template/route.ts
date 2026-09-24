@@ -40,33 +40,61 @@ async function getProductsContext() {
   return { supabase, merchantId };
 }
 
-function buildTemplateRows(categoryName: string | null) {
+function buildTemplateRows(categoryName: string | null): Array<Record<string, string>> {
   const defaultCategory = categoryName ?? "Categoria exemplo";
 
   return [
     {
-      nome: "Produto exemplo 1",
-      codigo_de_barras: "7890000000011",
-      codigo_interno: "SKU-001",
+      nome: "Exemplo: Leite integral 1 L",
+      descricao: "Apague esta linha e preencha com seus produtos",
+      codigo_de_barras: "",
+      codigo_interno: "",
       categoria: defaultCategory,
       unidade: "un",
       preco: "19,90",
-      custo: "12,40",
-      estoque: "20",
+      custo: "",
+      estoque: "0",
       controlar_estoque: "sim",
       ativo: "sim",
+      ncm: "",
+      cest: "",
+      cfop_saida: "",
+      origem: "",
+      cst_icms: "",
+      csosn: "",
+      aliquota_icms: "",
+      cst_pis: "",
+      aliquota_pis: "",
+      cst_cofins: "",
+      aliquota_cofins: "",
+      cst_ipi: "",
+      aliquota_ipi: "",
     },
     {
-      nome: "Produto exemplo 2",
+      nome: "Exemplo: Café 500 g",
+      descricao: "",
       codigo_de_barras: "",
-      codigo_interno: "SKU-002",
+      codigo_interno: "",
       categoria: defaultCategory,
       unidade: "caixa",
-      preco: "42,00",
-      custo: "31,50",
-      estoque: "8",
+      preco: "",
+      custo: "",
+      estoque: "0",
       controlar_estoque: "sim",
       ativo: "sim",
+      ncm: "",
+      cest: "",
+      cfop_saida: "",
+      origem: "",
+      cst_icms: "",
+      csosn: "",
+      aliquota_icms: "",
+      cst_pis: "",
+      aliquota_pis: "",
+      cst_cofins: "",
+      aliquota_cofins: "",
+      cst_ipi: "",
+      aliquota_ipi: "",
     },
   ];
 }
@@ -112,7 +140,7 @@ export async function GET(req: Request) {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="modelo-importacao-produtos.csv"',
+        "Content-Disposition": 'attachment; filename="modelo-importacao-estoque-qerbie.csv"',
       },
     });
   }
@@ -120,13 +148,24 @@ export async function GET(req: Request) {
   const worksheet = XLSX.utils.json_to_sheet(sampleRows);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Produtos");
+  const instructions = XLSX.utils.aoa_to_sheet([
+    ["Como importar o estoque no Qerbie"],
+    ["1. Apague as linhas de exemplo; mantenha os cabeçalhos na primeira linha."],
+    ["2. Preencha ao menos o nome do produto. Os campos fiscais são opcionais."],
+    ["3. Use uma linha para cada produto. Preserve códigos de barras como texto para manter zeros à esquerda."],
+    ["4. A categoria informada será criada automaticamente se ainda não existir."],
+    ["5. Revise a prévia no Qerbie antes de confirmar a importação."],
+    ["6. NCM, CEST, CFOP, CST e alíquotas variam conforme produto, regime e operação; confira com a contabilidade."],
+    ["O modelo não importa XML nem lança notas fiscais. Esse fluxo será tratado separadamente."],
+  ]);
+  XLSX.utils.book_append_sheet(workbook, instructions, "Instruções");
   const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
 
   return new NextResponse(buffer, {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": 'attachment; filename="modelo-importacao-produtos.xlsx"',
+        "Content-Disposition": 'attachment; filename="modelo-importacao-estoque-qerbie.xlsx"',
     },
   });
 }

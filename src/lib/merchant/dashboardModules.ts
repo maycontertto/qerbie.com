@@ -28,11 +28,19 @@ const STOCK_CARD: DashboardCardModel = {
 };
 
 const PRODUCTS_CARD: DashboardCardModel = {
-  title: "Produtos",
-  description: "Cadastro de produtos e preços",
+  title: "Cadastro de produtos",
+  description: "Cadastre produtos no modo rápido ou detalhado",
   hint: "Agora",
   href: "/dashboard/modulos/produtos",
   ctaLabel: "Abrir",
+};
+
+const STOCK_IMPORT_CARD: DashboardCardModel = {
+  title: "Importação de estoque",
+  description: "Migre produtos, preços e quantidades por planilha",
+  hint: "Agora",
+  href: "/dashboard/modulos/importacao_estoque",
+  ctaLabel: "Importar estoque",
 };
 
 const PURCHASES_CARD: DashboardCardModel = {
@@ -165,7 +173,7 @@ const RESTAURANTE_BASE: DashboardModules = {
       {
         title: "Cardápios (Menus)",
         description: "Estruture seus menus e categorias",
-        hint: "Próximo",
+        hint: "Agora",
         href: "/dashboard/modulos/menus",
         ctaLabel: "Configurar agora",
       },
@@ -254,19 +262,13 @@ const MERCADO_BASE: DashboardModules = {
   sections: {
     catalogo: [
       {
-        title: "Produtos",
-        description: "Nome, descrição, preço e foto",
+        title: "Cadastro de produtos",
+        description: "Cadastro rápido ou detalhado com dados fiscais opcionais",
         hint: "Agora",
         href: "/dashboard/modulos/produtos",
         ctaLabel: "Abrir",
       },
-      {
-        title: "Categorias",
-        description: "Organize por seções (ex: Bebidas, Higiene)",
-        hint: "Agora",
-        href: "/dashboard/modulos/produtos",
-        ctaLabel: "Abrir",
-      },
+      STOCK_IMPORT_CARD,
       {
         title: "Estoque",
         description: "Visão rápida do que está disponível",
@@ -274,7 +276,6 @@ const MERCADO_BASE: DashboardModules = {
         href: "/dashboard/modulos/estoque",
         ctaLabel: "Abrir",
       },
-      PURCHASES_CARD,
       {
         title: "Equipe",
         description: "Cadastre atendentes/funcionários e controle acessos",
@@ -1064,9 +1065,9 @@ const FARMACIA_BASE: DashboardModules = {
   sections: {
     catalogo: [
       {
-        title: "Produtos",
-        description: "Medicamentos, higiene, perfumaria",
-        hint: "Próximo",
+        title: "Cadastro de produtos",
+        description: "Cadastre medicamentos e outros itens em modo rápido ou detalhado",
+        hint: "Agora",
         href: "/dashboard/modulos/produtos",
         ctaLabel: "Configurar agora",
       },
@@ -1077,13 +1078,9 @@ const FARMACIA_BASE: DashboardModules = {
         href: "/dashboard/modulos/estoque",
         ctaLabel: "Abrir",
       },
-      PURCHASES_CARD,
       {
-        title: "Categorias",
-        description: "Organize por linha/necessidade",
-        hint: "Agora",
-        href: "/dashboard/modulos/categorias",
-        ctaLabel: "Abrir",
+        ...STOCK_IMPORT_CARD,
+        description: "Migre produtos e estoque da farmácia por planilha",
       },
       {
         title: "Restrições",
@@ -1335,7 +1332,7 @@ const LOJA_BASE: DashboardModules = {
   sections: {
     catalogo: [
       {
-        title: "Produtos",
+        title: "Cadastro de produtos",
         description: "Tamanhos, cores e preços",
         hint: "Agora",
         href: "/dashboard/modulos/produtos",
@@ -1349,11 +1346,8 @@ const LOJA_BASE: DashboardModules = {
         ctaLabel: "Abrir",
       },
       {
-        title: "Categorias",
-        description: "Coleções e vitrine",
-        hint: "Agora",
-        href: "/dashboard/modulos/produtos",
-        ctaLabel: "Abrir",
+        ...STOCK_IMPORT_CARD,
+        description: "Migre produtos, preços e quantidades por planilha",
       },
     ],
     atendimento: [

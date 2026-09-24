@@ -15,6 +15,7 @@ export function BarcodeScannerField({
   value,
   onValueChange,
   helperText,
+  lookupProduct,
 }: {
   name?: string;
   label: string;
@@ -23,11 +24,14 @@ export function BarcodeScannerField({
   value?: string;
   onValueChange?: (value: string) => void;
   helperText?: string;
+  lookupProduct?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const scannerControlsRef = useRef<ScannerControls | null>(null);
   const scannerTorchOnRef = useRef(false);
   const lastScanRef = useRef<{ text: string; at: number } | null>(null);
+  const lookupSequenceRef = useRef(0);
 
   const [internalValue, setInternalValue] = useState(defaultValue);
   const [scannerOn, setScannerOn] = useState(false);
@@ -35,6 +39,8 @@ export function BarcodeScannerField({
   const [scannerTorchOn, setScannerTorchOn] = useState(false);
   const [scannerTorchSupported, setScannerTorchSupported] = useState(false);
   const [scannerLastRead, setScannerLastRead] = useState("");
+  const [lookupState, setLookupState] = useState<"idle" | "loading" | "found" | "not_found" | "error">("idle");
+  const [lookupInfo, setLookupInfo] = useState<{ source: string; brand: string | null; quantity: string | null } | null>(null);
 
   const currentValue = value ?? internalValue;
 
@@ -58,6 +64,44 @@ export function BarcodeScannerField({
   useEffect(() => {
     scannerTorchOnRef.current = scannerTorchOn;
   }, [scannerTorchOn]);
+
+  useEffect(() => {
+    if (!lookupProduct) return;
+    const code = currentValue.trim();
+    const sequence = ++lookupSequenceRef.current;
+    setLookupInfo(null);
+    if (!/^\d{8,14}$/.test(code)) {
+      setLookupState("idle");
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLookupState("loading");
+      try {
+        const response = await fetch(`/api/dashboard/catalog/barcode?code=${encodeURIComponent(code)}`);
+        if (sequence !== lookupSequenceRef.current) return;
+        if (response.status === 404) {
+          setLookupState("not_found");
+          return;
+        }
+        if (!response.ok) throw new Error("lookup_failed");
+        const product = await response.json() as { name: string; source: string; brand: string | null; quantity: string | null };
+        if (sequence !== lookupSequenceRef.current) return;
+        const form = inputRef.current?.form;
+        const nameInput = form?.elements.namedItem("name");
+        if (nameInput instanceof HTMLInputElement && !nameInput.value.trim()) {
+          nameInput.value = product.name;
+          nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+        setLookupInfo({ source: product.source, brand: product.brand, quantity: product.quantity });
+        setLookupState("found");
+      } catch {
+        if (sequence === lookupSequenceRef.current) setLookupState("error");
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [currentValue, lookupProduct]);
 
   useEffect(() => {
     if (!scannerOn) {
@@ -217,6 +261,7 @@ export function BarcodeScannerField({
       <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">{label}</label>
       <div className="mt-1 flex gap-2">
         <input
+          ref={inputRef}
           name={name}
           type="text"
           inputMode="numeric"
@@ -234,6 +279,14 @@ export function BarcodeScannerField({
         </button>
       </div>
       {helperText ? <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{helperText}</p> : null}
+      {lookupProduct && lookupState === "loading" ? <p className="mt-1 text-xs text-zinc-500" aria-live="polite">Buscando os dados do produto…</p> : null}
+      {lookupProduct && lookupState === "not_found" ? <p className="mt-1 text-xs text-amber-700 dark:text-amber-300" aria-live="polite">Produto não localizado na base. Você pode preencher os dados manualmente.</p> : null}
+      {lookupProduct && lookupState === "error" ? <p className="mt-1 text-xs text-amber-700 dark:text-amber-300" aria-live="polite">A busca não está disponível agora; continue o cadastro manualmente.</p> : null}
+      {lookupProduct && lookupState === "found" && lookupInfo ? (
+        <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300" aria-live="polite">
+          Encontrado em <a href="https://world.openfoodfacts.org/" target="_blank" rel="noreferrer" className="underline">{lookupInfo.source}</a>{lookupInfo.brand ? ` · ${lookupInfo.brand}` : ""}{lookupInfo.quantity ? ` · ${lookupInfo.quantity}` : ""}. Confira os dados antes de salvar.
+        </p>
+      ) : null}
 
       {scannerOn ? (
         <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-950">

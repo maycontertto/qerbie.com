@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSuggestedCategories } from "@/lib/catalog/templates";
+import { readProductFiscalData, type ProductFiscalData } from "@/lib/catalog/fiscal";
 
 const MAX_PRODUCT_IMAGE_BYTES = 12 * 1024 * 1024;
 
@@ -38,9 +39,10 @@ function guessImageContentType(file: File): string {
   return "application/octet-stream";
 }
 
-function getRedirectBase(formData: FormData): "/dashboard/modulos/produtos" | "/dashboard/modulos/servicos" {
+function getRedirectBase(formData: FormData): "/dashboard/modulos/produtos" | "/dashboard/modulos/servicos" | "/dashboard/modulos/importacao_estoque" {
   const raw = (formData.get("redirect_to") as string | null)?.trim() ?? "";
   if (raw === "/dashboard/modulos/servicos") return raw;
+  if (raw === "/dashboard/modulos/importacao_estoque") return raw;
   return "/dashboard/modulos/produtos";
 }
 
@@ -136,6 +138,7 @@ type SpreadsheetImportMode = "create_update" | "create_only" | "update_only";
 
 type SpreadsheetRow = {
   name: string;
+  description: string | null;
   barcode: string | null;
   internalCode: string | null;
   categoryName: string | null;
@@ -145,6 +148,7 @@ type SpreadsheetRow = {
   stockQuantity: number | null;
   trackStock: boolean | null;
   isActive: boolean | null;
+  fiscalData: ProductFiscalData;
 };
 
 function readSpreadsheetRows(bytes: Uint8Array): SpreadsheetRow[] {
@@ -213,9 +217,26 @@ function readSpreadsheetRows(bytes: Uint8Array): SpreadsheetRow[] {
         mapped.get("controlar_estoque") || mapped.get("track_stock") || mapped.get("estoque_ativo") || null,
       );
       const isActive = parseOptionalBoolean(mapped.get("ativo") || mapped.get("active") || null);
+      const fiscalData = Object.fromEntries(Object.entries({
+        ncm: mapped.get("ncm") || mapped.get("ncm_sh") || undefined,
+        cest: mapped.get("cest") || undefined,
+        cfop: mapped.get("cfop_saida") || mapped.get("cfop") || undefined,
+        origin: mapped.get("origem") || mapped.get("origem_mercadoria") || undefined,
+        icms_cst: mapped.get("cst_icms") || mapped.get("icms_cst") || undefined,
+        icms_csosn: mapped.get("csosn") || mapped.get("icms_csosn") || undefined,
+        icms_rate: mapped.get("aliquota_icms") || mapped.get("icms_aliquota") || undefined,
+        pis_cst: mapped.get("cst_pis") || mapped.get("pis_cst") || undefined,
+        pis_rate: mapped.get("aliquota_pis") || mapped.get("pis_aliquota") || undefined,
+        cofins_cst: mapped.get("cst_cofins") || mapped.get("cofins_cst") || undefined,
+        cofins_rate: mapped.get("aliquota_cofins") || mapped.get("cofins_aliquota") || undefined,
+        ipi_cst: mapped.get("cst_ipi") || mapped.get("ipi_cst") || undefined,
+        ipi_rate: mapped.get("aliquota_ipi") || mapped.get("ipi_aliquota") || undefined,
+      }).filter(([, value]) => Boolean(value))) as ProductFiscalData;
+      const description = mapped.get("descricao") || mapped.get("description") || "";
 
       return {
         name: name.trim(),
+        description: description.trim() || null,
         barcode: barcode?.trim() || null,
         internalCode: internalCode?.trim() || null,
         categoryName: categoryName?.trim() || null,
@@ -225,6 +246,7 @@ function readSpreadsheetRows(bytes: Uint8Array): SpreadsheetRow[] {
         stockQuantity,
         trackStock,
         isActive,
+        fiscalData,
       } satisfies SpreadsheetRow;
     })
     .filter((row) => row.name.length >= 2 || row.barcode || row.internalCode);
@@ -386,6 +408,7 @@ export async function createProduct(formData: FormData): Promise<void> {
   const unitLabelRaw = (formData.get("unit_label") as string | null)?.trim() ?? "";
   const requiresPrescription = (formData.get("requires_prescription") as string | null) === "on";
   const requiresDocument = (formData.get("requires_document") as string | null) === "on";
+  const fiscalData = readProductFiscalData(formData);
   const trackStock = (formData.get("track_stock") as string | null) === "on";
   const stockQty = clampDecimalFromForm(formData.get("stock_quantity"), 0, 1_000_000, 3);
 
@@ -428,6 +451,7 @@ export async function createProduct(formData: FormData): Promise<void> {
     is_featured: false,
     requires_prescription: requiresPrescription,
     requires_document: requiresDocument,
+    fiscal_data: fiscalData,
     display_order: 0,
   };
 
@@ -550,13 +574,13 @@ export async function importProductsSpreadsheet(formData: FormData): Promise<voi
 
   const returnTo = getSafeReturnTo(formData);
 
-  if (!(file instanceof File) || file.size === 0 || !menuId) {
+  if (!(file instanceof File) || file.size === 0 || file.size > 15 * 1024 * 1024 || !menuId) {
     redirect(withQueryParam(returnTo, "error", "invalid_import_file"));
   }
 
   const { supabase, merchant, isOwner } = await requireProductsAccess();
   if (!isOwner) {
-    redirect("/dashboard");
+    redirect(withQueryParam(returnTo, "error", "import_requires_owner"));
   }
 
   const bytes = new Uint8Array(await file.arrayBuffer());
@@ -628,6 +652,11 @@ export async function importProductsSpreadsheet(formData: FormData): Promise<voi
   const fallbackCategoryId = defaultCategoryId || null;
 
   for (const row of rows) {
+    if (row.name.length < 2) {
+      skipped += 1;
+      continue;
+    }
+
     const normalizedName = normalizeLookupText(row.name);
     const existing =
       (row.barcode ? productByBarcode.get(row.barcode) : undefined) ??
@@ -654,6 +683,8 @@ export async function importProductsSpreadsheet(formData: FormData): Promise<voi
         price: row.price ?? undefined,
         cost_price: row.costPrice ?? undefined,
         is_active: row.isActive ?? undefined,
+        description: row.description ?? undefined,
+        fiscal_data: Object.keys(row.fiscalData).length ? row.fiscalData : undefined,
       };
 
       if (row.trackStock != null) {
@@ -697,7 +728,7 @@ export async function importProductsSpreadsheet(formData: FormData): Promise<voi
       name: row.name,
       barcode: row.barcode,
       internal_code: row.internalCode,
-      description: null,
+      description: row.description,
       image_url: null,
       price: row.price ?? 0,
       cost_price: row.costPrice ?? 0,
@@ -707,6 +738,7 @@ export async function importProductsSpreadsheet(formData: FormData): Promise<voi
       is_featured: false,
       requires_prescription: false,
       requires_document: false,
+      fiscal_data: row.fiscalData,
       display_order: 0,
       track_stock: row.trackStock ?? row.stockQuantity != null,
       stock_quantity: row.trackStock === false ? 0 : (row.stockQuantity ?? 0),
@@ -752,6 +784,7 @@ export async function updateProduct(formData: FormData): Promise<void> {
   const isFeatured = (formData.get("is_featured") as string | null) === "on";
   const requiresPrescription = (formData.get("requires_prescription") as string | null) === "on";
   const requiresDocument = (formData.get("requires_document") as string | null) === "on";
+  const fiscalData = readProductFiscalData(formData);
   const trackStock = (formData.get("track_stock") as string | null) === "on";
   const stockQty = clampDecimalFromForm(formData.get("stock_quantity"), 0, 1_000_000, 3);
 
@@ -777,6 +810,7 @@ export async function updateProduct(formData: FormData): Promise<void> {
     is_featured: isFeatured,
     requires_prescription: requiresPrescription,
     requires_document: requiresDocument,
+    fiscal_data: fiscalData,
   };
 
   // Se o item for desativado, remove do estoque automaticamente.

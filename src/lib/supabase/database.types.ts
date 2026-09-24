@@ -2001,6 +2001,7 @@ export interface Database {
           is_featured: boolean;
           requires_prescription: boolean;
           requires_document: boolean;
+          fiscal_data: Json;
           track_stock: boolean;
           stock_quantity: number;
           stock_min_quantity: number;
@@ -2028,6 +2029,7 @@ export interface Database {
           is_featured?: boolean;
           requires_prescription?: boolean;
           requires_document?: boolean;
+          fiscal_data?: Json;
           track_stock?: boolean;
           stock_quantity?: number;
           stock_min_quantity?: number;
@@ -2055,6 +2057,7 @@ export interface Database {
           is_featured?: boolean;
           requires_prescription?: boolean;
           requires_document?: boolean;
+          fiscal_data?: Json;
           track_stock?: boolean;
           stock_quantity?: number;
           stock_min_quantity?: number;

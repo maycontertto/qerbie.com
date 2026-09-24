@@ -5,6 +5,8 @@ import { ProductImageUploader } from "@/app/dashboard/modulos/produtos/ProductIm
 import Link from "next/link";
 import { BarcodeScannerField } from "../BarcodeScannerField";
 import { CategorySelect } from "../CategorySelect";
+import { FiscalFields } from "../FiscalFields";
+import { parseProductFiscalData } from "@/lib/catalog/fiscal";
 
 export default async function ProductEditPage({
   params,
@@ -134,7 +136,7 @@ export default async function ProductEditPage({
                 {product.name}
               </h1>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Edite foto, descrição e valor.
+                Edite cadastro, estoque e dados fiscais opcionais.
               </p>
             </div>
 
@@ -194,6 +196,7 @@ export default async function ProductEditPage({
                 defaultValue={String((product as { barcode?: string | null }).barcode ?? "")}
                 placeholder="Opcional (para usar no Caixa)"
                 helperText="Use o mesmo número que sai no leitor/etiqueta ou leia pela câmera."
+                lookupProduct
               />
             </div>
 
@@ -259,6 +262,8 @@ export default async function ProductEditPage({
                 className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
             </div>
+
+            <FiscalFields defaultValue={parseProductFiscalData(product.fiscal_data)} />
 
             <div>
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

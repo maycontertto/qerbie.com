@@ -6,13 +6,13 @@ import {
   createProduct,
   deleteProduct,
   createSuggestedMenuCategories,
-  importProductsSpreadsheet,
 } from "@/lib/catalog/actions";
 import { DEFAULT_MENU_NAME, DEFAULT_MENU_SLUG } from "@/lib/catalog/templates";
 import { BarcodeScannerField } from "./BarcodeScannerField";
 import { CategorySelect } from "./CategorySelect";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
 import { QuickProductForm } from "./QuickProductForm";
+import { FiscalFields } from "./FiscalFields";
 
 export const dynamic = "force-dynamic";
 
@@ -309,11 +309,10 @@ export default async function ProdutosModulePage({
               ← Voltar ao painel
             </a>
             <h1 className="mt-3 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-              Catálogo de itens
+              Cadastro de produtos
             </h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Crie categorias (ex: Medicamentos) e depois cadastre itens com foto,
-              descrição e valor.
+              Escolha o cadastro rápido para começar ou preencha os dados completos do produto.
             </p>
           </div>
 
@@ -427,89 +426,6 @@ export default async function ProdutosModulePage({
 
           {/* Main */}
           <section className="space-y-6">
-            <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-5 shadow-sm backdrop-blur dark:border-blue-900 dark:bg-blue-950/30">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                    Importar planilha
-                  </h2>
-                  <p className="mt-1 text-sm text-blue-800 dark:text-blue-200">
-                    Envie CSV ou XLSX para criar e atualizar vários itens de uma vez.
-                  </p>
-                </div>
-                <span className="rounded-full border border-blue-300 bg-white px-3 py-1 text-xs font-semibold text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200">
-                  CSV / XLSX
-                </span>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-3 text-sm">
-                <a
-                  href="/api/dashboard/catalog/import-template?format=xlsx"
-                  className="font-medium text-blue-900 hover:underline dark:text-blue-100"
-                >
-                  Baixar modelo XLSX
-                </a>
-                <a
-                  href="/api/dashboard/catalog/import-template?format=csv"
-                  className="font-medium text-blue-900 hover:underline dark:text-blue-100"
-                >
-                  Baixar modelo CSV
-                </a>
-              </div>
-
-              <form action={importProductsSpreadsheet} className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_220px_220px_auto]" encType="multipart/form-data">
-                <input type="hidden" name="menu_id" value={menu.id} />
-                <input type="hidden" name="redirect_to" value="/dashboard/modulos/produtos" />
-                <input type="hidden" name="return_to" value={returnTo} />
-                <input type="hidden" name="default_category_id" value={selectedCategoryId} />
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Arquivo da planilha
-                  </label>
-                  <input
-                    name="spreadsheet_file"
-                    type="file"
-                    required
-                    accept=".csv,.xlsx,.xls"
-                    className="mt-1 block w-full text-xs text-zinc-600 file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-500 dark:text-zinc-300 dark:file:bg-blue-500 dark:hover:file:bg-blue-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Modo da importação
-                  </label>
-                  <select
-                    name="import_mode"
-                    defaultValue="create_update"
-                    className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                  >
-                    <option value="create_update">Criar e atualizar</option>
-                    <option value="create_only">Criar só novos</option>
-                    <option value="update_only">Atualizar só existentes</option>
-                  </select>
-                </div>
-
-                <div className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-xs text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100">
-                  Cabeçalhos aceitos: nome, código de barras, código interno, categoria, unidade, preço, custo, estoque, controlar estoque.
-                </div>
-
-                <div className="flex items-end">
-                  <button
-                    type="submit"
-                    className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500 dark:bg-blue-500 dark:text-zinc-950 dark:hover:bg-blue-400"
-                  >
-                    Importar planilha
-                  </button>
-                </div>
-              </form>
-
-              <div className="mt-4 rounded-xl border border-blue-200 bg-white/80 px-4 py-3 text-xs text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
-                O modelo já vem com colunas prontas e exemplos. Você pode apagar os exemplos e manter só o cabeçalho antes de importar seus dados.
-              </div>
-            </div>
-
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 shadow-sm backdrop-blur dark:border-emerald-900 dark:bg-emerald-950/40">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -535,7 +451,10 @@ export default async function ProdutosModulePage({
             </div>
 
             <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Novo item</h2>
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Cadastro detalhado</h2>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Descrição, imagem, estoque e dados fiscais opcionais para o seu contador preencher.</p>
+              </div>
 
               <form
                 action={createProduct}
@@ -562,10 +481,11 @@ export default async function ProdutosModulePage({
 
                 <div className="sm:col-span-2">
                   <BarcodeScannerField
-                    name="barcode"
-                    label="Código de barras"
-                    placeholder="Opcional (para usar no Caixa)"
-                    helperText="Leitura rápida pela câmera para evitar digitação manual."
+                  name="barcode"
+                  label="Código de barras"
+                  placeholder="Opcional (para usar no Caixa)"
+                  helperText="Leia com a câmera ou digite para buscar o cadastro do produto."
+                  lookupProduct
                   />
                 </div>
 
@@ -609,6 +529,10 @@ export default async function ProdutosModulePage({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <FiscalFields />
                 </div>
 
                 <div className="sm:col-span-2">
