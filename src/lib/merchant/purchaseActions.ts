@@ -210,6 +210,7 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
   const supplierName = String(formData.get("supplier_name") ?? "").trim() || null;
   const invoiceNumber = String(formData.get("invoice_number") ?? "").trim();
   const rawInvoiceAccessKey = String(formData.get("invoice_access_key") ?? "").trim();
+  const receivedInvoiceId = String(formData.get("received_invoice_id") ?? "").trim();
   const issueDate = String(formData.get("issue_date") ?? "").trim() || null;
   const entryDate = String(formData.get("entry_date") ?? "").trim() || null;
   const notes = String(formData.get("notes") ?? "").trim() || null;
@@ -222,6 +223,25 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
 
   if (rawInvoiceAccessKey && !invoiceAccessKey) {
     redirect(PURCHASES_BASE + "?error=invalid_invoice_access_key");
+  }
+
+  if (receivedInvoiceId) {
+    if (!invoiceAccessKey) redirect(PURCHASES_BASE + "?error=invalid_invoice_access_key");
+    const { data: receivedInvoice } = await supabase.from("merchant_received_invoices")
+      .select("id, access_key, status")
+      .eq("merchant_id", merchant.id)
+      .eq("id", receivedInvoiceId)
+      .maybeSingle();
+    if (!receivedInvoice || receivedInvoice.access_key !== invoiceAccessKey || receivedInvoice.status === "entered") {
+      redirect(PURCHASES_BASE + "?error=already_entered");
+    }
+    const { data: priorEntry } = await supabase.from("purchase_entries")
+      .select("id")
+      .eq("merchant_id", merchant.id)
+      .eq("invoice_access_key", invoiceAccessKey)
+      .limit(1)
+      .maybeSingle();
+    if (priorEntry) redirect(PURCHASES_BASE + "?error=already_entered");
   }
 
   const items = normalizeItems(itemsJson);
@@ -255,6 +275,14 @@ export async function createPurchaseEntry(formData: FormData): Promise<void> {
       details: (error as { details?: string | null }).details,
     });
     redirect(PURCHASES_BASE + "?error=save_failed");
+  }
+
+  if (receivedInvoiceId) {
+    const { error: invoiceUpdateError } = await supabase.from("merchant_received_invoices")
+      .update({ status: "entered", updated_at: new Date().toISOString() })
+      .eq("merchant_id", merchant.id)
+      .eq("id", receivedInvoiceId);
+    if (invoiceUpdateError) console.error("purchase entry saved but received invoice status update failed", invoiceUpdateError.code);
   }
 
   redirect(PURCHASES_BASE + "?saved=1");

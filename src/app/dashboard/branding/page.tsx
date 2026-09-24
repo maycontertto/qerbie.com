@@ -1,15 +1,17 @@
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
 import { DashboardShell } from "../DashboardShell";
-import { updateBranding, uploadBrandLogo } from "@/lib/merchant/brandingActions";
+import { saveFiscalCertificate, saveFiscalTaxId, updateBranding, uploadBrandLogo } from "@/lib/merchant/brandingActions";
+import { createClient } from "@/lib/supabase/server";
+import { decryptFiscalValue, maskTaxId } from "@/lib/merchant/fiscalEncryption";
 
 export default async function BrandingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; saved?: string }>;
+  searchParams: Promise<{ error?: string; saved?: string; fiscal_error?: string; fiscal_saved?: string }>;
 }) {
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
-  const { error, saved } = await searchParams;
+  const { error, saved, fiscal_error: fiscalError, fiscal_saved: fiscalSaved } = await searchParams;
 
   const isOwner = user.id === merchant.owner_user_id;
   const canBranding =
@@ -19,6 +21,22 @@ export default async function BrandingPage({
       : false);
   const selectedKey = merchant.business_category ?? null;
   const selectedLabel = getBusinessCategoryLabel(selectedKey);
+  let fiscalProfile: { maskedTaxId: string | null; hasCertificate: boolean } = { maskedTaxId: null, hasCertificate: false };
+  if (isOwner) {
+    const supabase = await createClient({}, { withAuth: true });
+    const { data } = await supabase.from("merchant_fiscal_profiles")
+      .select("tax_id_ciphertext, certificate_ciphertext")
+      .eq("merchant_id", merchant.id)
+      .maybeSingle();
+    if (data) {
+      try {
+        fiscalProfile = {
+          maskedTaxId: data.tax_id_ciphertext ? maskTaxId(decryptFiscalValue(data.tax_id_ciphertext).toString("utf8")) : null,
+          hasCertificate: Boolean(data.certificate_ciphertext),
+        };
+      } catch { /* never expose ciphertext or decryption details in the page */ }
+    }
+  }
 
   if (!canBranding) {
     return (
@@ -95,9 +113,21 @@ export default async function BrandingPage({
               message:
                 "Não foi possível salvar agora. (Se você ainda não aplicou a migração 014 no Supabase, isso é esperado.)",
             }
-          : saved
+      : saved
             ? { kind: "success" as const, message: "Marca salva." }
             : null;
+
+  const fiscalErrorMessages: Record<string, string> = {
+    owner_only: "Somente o proprietário pode alterar os dados fiscais.",
+    invalid_tax_id: "CPF ou CNPJ inválido. Confira os números e tente novamente.",
+    save_failed: "Não foi possível salvar os dados fiscais.",
+    encryption_key_missing: "A proteção dos dados fiscais ainda não foi configurada no servidor.",
+    certificate_missing: "Selecione o certificado A1.",
+    certificate_too_large: "O arquivo do certificado deve ter até 750 KB.",
+    certificate_type: "Envie o certificado A1 no formato .pfx ou .p12.",
+    certificate_password: "Informe a senha do certificado (até 256 caracteres).",
+    tax_id_required: "Salve o CPF/CNPJ antes de enviar o certificado.",
+  };
 
   return (
     <DashboardShell
@@ -137,6 +167,12 @@ export default async function BrandingPage({
               }`}
             >
               {banner.message}
+            </div>
+          )}
+
+          {isOwner && (fiscalError || fiscalSaved) && (
+            <div className={`mt-6 rounded-lg border p-3 text-sm ${fiscalError ? "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300" : "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"}`}>
+              {fiscalError ? (fiscalErrorMessages[fiscalError] ?? "Não foi possível salvar os dados fiscais.") : "Dados fiscais salvos com proteção."}
             </div>
           )}
 
@@ -223,6 +259,32 @@ export default async function BrandingPage({
               Salvar
             </button>
           </form>
+
+          {isOwner && (
+            <section className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+              <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Dados fiscais e consulta de notas</h2>
+              <p className="mt-1 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
+                Opcional para negócios formais e informais. CPF/CNPJ e certificado são privados e não aparecem na marca ou no QR Code. Notas encontradas serão apresentadas para revisão; o estoque só muda quando você confirmar a entrada.
+              </p>
+              <form action={saveFiscalTaxId} className="mt-5 space-y-3">
+                <div>
+                  <label htmlFor="tax_id" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">CPF ou CNPJ do destinatário</label>
+                  <input id="tax_id" name="tax_id" type="text" autoComplete="off" placeholder="CPF ou CNPJ (com letras, se aplicável)" className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100" />
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{fiscalProfile.maskedTaxId ? `Cadastrado: ${fiscalProfile.maskedTaxId}. Digite outro para substituir ou deixe em branco para remover.` : "O documento será cifrado antes de ser salvo."}</p>
+                </div>
+                <button type="submit" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900">Salvar documento fiscal</button>
+              </form>
+              <div className="mt-6 rounded-xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Certificado digital A1 {fiscalProfile.hasCertificate ? "· cadastrado" : "· não cadastrado"}</h3>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Envie o arquivo .pfx/.p12 (até 750 KB) e a senha para habilitar a consulta oficial de NF-e. O arquivo e a senha são cifrados separadamente e nunca são exibidos novamente.</p>
+                <form action={saveFiscalCertificate} encType="multipart/form-data" className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <input name="certificate_file" type="file" accept=".pfx,.p12,application/x-pkcs12" required className="block w-full text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium dark:text-zinc-300 dark:file:bg-zinc-800" />
+                  <input name="certificate_password" type="password" autoComplete="new-password" required placeholder="Senha do certificado A1" className="rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100" />
+                  <button type="submit" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900">Salvar certificado</button>
+                </form>
+              </div>
+            </section>
+          )}
 
           <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">

@@ -71,6 +71,96 @@ export type GymMembershipStatus = "active" | "overdue" | "paused" | "cancelled";
 export interface Database {
   public: {
     Tables: {
+      merchant_fiscal_profiles: {
+        Row: {
+          merchant_id: string;
+          tax_id_ciphertext: string | null;
+          tax_id_type: string | null;
+          certificate_ciphertext: string | null;
+          certificate_password_ciphertext: string | null;
+          certificate_file_name: string | null;
+          last_nsu: string;
+          last_query_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          merchant_id: string;
+          tax_id_ciphertext?: string | null;
+          tax_id_type?: string | null;
+          certificate_ciphertext?: string | null;
+          certificate_password_ciphertext?: string | null;
+          certificate_file_name?: string | null;
+          last_nsu?: string;
+          last_query_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          merchant_id?: string;
+          tax_id_ciphertext?: string | null;
+          tax_id_type?: string | null;
+          certificate_ciphertext?: string | null;
+          certificate_password_ciphertext?: string | null;
+          certificate_file_name?: string | null;
+          last_nsu?: string;
+          last_query_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      merchant_received_invoices: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          access_key: string;
+          invoice_number: string | null;
+          series: string | null;
+          issuer_name: string | null;
+          issuer_tax_id: string | null;
+          issued_at: string | null;
+          total_amount: number | null;
+          status: string;
+          summary_xml_ciphertext: string | null;
+          full_xml_ciphertext: string | null;
+          first_seen_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          access_key: string;
+          invoice_number?: string | null;
+          series?: string | null;
+          issuer_name?: string | null;
+          issuer_tax_id?: string | null;
+          issued_at?: string | null;
+          total_amount?: number | null;
+          status?: string;
+          summary_xml_ciphertext?: string | null;
+          full_xml_ciphertext?: string | null;
+          first_seen_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          access_key?: string;
+          invoice_number?: string | null;
+          series?: string | null;
+          issuer_name?: string | null;
+          issuer_tax_id?: string | null;
+          issued_at?: string | null;
+          total_amount?: number | null;
+          status?: string;
+          summary_xml_ciphertext?: string | null;
+          full_xml_ciphertext?: string | null;
+          first_seen_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       merchants: {
         Row: {
           id: string;

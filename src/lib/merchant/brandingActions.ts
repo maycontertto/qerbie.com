@@ -3,6 +3,9 @@
 import { redirect } from "next/navigation";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { normalizeHexColor } from "@/lib/merchant/branding";
+import { encryptFiscalValue } from "@/lib/merchant/fiscalEncryption";
+import { getBrazilianTaxIdType, isValidBrazilianTaxId, normalizeBrazilianTaxId } from "@/lib/merchant/taxId";
+import { queryInvoiceXml, queryReceivedNfe } from "@/lib/merchant/sefazDistribution";
 
 async function requireBrandingAccess() {
   const { supabase, user, merchant, membership } = await getDashboardUserOrRedirect();
@@ -109,4 +112,145 @@ export async function uploadBrandLogo(formData: FormData): Promise<void> {
   }
 
   redirect("/dashboard/branding?saved=1");
+}
+
+export async function saveFiscalTaxId(formData: FormData): Promise<void> {
+  const { supabase, merchant, user } = await getDashboardUserOrRedirect();
+  if (user.id !== merchant.owner_user_id) redirect("/dashboard/branding?fiscal_error=owner_only");
+
+  const raw = String(formData.get("tax_id") ?? "").trim();
+  const digits = normalizeBrazilianTaxId(raw);
+  if (digits && !isValidBrazilianTaxId(digits)) redirect("/dashboard/branding?fiscal_error=invalid_tax_id");
+  let encryptedTaxId: string | null = null;
+  try { if (digits) encryptedTaxId = encryptFiscalValue(digits); }
+  catch { redirect("/dashboard/branding?fiscal_error=encryption_key_missing"); }
+  const taxIdType = digits ? getBrazilianTaxIdType(digits) : null;
+  const { data: current } = await supabase.from("merchant_fiscal_profiles")
+    .select("merchant_id").eq("merchant_id", merchant.id).maybeSingle();
+  const payload = { tax_id_ciphertext: encryptedTaxId, tax_id_type: taxIdType, updated_at: new Date().toISOString() };
+  const { error } = current
+    ? await supabase.from("merchant_fiscal_profiles").update(payload).eq("merchant_id", merchant.id)
+    : await supabase.from("merchant_fiscal_profiles").insert({ merchant_id: merchant.id, ...payload });
+  if (error) redirect("/dashboard/branding?fiscal_error=save_failed");
+  redirect("/dashboard/branding?fiscal_saved=1");
+}
+
+export async function saveFiscalCertificate(formData: FormData): Promise<void> {
+  const { supabase, merchant, user } = await getDashboardUserOrRedirect();
+  if (user.id !== merchant.owner_user_id) redirect("/dashboard/branding?fiscal_error=owner_only");
+  const file = formData.get("certificate_file");
+  const password = String(formData.get("certificate_password") ?? "");
+  if (!(file instanceof File) || !file.size) redirect("/dashboard/branding?fiscal_error=certificate_missing");
+  if (file.size > 750 * 1024) redirect("/dashboard/branding?fiscal_error=certificate_too_large");
+  if (!/\.(p12|pfx)$/i.test(file.name)) redirect("/dashboard/branding?fiscal_error=certificate_type");
+  if (!password || password.length > 256) redirect("/dashboard/branding?fiscal_error=certificate_password");
+
+  const { data: profile } = await supabase.from("merchant_fiscal_profiles")
+    .select("tax_id_ciphertext")
+    .eq("merchant_id", merchant.id)
+    .maybeSingle();
+  if (!profile?.tax_id_ciphertext) redirect("/dashboard/branding?fiscal_error=tax_id_required");
+  let certificateCiphertext: string;
+  let passwordCiphertext: string;
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    certificateCiphertext = encryptFiscalValue(bytes);
+    passwordCiphertext = encryptFiscalValue(password);
+  } catch {
+    redirect("/dashboard/branding?fiscal_error=encryption_key_missing");
+  }
+  const { error } = await supabase.from("merchant_fiscal_profiles").update({
+    certificate_ciphertext: certificateCiphertext!,
+    certificate_password_ciphertext: passwordCiphertext!,
+    certificate_file_name: file.name.replace(/[^\w.-]/g, "_").slice(-100),
+    updated_at: new Date().toISOString(),
+  }).eq("merchant_id", merchant.id);
+  if (error) redirect("/dashboard/branding?fiscal_error=save_failed");
+  redirect("/dashboard/branding?fiscal_saved=1");
+}
+
+export async function syncReceivedInvoices(): Promise<void> {
+  const { supabase, merchant, user } = await getDashboardUserOrRedirect();
+  if (user.id !== merchant.owner_user_id) redirect("/dashboard/modulos/compras?invoice_error=owner_only");
+  const { data: profile } = await supabase.from("merchant_fiscal_profiles")
+    .select("tax_id_ciphertext, tax_id_type, certificate_ciphertext, certificate_password_ciphertext, last_nsu, last_query_at")
+    .eq("merchant_id", merchant.id)
+    .maybeSingle();
+  if (!profile?.tax_id_ciphertext || !profile.tax_id_type || !profile.certificate_ciphertext || !profile.certificate_password_ciphertext) {
+    redirect("/dashboard/modulos/compras?invoice_error=setup_required");
+  }
+  if (profile.last_query_at && Date.now() - Date.parse(profile.last_query_at) < 60 * 60 * 1000) {
+    redirect("/dashboard/modulos/compras?invoice_error=query_wait");
+  }
+  try {
+    const response = await queryReceivedNfe({
+      taxIdCiphertext: profile.tax_id_ciphertext,
+      taxIdType: profile.tax_id_type as "CPF" | "CNPJ",
+      certificateCiphertext: profile.certificate_ciphertext,
+      passwordCiphertext: profile.certificate_password_ciphertext,
+      lastNsu: profile.last_nsu,
+    });
+    if (response.invoices.length) {
+      const { error } = await supabase.from("merchant_received_invoices").upsert(
+        response.invoices.map((invoice) => ({
+          merchant_id: merchant.id,
+          access_key: invoice.accessKey,
+          invoice_number: invoice.invoiceNumber,
+          series: invoice.series,
+          issuer_name: invoice.issuerName,
+          issuer_tax_id: invoice.issuerTaxId ? encryptFiscalValue(invoice.issuerTaxId) : null,
+          issued_at: invoice.issuedAt,
+          total_amount: invoice.totalAmount,
+          summary_xml_ciphertext: invoice.encryptedSummary,
+          updated_at: new Date().toISOString(),
+        })),
+        { onConflict: "merchant_id,access_key", ignoreDuplicates: true },
+      );
+      if (error) throw error;
+    }
+    const { error } = await supabase.from("merchant_fiscal_profiles").update({
+      last_nsu: response.lastNsu,
+      last_query_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("merchant_id", merchant.id);
+    if (error) throw error;
+  } catch {
+    redirect("/dashboard/modulos/compras?invoice_error=query_failed");
+  }
+  redirect("/dashboard/modulos/compras?invoice_synced=1");
+}
+
+export async function fetchReceivedInvoiceXml(invoiceId: string): Promise<void> {
+  const { supabase, merchant, user } = await getDashboardUserOrRedirect();
+  if (user.id !== merchant.owner_user_id) redirect("/dashboard/modulos/compras?invoice_error=owner_only");
+  const { data: profile } = await supabase.from("merchant_fiscal_profiles")
+    .select("certificate_ciphertext, certificate_password_ciphertext")
+    .eq("merchant_id", merchant.id)
+    .maybeSingle();
+  const { data: invoice } = await supabase.from("merchant_received_invoices")
+    .select("id, access_key, status")
+    .eq("merchant_id", merchant.id)
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (!profile?.certificate_ciphertext || !profile.certificate_password_ciphertext || !invoice) {
+    redirect("/dashboard/modulos/compras?invoice_error=setup_required");
+  }
+  if (invoice.status === "entered") redirect("/dashboard/modulos/compras?invoice_error=already_entered");
+  let encryptedXml: string;
+  try {
+    ({ encryptedXml } = await queryInvoiceXml({
+      certificateCiphertext: profile.certificate_ciphertext,
+      passwordCiphertext: profile.certificate_password_ciphertext,
+      accessKey: invoice.access_key,
+    }));
+  } catch {
+    redirect("/dashboard/modulos/compras?invoice_error=xml_unavailable");
+  }
+  const { error } = await supabase.from("merchant_received_invoices").update({
+    full_xml_ciphertext: encryptedXml!,
+    status: "ready_for_review",
+    updated_at: new Date().toISOString(),
+  }).eq("merchant_id", merchant.id).eq("id", invoice.id);
+  if (error) redirect("/dashboard/modulos/compras?invoice_error=xml_unavailable");
+  redirect(`/dashboard/modulos/compras?review_invoice=${encodeURIComponent(invoice.id)}`);
 }

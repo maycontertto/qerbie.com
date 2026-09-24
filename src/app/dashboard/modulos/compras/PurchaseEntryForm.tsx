@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BarcodeScannerField } from "@/app/dashboard/modulos/produtos/BarcodeScannerField";
 import {
@@ -255,11 +255,17 @@ export function PurchaseEntryForm({
   categories,
   suppliers,
   today,
+  initialInvoiceXml,
+  initialInvoiceAccessKey,
+  initialInvoiceId,
 }: {
   products: ProductOption[];
   categories: CategoryOption[];
   suppliers: SupplierOption[];
   today: string;
+  initialInvoiceXml?: string | null;
+  initialInvoiceAccessKey?: string | null;
+  initialInvoiceId?: string | null;
 }) {
   const [productOptions, setProductOptions] = useState<ProductOption[]>(products);
   const [rows, setRows] = useState<PurchaseRowState[]>([
@@ -270,7 +276,7 @@ export function PurchaseEntryForm({
   const [supplierId, setSupplierId] = useState("");
   const [supplierName, setSupplierName] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [invoiceAccessKey, setInvoiceAccessKey] = useState("");
+  const [invoiceAccessKey, setInvoiceAccessKey] = useState(initialInvoiceAccessKey ?? "");
   const [issueDate, setIssueDate] = useState("");
   const [entryDate, setEntryDate] = useState(today);
   const [notes, setNotes] = useState("");
@@ -360,6 +366,18 @@ export function PurchaseEntryForm({
     );
     setQuickCreateBanner(null);
   }
+
+  useEffect(() => {
+    if (!initialInvoiceXml) return;
+    const timer = window.setTimeout(() => {
+      void handleXmlImport(new File([initialInvoiceXml], "nota-fiscal.xml", { type: "text/xml" })).catch(() => {
+        setXmlBanner({ kind: "error", message: "Não foi possível preparar os itens desta nota. Tente enviar o XML manualmente." });
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  // Import once when the server supplies an explicitly selected, authorized invoice.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialInvoiceXml]);
 
   function handleInvoiceAccessKeyChange(nextValue: string): void {
     setInvoiceScanBanner(null);
@@ -641,6 +659,7 @@ export function PurchaseEntryForm({
         <div className="space-y-6">
           <input type="hidden" name="items_json" value={itemsJson} />
           <input type="hidden" name="invoice_access_key" value={normalizedInvoiceAccessKey} />
+          {initialInvoiceId ? <input type="hidden" name="received_invoice_id" value={initialInvoiceId} /> : null}
 
           <PurchaseItemsEditor products={productOptions} rows={rows} onRowsChange={setRows} />
 
