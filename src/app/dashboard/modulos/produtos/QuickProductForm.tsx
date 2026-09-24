@@ -6,7 +6,7 @@ import { BarcodeScannerField } from "./BarcodeScannerField";
 import { CategorySelect } from "./CategorySelect";
 
 type Category = { id: string; name: string };
-type LookupProduct = { name: string; brand: string | null; quantity: string | null; category: string | null; imageUrl: string | null; source: string };
+type LookupProduct = { name: string; brand: string | null; quantity: string | null; category: string | null; imageUrl: string | null; source: string; productType: string };
 
 function normalize(value: string): string {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();

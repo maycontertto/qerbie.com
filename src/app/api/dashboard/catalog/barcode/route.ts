@@ -41,8 +41,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "invalid_code" }, { status: 400 });
   }
 
-  const url = new URL(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json`);
-  url.searchParams.set("fields", "status,product_name,product_name_pt,brands,quantity,categories,categories_tags,image_front_url");
+  const url = new URL(`https://world.openfoodfacts.org/api/v3/product/${encodeURIComponent(code)}`);
+  url.searchParams.set("product_type", "all");
+  url.searchParams.set("cc", "br");
+  url.searchParams.set("lc", "pt");
+  url.searchParams.set("fields", "code,product_type,product_name,product_name_pt,brands,quantity,categories,categories_tags,image_front_url");
 
   try {
     const response = await fetch(url, {
@@ -55,10 +58,11 @@ export async function GET(request: Request) {
     }
 
     const payload = await response.json() as {
-      status?: number;
+      status?: string;
       product?: {
         product_name?: string;
         product_name_pt?: string;
+        product_type?: string;
         brands?: string;
         quantity?: string;
         categories?: string;
@@ -67,7 +71,7 @@ export async function GET(request: Request) {
       };
     };
 
-    if (payload.status !== 1 || !payload.product) {
+    if (!payload.product) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
 
@@ -81,7 +85,14 @@ export async function GET(request: Request) {
       quantity: product.quantity?.trim() || null,
       category: product.categories?.split(",")[0]?.trim() || product.categories_tags?.[0]?.split(":").pop() || null,
       imageUrl: product.image_front_url || null,
-      source: "Open Food Facts",
+      source: product.product_type === "beauty"
+        ? "Open Beauty Facts"
+        : product.product_type === "petfood"
+          ? "Open Pet Food Facts"
+          : product.product_type === "product"
+            ? "Open Products Facts"
+            : "Open Food Facts",
+      productType: product.product_type || "unknown",
     }, { headers: { "Cache-Control": "private, max-age=300" } });
   } catch {
     return NextResponse.json({ error: "provider_unavailable" }, { status: 502 });
