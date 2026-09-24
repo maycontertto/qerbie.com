@@ -60,6 +60,24 @@ const RECEIVED_INVOICES_CARD: DashboardCardModel = {
   ctaLabel: "Ver notas",
 };
 
+const CASH_REGISTER_CARD: DashboardCardModel = {
+  title: "Caixa e computadores",
+  description: "Venda no balcão, vincule os operadores e acompanhe cada caixa, inclusive durante quedas de internet.",
+  hint: "Agora",
+  href: "/dashboard/modulos/vendas/caixa",
+  ctaLabel: "Abrir caixa",
+};
+
+function withCashRegisterInSales(modules: DashboardModules): DashboardModules {
+  const sales = modules.sections.vendas ?? [];
+  const existingIndex = sales.findIndex((card) => card.href === CASH_REGISTER_CARD.href);
+  const updatedSales = existingIndex >= 0
+    ? sales.map((card, index) => index === existingIndex ? { ...card, ...CASH_REGISTER_CARD } : card)
+    : [...sales, CASH_REGISTER_CARD];
+
+  return { ...modules, sections: { ...modules.sections, vendas: updatedSales } };
+}
+
 function withReceivedInvoicesInCatalog(modules: DashboardModules, categoryKey: string | null | undefined): DashboardModules {
   if (!supportsPurchaseEntries(categoryKey)) return modules;
   const catalog = modules.sections.catalogo ?? [];
@@ -1596,5 +1614,7 @@ export function getDashboardModules(
       break;
   }
 
-  return withReceivedInvoicesInCatalog(withStockInCatalog(withProductsInCatalog(modules)), categoryKey);
+  return withCashRegisterInSales(
+    withReceivedInvoicesInCatalog(withStockInCatalog(withProductsInCatalog(modules)), categoryKey),
+  );
 }
