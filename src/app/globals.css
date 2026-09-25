@@ -110,14 +110,14 @@ body {
   transform: translateY(1px) scale(0.99);
 }
 
-.qerbie-dashboard .dashboard-content :is(button, a, input[type="submit"])[class*="bg-zinc-900"] {
+.qerbie-dashboard .dashboard-content :is(button, a, input[type="submit"])[class~="bg-zinc-900"] {
   border-color: #16a34a;
   background-color: #16a34a;
   color: #fff;
   box-shadow: 0 2px 5px rgb(22 163 74 / 16%);
 }
 
-.qerbie-dashboard .dashboard-content :is(button, a, input[type="submit"])[class*="bg-zinc-900"]:hover {
+.qerbie-dashboard .dashboard-content :is(button, a, input[type="submit"])[class~="bg-zinc-900"]:hover {
   border-color: #15803d;
   background-color: #15803d;
 }
