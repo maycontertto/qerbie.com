@@ -70,6 +70,14 @@ export async function syncMercadoPagoApprovedPayment(paymentId: string): Promise
     return { ok: false, reason: "invoice_not_found" };
   }
 
+  const paymentAmountCents = Math.round(Number(payment.transaction_amount) * 100);
+  if (!Number.isFinite(paymentAmountCents) || paymentAmountCents !== invoice.amount_cents) {
+    return { ok: false, reason: "payment_amount_mismatch" };
+  }
+  if (payment.currency_id !== "BRL") {
+    return { ok: false, reason: "payment_currency_mismatch" };
+  }
+
   if (invoice.status === "paid") {
     return { ok: true, applied: false, merchantId: invoice.merchant_id };
   }

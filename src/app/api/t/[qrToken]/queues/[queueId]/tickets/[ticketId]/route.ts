@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,10 +11,11 @@ export async function GET(
   const { qrToken, queueId, ticketId } = await params;
   const supabase = await createClient();
 
-  const { data: table } = await supabase
+  const { data: table } = await createAdminClient()
     .from("merchant_tables")
     .select("merchant_id")
     .eq("qr_token", qrToken)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!table) {

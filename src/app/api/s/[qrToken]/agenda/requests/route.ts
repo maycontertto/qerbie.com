@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -30,7 +31,7 @@ export async function POST(
 
   const supabase = await createClient({ "x-beauty-qr-token": qrToken });
 
-  const { data: token } = await supabase
+  const { data: token } = await createAdminClient()
     .from("beauty_qr_tokens")
     .select("merchant_id")
     .eq("qr_token", qrToken)

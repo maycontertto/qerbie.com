@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -16,7 +17,7 @@ export default async function EsteticaAgendaPage({
 
   const supabase = await createClient({ "x-aesthetic-qr-token": qrToken });
 
-  const { data: token } = await supabase
+  const { data: token } = await createAdminClient()
     .from("aesthetic_qr_tokens")
     .select("merchant_id")
     .eq("qr_token", qrToken)

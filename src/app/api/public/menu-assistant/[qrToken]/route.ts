@@ -1,5 +1,5 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { getConfiguredProvider } from "@ai/providers";
 import { AIProviderRateLimitError } from "@ai/core/provider";
 import type { AIChatMessage } from "@ai/core/provider";
@@ -33,19 +33,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ qrToken
     );
   }
 
-  const supabase = await createClient();
 
-  const { data: table } = await supabase
+  const { data: table } = await createAdminClient()
     .from("merchant_tables")
     .select("merchant_id")
     .eq("qr_token", qrToken)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!table) {
     return NextResponse.json({ error: "invalid_qr" }, { status: 404 });
   }
 
-  const { data: merchant } = await supabase
+  const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
     .from("merchants")
     .select("id, name, business_category")
     .eq("id", table.merchant_id)
@@ -71,7 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ qrToken
   }
 
   const [{ data: menuProducts }, popularItems] = await Promise.all([
-    supabase
+    merchantReader
       .from("products")
       .select("name, description, price")
       .eq("merchant_id", merchant.id)

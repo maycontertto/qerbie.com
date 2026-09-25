@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
@@ -24,10 +25,11 @@ export async function POST(
     typeof body?.customerName === "string" ? body.customerName : defaultName,
   );
 
-  const { data: table } = await supabase
+  const { data: table } = await createAdminClient()
     .from("merchant_tables")
     .select("merchant_id")
     .eq("qr_token", qrToken)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!table) {

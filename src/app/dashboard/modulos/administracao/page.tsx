@@ -67,7 +67,7 @@ export default async function AdministracaoModulePage({
           ? {
               kind: "error" as const,
               message:
-                "Configuração do servidor incompleta no runtime. Verifique NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY (e redeploy/restart). Diagnóstico: /api/diag/env",
+                "Configuração do servidor incompleta. Revise as variáveis do Supabase no ambiente de hospedagem e tente novamente.",
             }
         : error === "login_taken"
           ? { kind: "error" as const, message: "Esse login já está em uso. Escolha outro." }

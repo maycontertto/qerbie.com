@@ -7,21 +7,12 @@ alter table public.products enable row level security;
 alter table public.products force row level security;
 
 -- ── Grants ──────────────────────────────────────────────────
-revoke all on table public.products from anon;
+revoke all on table public.products from public, anon;
 revoke all on table public.products from authenticated;
 
-grant select on table public.products to anon;
+-- Public storefronts read through validated server routes. The raw table
+-- stays private so anon cannot enumerate products or inventory metadata.
 grant select, insert, update, delete on table public.products to authenticated;
-
--- ── Anon (customers via QR) ─────────────────────────────────
-drop policy if exists products_anon_select on public.products;
-create policy products_anon_select
-on public.products
-for select
-to anon
-using (
-  is_active = true
-);
 
 -- ── Authenticated (merchant staff) ─────────────────────────
 drop policy if exists products_auth_select on public.products;

@@ -1,6 +1,6 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
 import { CustomerServiceAssistant } from "@/app/t/CustomerServiceAssistant";
 import { CUSTOMER_SESSION_COOKIE } from "@/lib/customer/constants";
@@ -15,9 +15,8 @@ export default async function EsteticaMenuPage({
   const cookieStore = await cookies();
   const hasSession = Boolean(cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value);
 
-  const supabase = await createClient({ "x-aesthetic-qr-token": qrToken });
 
-  const { data: token } = await supabase
+  const { data: token } = await createAdminClient()
     .from("aesthetic_qr_tokens")
     .select("label, merchant_id")
     .eq("qr_token", qrToken)
@@ -28,7 +27,8 @@ export default async function EsteticaMenuPage({
     return <CustomerInvalidQr backHref={`/e/${encodeURIComponent(qrToken)}`} />;
   }
 
-  const { data: merchant } = await supabase
+  const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
     .from("merchants")
     .select("name, brand_display_name, brand_logo_url, brand_primary_color")
     .eq("id", token.merchant_id)

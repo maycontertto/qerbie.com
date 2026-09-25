@@ -7,24 +7,14 @@ alter table public.menu_categories enable row level security;
 alter table public.menu_categories force row level security;
 
 -- ── Grants ──────────────────────────────────────────────────
-revoke all on table public.menu_categories from anon;
+revoke all on table public.menu_categories from public, anon;
 revoke all on table public.menu_categories from authenticated;
 
--- Customers (anon) can only read.
-grant select on table public.menu_categories to anon;
 -- Merchants (authenticated) can manage.
 grant select, insert, update, delete on table public.menu_categories to authenticated;
 
--- ── Anon (customers via QR) ─────────────────────────────────
--- Customers see only active categories.
+-- Public storefronts read through validated server routes.
 drop policy if exists menu_categories_anon_select on public.menu_categories;
-create policy menu_categories_anon_select
-on public.menu_categories
-for select
-to anon
-using (
-  is_active = true
-);
 
 -- ── Authenticated (merchant staff) ─────────────────────────
 -- Owner or member can read ALL categories of their merchant.

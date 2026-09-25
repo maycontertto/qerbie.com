@@ -8,17 +8,15 @@ function addDays(date: Date, days: number): Date {
 }
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
   const secret = process.env.CRON_SECRET;
   const auth = request.headers.get("authorization") ?? "";
-  const secretFromQuery = url.searchParams.get("secret") ?? "";
   const isVercelCron = process.env.VERCEL === "1" && request.headers.get("x-vercel-cron") === "1";
 
   // Security model:
   // - If CRON_SECRET is set: require it (manual/external cron).
   // - If CRON_SECRET is NOT set: allow Vercel Cron Jobs (scheduled invocation).
   const ok = secret
-    ? auth === `Bearer ${secret}` || secretFromQuery === secret
+    ? auth === `Bearer ${secret}`
     : isVercelCron;
 
   if (!ok) {

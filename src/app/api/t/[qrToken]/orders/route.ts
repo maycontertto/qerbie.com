@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -67,10 +68,11 @@ export async function POST(
 
   const supabase = await createClient();
 
-  const { data: table, error: tableError } = await supabase
+  const { data: table, error: tableError } = await createAdminClient()
     .from("merchant_tables")
     .select("id, merchant_id, label")
     .eq("qr_token", qrToken)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (tableError || !table) {
@@ -78,11 +80,12 @@ export async function POST(
   }
 
   const merchantId = table.merchant_id;
+  const merchantReader = createAdminClient();
 
   // Resolve menu
   let menuId = (body.menuId ?? "").trim();
   if (menuId) {
-    const { data: menuOk } = await supabase
+    const { data: menuOk } = await merchantReader
       .from("menus")
       .select("id")
       .eq("merchant_id", merchantId)
@@ -93,7 +96,7 @@ export async function POST(
   }
 
   if (!menuId) {
-    const { data: firstMenu } = await supabase
+    const { data: firstMenu } = await merchantReader
       .from("menus")
       .select("id")
       .eq("merchant_id", merchantId)
@@ -112,7 +115,7 @@ export async function POST(
 
   // Fetch products (server-trusted pricing)
   const productIds = Array.from(new Set(items.map((i) => i.productId)));
-  const { data: products, error: productsError } = await supabase
+  const { data: products, error: productsError } = await merchantReader
     .from("products")
     .select("id, name, price, is_active, requires_prescription, requires_document")
     .eq("merchant_id", merchantId)
@@ -156,7 +159,7 @@ export async function POST(
   let deliveryEtaMinutes: number | null = null;
 
   if (orderType === "delivery") {
-    const { data: delivery, error: deliveryError } = await supabase
+    const { data: delivery, error: deliveryError } = await merchantReader
       .from("merchants")
       .select("delivery_enabled, delivery_fee, delivery_eta_minutes")
       .eq("id", merchantId)

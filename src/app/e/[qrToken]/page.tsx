@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { CustomerStart } from "@/app/e/[qrToken]/CustomerStart";
 import { buildMerchantBranding } from "@/lib/merchant/branding";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
@@ -13,9 +13,8 @@ export default async function EsteticaStartPage({
   const { qrToken } = await params;
   const { error, quick } = await searchParams;
 
-  const supabase = await createClient({ "x-aesthetic-qr-token": qrToken });
 
-  const { data: token } = await supabase
+  const { data: token } = await createAdminClient()
     .from("aesthetic_qr_tokens")
     .select("id, label, merchant_id, is_active")
     .eq("qr_token", qrToken)
@@ -26,7 +25,8 @@ export default async function EsteticaStartPage({
     return <CustomerInvalidQr backHref={null} />;
   }
 
-  const { data: merchant } = await supabase
+  const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
     .from("merchants")
     .select(
       "name, brand_display_name, brand_logo_url, brand_primary_color, customer_welcome_message",

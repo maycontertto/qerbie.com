@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getConfiguredProvider } from "@ai/providers";
 import { AIProviderRateLimitError } from "@ai/core/provider";
@@ -35,7 +36,8 @@ export async function getServiceAssistantReply(params: {
 
   // Todas as tabelas de QR das verticais têm o mesmo formato; o cast pra uma
   // literal representativa preserva a tipagem do supabase-js com tabela dinâmica.
-  const { data: token } = await supabase
+  const tokenReader = createAdminClient();
+  const { data: token } = await tokenReader
     .from(config.qrTokenTable as "barbershop_qr_tokens")
     .select("merchant_id")
     .eq("qr_token", params.qrToken)
@@ -46,7 +48,8 @@ export async function getServiceAssistantReply(params: {
     return { reply: "QR inválido.", status: 404 };
   }
 
-  const { data: merchant } = await supabase
+  const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
     .from("merchants")
     .select("name")
     .eq("id", token.merchant_id)

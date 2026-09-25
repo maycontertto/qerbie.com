@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -5,7 +6,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ qrT
   const { qrToken } = await params;
   const supabase = await createClient({ "x-carwash-qr-token": qrToken });
 
-  const { data: token } = await supabase
+  const { data: token } = await createAdminClient()
     .from("carwash_qr_tokens")
     .select("merchant_id")
     .eq("qr_token", qrToken)

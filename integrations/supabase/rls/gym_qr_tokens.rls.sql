@@ -6,19 +6,10 @@ begin;
 alter table public.gym_qr_tokens enable row level security;
 alter table public.gym_qr_tokens force row level security;
 
-revoke all on table public.gym_qr_tokens from anon;
+revoke all on table public.gym_qr_tokens from public, anon;
 revoke all on table public.gym_qr_tokens from authenticated;
 
-grant select on table public.gym_qr_tokens to anon;
 grant select, insert, update, delete on table public.gym_qr_tokens to authenticated;
-
--- Anon: allow resolving QR token (only active)
-drop policy if exists gym_qr_tokens_anon_select on public.gym_qr_tokens;
-create policy gym_qr_tokens_anon_select
-on public.gym_qr_tokens
-for select
-to anon
-using (is_active = true);
 
 -- Authenticated: merchant staff
 

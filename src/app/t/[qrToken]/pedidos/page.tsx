@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { CustomerOrdersShell } from "@/app/t/[qrToken]/pedidos/CustomerOrdersShell";
@@ -33,17 +34,19 @@ export default async function CustomerOrdersPage({
 
   const supabase = await createClient();
 
-  const { data: table } = await supabase
+  const { data: table } = await createAdminClient()
     .from("merchant_tables")
     .select("id, label, merchant_id")
     .eq("qr_token", qrToken)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!table) {
     return <CustomerInvalidQr backHref={null} />;
   }
 
-  const { data: merchant } = await supabase
+  const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
     .from("merchants")
     .select(
       "name, brand_display_name, brand_logo_url, brand_primary_color, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer",

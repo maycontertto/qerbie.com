@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
@@ -38,7 +39,7 @@ export async function POST(
   const vehicleLabel = normalizeVehicleLabel(typeof body?.vehicleLabel === "string" ? body.vehicleLabel : "");
   const serviceId = typeof body?.serviceId === "string" ? body.serviceId.trim() : "";
 
-  const { data: token } = await supabase
+  const { data: token } = await createAdminClient()
     .from("carwash_qr_tokens")
     .select("merchant_id")
     .eq("qr_token", qrToken)

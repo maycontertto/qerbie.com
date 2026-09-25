@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
@@ -39,7 +40,7 @@ export async function POST(
     return NextResponse.json({ error: "invalid_pet" }, { status: 400 });
   }
 
-  const { data: token } = await supabase
+  const { data: token } = await createAdminClient()
     .from("pet_qr_tokens")
     .select("merchant_id")
     .eq("qr_token", qrToken)

@@ -74,6 +74,7 @@ type MercadoPagoPayment = {
   status: string;
   external_reference?: string | null;
   transaction_amount?: number | null;
+  currency_id?: string | null;
   date_approved?: string | null;
 };
 

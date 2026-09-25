@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { CustomerStart } from "@/app/t/[qrToken]/CustomerStart";
 import { buildMerchantBranding } from "@/lib/merchant/branding";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
@@ -13,19 +13,20 @@ export default async function TableStartPage({
   const { qrToken } = await params;
   const { error, quick } = await searchParams;
 
-  const supabase = await createClient();
 
-  const { data: table } = await supabase
+  const { data: table } = await createAdminClient()
     .from("merchant_tables")
     .select("id, label, merchant_id")
     .eq("qr_token", qrToken)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!table) {
     return <CustomerInvalidQr backHref={null} />;
   }
 
-  const { data: merchant } = await supabase
+  const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
     .from("merchants")
     .select(
       "name, brand_display_name, brand_logo_url, brand_primary_color, customer_welcome_message",

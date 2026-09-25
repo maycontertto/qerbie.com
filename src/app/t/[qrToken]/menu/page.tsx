@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { buildMerchantBranding } from "@/lib/merchant/branding";
 import { CustomerMenuShell } from "@/app/t/[qrToken]/menu/CustomerMenuShell";
 import { cookies } from "next/headers";
@@ -17,21 +17,22 @@ export default async function CustomerMenuPage({
   const cookieStore = await cookies();
   const hasSession = Boolean(cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value);
   const place = cookieStore.get(CUSTOMER_PLACE_COOKIE)?.value ?? "";
-  const supabase = await createClient();
 
-  const { data: table } = await supabase
+  const { data: table } = await createAdminClient()
     .from("merchant_tables")
     .select("merchant_id, label")
     .eq("qr_token", qrToken)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!table) {
     return <CustomerInvalidQr backHref={`/t/${encodeURIComponent(qrToken)}`} />;
   }
 
-  const { data: merchant } = await supabase
+  const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
     .from("merchants")
-    .select("*, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer")
+    .select("id, name, business_category, brand_display_name, brand_logo_url, brand_primary_color, customer_welcome_message, delivery_enabled, delivery_fee, delivery_note, delivery_eta_minutes, support_whatsapp_url, support_hours, support_email, support_phone, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer")
     .eq("id", table.merchant_id)
     .maybeSingle();
 
@@ -57,7 +58,7 @@ export default async function CustomerMenuPage({
       }
     : { whatsappUrl: null, hours: null, email: null, phone: null };
 
-  const { data: menus } = await supabase
+  const { data: menus } = await merchantReader
     .from("menus")
     .select("id, name, description, slug")
     .eq("merchant_id", table.merchant_id)
@@ -70,7 +71,7 @@ export default async function CustomerMenuPage({
       : menus?.[0]?.id ?? null;
 
   const { data: categories } = activeMenuId
-    ? await supabase
+    ? await merchantReader
         .from("menu_categories")
         .select("id, name, description")
         .eq("merchant_id", table.merchant_id)
@@ -82,7 +83,7 @@ export default async function CustomerMenuPage({
       };
 
   const { data: products } = activeMenuId
-    ? await supabase
+    ? await merchantReader
         .from("products")
         .select(
           "id, category_id, name, description, price, image_url, is_featured, requires_prescription, requires_document",
