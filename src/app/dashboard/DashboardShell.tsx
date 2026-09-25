@@ -116,7 +116,7 @@ export function DashboardShell({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             {([
               { key: "catalogo", label: "Catálogo", description: "Produtos e serviços", Icon: Package },
               { key: "atendimento", label: "Atendimento", description: "Pedidos e agenda", Icon: UsersRound },
