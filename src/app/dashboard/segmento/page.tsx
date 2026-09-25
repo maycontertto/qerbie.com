@@ -36,13 +36,13 @@ export default async function ChooseSegmentPage({
           : null;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-linear-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
+    <div className="qerbie-dashboard relative min-h-screen overflow-hidden bg-linear-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-brand/10 blur-3xl"
       />
 
-      <main className="relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+      <main className="dashboard-content relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
         {selectedLabel && (
           <Link
             href="/dashboard"
@@ -100,19 +100,19 @@ export default async function ChooseSegmentPage({
                   disabled={!isOwner}
                   className={`group flex w-full items-center gap-4 rounded-2xl border p-5 text-left shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
                     selected
-                      ? "border-brand bg-brand/5 ring-1 ring-brand"
-                      : "border-zinc-200 bg-white/80 hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/60"
+                    ? "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/30 shadow-md dark:border-emerald-700 dark:bg-emerald-950/50"
+                      : "border-zinc-200 bg-white/90 hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900/70 dark:hover:border-emerald-800"
                   }`}
                 >
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-2xl dark:bg-zinc-800">
+                  <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl transition-colors ${selected ? "bg-emerald-100 dark:bg-emerald-900/70" : "bg-zinc-100 dark:bg-zinc-800"}`}>
                     {BUSINESS_CATEGORY_EMOJI[c.key]}
                   </span>
                   <span>
-                    <span className="block text-base font-semibold text-zinc-900 dark:text-zinc-50">
+                    <span className="block text-lg font-semibold text-zinc-900 dark:text-zinc-50">
                       {c.label}
                     </span>
-                    <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
-                      Ir para o painel de {c.label.toLowerCase()}
+                    <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">
+                      {selected ? "Segmento selecionado" : `Abrir painel de ${c.label.toLowerCase()}`}
                     </span>
                   </span>
                 </button>

@@ -558,16 +558,16 @@ function DashboardCard({
   ctaLabel?: string;
 }) {
   return (
-    <div className="group rounded-xl border border-zinc-200 bg-white/70 p-6 shadow-sm backdrop-blur transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700">
+    <div className="group rounded-2xl border border-zinc-200 bg-white/85 p-6 shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900/70 dark:hover:border-emerald-800">
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+        <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           {title}
         </h3>
         <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-200">
           {hint}
         </span>
       </div>
-      <p className="mt-1.5 text-sm text-zinc-500 dark:text-zinc-400">
+      <p className="mt-1.5 text-base text-zinc-500 dark:text-zinc-400">
         {description}
       </p>
 
@@ -575,7 +575,7 @@ function DashboardCard({
         <div className="mt-4">
           <a
             href={href}
-            className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 dark:bg-emerald-500 dark:text-white dark:hover:bg-emerald-400"
           >
             {ctaLabel ?? "Abrir"}
           </a>
@@ -599,7 +599,7 @@ function TabLink({
       href={href}
       className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
         active
-          ? "border-zinc-900 bg-zinc-900 text-white dark:border-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
+          ? "border-emerald-500 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-300 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100 dark:ring-emerald-900"
           : "border-zinc-200 bg-white/80 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200 dark:hover:bg-zinc-800"
       }`}
     >

@@ -21,8 +21,8 @@ function SidebarLink({
       href={href}
       className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
         active
-          ? "bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
-          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200 dark:ring-emerald-900"
+          : "text-zinc-600 hover:bg-emerald-50/80 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
       }`}
     >
       <span aria-hidden>{icon}</span>
@@ -53,17 +53,17 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-linear-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
+    <div className="qerbie-dashboard relative min-h-screen overflow-hidden bg-linear-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-zinc-200/50 blur-3xl dark:bg-zinc-800/40"
+        className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-emerald-200/35 blur-3xl dark:bg-emerald-900/20"
       />
       <div
         aria-hidden
         className="pointer-events-none absolute -bottom-28 -right-16 h-96 w-96 rounded-full bg-zinc-200/40 blur-3xl dark:bg-zinc-800/30"
       />
 
-      <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
+      <header className="qerbie-dashboard__header sticky top-0 z-50 border-b border-zinc-200 bg-white/85 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/80">
         <div className="mx-auto flex max-w-480 items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2.5">
@@ -73,12 +73,12 @@ export function DashboardShell({
                 width={34}
                 height={34}
                 priority
-                className="h-8 w-8 rounded-lg border border-zinc-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900"
+                className="h-9 w-9 rounded-xl border border-emerald-100 bg-emerald-50 p-1.5 shadow-sm dark:border-emerald-900 dark:bg-emerald-950"
               />
               <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Qerbie</h1>
             </div>
 
-            <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-200">
+            <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3.5 py-1.5 text-sm font-semibold text-emerald-900 dark:border-emerald-900/70 dark:bg-emerald-950/60 dark:text-emerald-100">
               {merchantName}
             </span>
           </div>
@@ -97,7 +97,7 @@ export function DashboardShell({
             <form action={signOut}>
               <button
                 type="submit"
-                className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 shadow-sm transition-colors hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/50 dark:hover:text-emerald-100"
               >
                 Sair
               </button>
@@ -108,8 +108,8 @@ export function DashboardShell({
 
       <div className="relative mx-auto flex w-full max-w-480 gap-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <aside className="hidden w-64 shrink-0 lg:block">
-          <nav className="sticky top-24 rounded-2xl border border-zinc-200 bg-white/80 p-4 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
-            <p className="px-2 text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">
+          <nav className="qerbie-dashboard__nav sticky top-24 rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/80">
+            <p className="px-2 text-xs font-bold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
               {selectedLabel}
             </p>
 
@@ -145,14 +145,14 @@ export function DashboardShell({
             <div className="flex flex-col gap-1">
               <Link
                 href="/dashboard/pagamento"
-                className="rounded-lg px-2.5 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
               >
                 Assinatura / Pagamento
               </Link>
               {isOwner ? (
                 <a
                   href="/dashboard/segmento?choose=1"
-                  className="rounded-lg px-2.5 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
                 >
                   Trocar tipo de negócio
                 </a>
@@ -160,7 +160,7 @@ export function DashboardShell({
               {isOwner || canBranding ? (
                 <a
                   href="/dashboard/branding"
-                  className="rounded-lg px-2.5 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
                 >
                   Personalizar marca (QR)
                 </a>
@@ -169,7 +169,7 @@ export function DashboardShell({
           </nav>
         </aside>
 
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="dashboard-content min-w-0 flex-1">{children}</div>
       </div>
     </div>
   );
