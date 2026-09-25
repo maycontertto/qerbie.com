@@ -1,37 +1,20 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  BarChart3,
+  CreditCard,
+  Package,
+  Paintbrush,
+  RefreshCw,
+  ShoppingCart,
+  UsersRound,
+} from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 
 export type DashboardSection = "catalogo" | "atendimento" | "vendas" | "historico";
 
-function SidebarLink({
-  href,
-  icon,
-  label,
-  active,
-}: {
-  href: string;
-  icon: string;
-  label: string;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
-        active
-          ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 shadow-sm dark:bg-emerald-950/60 dark:text-emerald-200 dark:ring-emerald-900"
-          : "text-zinc-600 hover:bg-emerald-50/80 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
-      }`}
-    >
-      <span aria-hidden>{icon}</span>
-      {label}
-    </Link>
-  );
-}
-
-// Shell compartilhado (header + sidebar) usado na home do dashboard e em todas
+// Shell compartilhado (cabeçalho + navegação superior) usado na home e em todas
 // as páginas de módulo/pagamento/branding, mantendo a navegação sempre visível.
 export function DashboardShell({
   merchantName,
@@ -106,70 +89,60 @@ export function DashboardShell({
         </div>
       </header>
 
-      <div className="relative mx-auto flex w-full max-w-480 gap-6 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <aside className="hidden w-64 shrink-0 lg:block">
-          <nav className="qerbie-dashboard__nav sticky top-24 rounded-2xl border border-zinc-200 bg-white/90 p-4 shadow-sm backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/80">
-            <p className="px-2 text-xs font-bold uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500">
-              {selectedLabel}
-            </p>
-
-            <div className="mt-2 flex flex-col gap-1">
-              <SidebarLink
-                active={activeSection === "catalogo"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=catalogo`}
-                icon="📦"
-                label="Catálogo"
-              />
-              <SidebarLink
-                active={activeSection === "atendimento"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=atendimento`}
-                icon="🧑‍🤝‍🧑"
-                label="Atendimento"
-              />
-              <SidebarLink
-                active={activeSection === "vendas"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=vendas`}
-                icon="💰"
-                label="Vendas"
-              />
-              <SidebarLink
-                active={activeSection === "historico"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=historico`}
-                icon="📊"
-                label="Histórico de Vendas"
-              />
+      <div className="relative mx-auto w-full max-w-480 px-4 pb-10 pt-5 sm:px-6 sm:pt-6 lg:px-8">
+        <nav aria-label="Navegação principal" className="qerbie-dashboard__nav rounded-3xl border border-zinc-200 bg-white/90 p-3 shadow-sm backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/80 sm:p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1 sm:px-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">Seu espaço</p>
+              <p className="mt-0.5 text-sm font-semibold text-zinc-700 dark:text-zinc-200">{selectedLabel}</p>
             </div>
-
-            <hr className="my-4 border-zinc-200 dark:border-zinc-800" />
-
-            <div className="flex flex-col gap-1">
-              <Link
-                href="/dashboard/pagamento"
-                className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
-              >
-                Assinatura / Pagamento
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/dashboard/pagamento" className="qerbie-dashboard__quick-link">
+                <CreditCard aria-hidden="true" />
+                <span>Assinatura / Pagamento</span>
               </Link>
               {isOwner ? (
-                <a
-                  href="/dashboard/segmento?choose=1"
-                  className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
-                >
-                  Trocar tipo de negócio
-                </a>
+                <Link href="/dashboard/segmento?choose=1" className="qerbie-dashboard__quick-link">
+                  <RefreshCw aria-hidden="true" />
+                  <span>Trocar tipo</span>
+                </Link>
               ) : null}
               {isOwner || canBranding ? (
-                <a
-                  href="/dashboard/branding"
-                  className="rounded-xl px-3 py-2.5 text-sm font-semibold text-zinc-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800 dark:text-zinc-300 dark:hover:bg-emerald-950/40 dark:hover:text-emerald-200"
-                >
-                  Personalizar marca (QR)
-                </a>
+                <Link href="/dashboard/branding" className="qerbie-dashboard__quick-link">
+                  <Paintbrush aria-hidden="true" />
+                  <span>Personalizar marca</span>
+                </Link>
               ) : null}
             </div>
-          </nav>
-        </aside>
+          </div>
 
-        <div className="dashboard-content min-w-0 flex-1">{children}</div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+            {([
+              { key: "catalogo", label: "Catálogo", description: "Produtos e serviços", Icon: Package },
+              { key: "atendimento", label: "Atendimento", description: "Pedidos e agenda", Icon: UsersRound },
+              { key: "vendas", label: "Vendas", description: "Caixa e recebimentos", Icon: ShoppingCart },
+              { key: "historico", label: "Histórico de Vendas", description: "Resumo e resultados", Icon: BarChart3 },
+            ] as const).map(({ key, label, description, Icon }) => {
+              const active = activeSection === key;
+              return (
+                <Link
+                  key={key}
+                  href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=${key}`}
+                  aria-current={active ? "page" : undefined}
+                  className={`qerbie-dashboard__section-link ${active ? "is-active" : ""}`}
+                >
+                  <span className="qerbie-dashboard__section-icon"><Icon aria-hidden="true" /></span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-bold sm:text-base">{label}</span>
+                    <span className="mt-0.5 hidden text-xs text-zinc-500 dark:text-zinc-400 sm:block">{description}</span>
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+
+        <main className="dashboard-content min-w-0 pt-5 sm:pt-7">{children}</main>
       </div>
     </div>
   );

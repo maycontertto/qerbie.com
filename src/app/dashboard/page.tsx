@@ -313,30 +313,6 @@ export default async function DashboardPage({
               </div>
             )}
 
-            {/* Tabs (mobile/tablet only — a sidebar handles this on desktop) */}
-            <div className="mt-6 flex gap-2 overflow-x-auto lg:hidden">
-              <TabLink
-                active={activeSection === "catalogo"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=catalogo`}
-                label="Catálogo"
-              />
-              <TabLink
-                active={activeSection === "atendimento"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=atendimento`}
-                label="Atendimento"
-              />
-              <TabLink
-                active={activeSection === "vendas"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=vendas`}
-                label="Vendas"
-              />
-              <TabLink
-                active={activeSection === "historico"}
-                href={`/dashboard?category=${encodeURIComponent(selectedKey ?? "")}&section=historico`}
-                label="Histórico de Vendas"
-              />
-            </div>
-
             <section className="mt-10">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -348,28 +324,6 @@ export default async function DashboardPage({
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2 lg:hidden">
-                  {isOwner ? (
-                    <>
-                      <a
-                        href="/dashboard/segmento?choose=1"
-                        className="text-sm font-medium text-zinc-500 hover:underline dark:text-zinc-400"
-                      >
-                        Trocar tipo
-                      </a>
-                      <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                    </>
-                  ) : null}
-
-                  {isOwner || can("dashboard_branding") ? (
-                    <a
-                      href="/dashboard/branding"
-                      className="text-sm font-medium text-zinc-500 hover:underline dark:text-zinc-400"
-                    >
-                      Personalizar marca (QR)
-                    </a>
-                  ) : null}
-                </div>
               </div>
 
               {/* Content */}
@@ -582,28 +536,5 @@ function DashboardCard({
         </div>
       )}
     </div>
-  );
-}
-
-function TabLink({
-  href,
-  label,
-  active,
-}: {
-  href: string;
-  label: string;
-  active: boolean;
-}) {
-  return (
-    <a
-      href={href}
-      className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-        active
-          ? "border-emerald-500 bg-emerald-50 text-emerald-900 ring-1 ring-emerald-300 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-100 dark:ring-emerald-900"
-          : "border-zinc-200 bg-white/80 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200 dark:hover:bg-zinc-800"
-      }`}
-    >
-      {label}
-    </a>
   );
 }

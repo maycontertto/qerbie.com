@@ -56,6 +56,94 @@ body {
   box-shadow: 0 12px 32px rgb(15 23 42 / 5%);
 }
 
+.qerbie-dashboard__section-link {
+  display: flex;
+  min-height: 4.35rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid #e6ebf0;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 0.7rem 0.8rem;
+  color: #334155;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 3%);
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+
+.qerbie-dashboard__section-link:hover {
+  transform: translateY(-1px);
+  border-color: #a7e2bb;
+  background: #f7fef9;
+  box-shadow: 0 8px 18px rgb(15 23 42 / 7%);
+}
+
+.qerbie-dashboard__section-link:focus-visible,
+.qerbie-dashboard__quick-link:focus-visible {
+  outline: 3px solid rgb(34 197 94 / 48%);
+  outline-offset: 2px;
+}
+
+.qerbie-dashboard__section-link:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.qerbie-dashboard__section-link.is-active {
+  border-color: #43bd72;
+  background: linear-gradient(135deg, #ecfdf3 0%, #f7fff9 100%);
+  color: #14532d;
+  box-shadow: inset 0 0 0 1px rgb(34 197 94 / 16%), 0 5px 14px rgb(22 163 74 / 9%);
+}
+
+.qerbie-dashboard__section-icon {
+  display: flex;
+  width: 2.4rem;
+  height: 2.4rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.qerbie-dashboard__section-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  stroke-width: 2;
+}
+
+.qerbie-dashboard__section-link.is-active .qerbie-dashboard__section-icon {
+  background: #d9fbe5;
+  color: #168344;
+}
+
+.qerbie-dashboard__quick-link {
+  display: inline-flex;
+  min-height: 2.35rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid #e5eaf0;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0.4rem 0.7rem;
+  color: #566273;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.qerbie-dashboard__quick-link:hover {
+  border-color: #b8e8c8;
+  background: #f0fcf4;
+  color: #166534;
+}
+
+.qerbie-dashboard__quick-link svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
 .qerbie-dashboard .dashboard-content {
   min-width: 0;
 }
@@ -157,6 +245,45 @@ body {
     border-color: #2a3442;
     background: rgb(20 28 40 / 94%);
     box-shadow: 0 12px 32px rgb(0 0 0 / 16%);
+  }
+
+  .qerbie-dashboard__section-link {
+    border-color: #2a3442;
+    background: #151d29;
+    color: #dbe4ef;
+  }
+
+  .qerbie-dashboard__section-link:hover {
+    border-color: #28623e;
+    background: #14271d;
+  }
+
+  .qerbie-dashboard__section-link.is-active {
+    border-color: #2c9a55;
+    background: linear-gradient(135deg, #123321 0%, #17271e 100%);
+    color: #dcfce7;
+  }
+
+  .qerbie-dashboard__section-icon {
+    background: #222d3b;
+    color: #a8b5c5;
+  }
+
+  .qerbie-dashboard__section-link.is-active .qerbie-dashboard__section-icon {
+    background: #164528;
+    color: #86efac;
+  }
+
+  .qerbie-dashboard__quick-link {
+    border-color: #2a3442;
+    background: #151d29;
+    color: #c5d0de;
+  }
+
+  .qerbie-dashboard__quick-link:hover {
+    border-color: #28623e;
+    background: #14271d;
+    color: #bbf7d0;
   }
 
   .qerbie-dashboard .dashboard-content :is(section, article, div)[class*="rounded-"][class*="border"][class*="bg-white"] {
