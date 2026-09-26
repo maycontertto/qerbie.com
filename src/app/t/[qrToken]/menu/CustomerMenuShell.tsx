@@ -59,6 +59,39 @@ type Branding = {
   primaryColor: string | null;
 };
 
+function buildWhatsAppLink(
+  savedUrl: string | null,
+  phone: string | null,
+  merchantName: string,
+): string | null {
+  let number = "";
+
+  try {
+    const url = new URL(savedUrl ?? "");
+    const host = url.hostname.toLowerCase();
+    const isWhatsApp =
+      host === "wa.me" ||
+      host === "api.whatsapp.com" ||
+      host === "web.whatsapp.com" ||
+      host === "whatsapp.com" ||
+      host === "www.whatsapp.com";
+    if (isWhatsApp) {
+      const fromQuery = url.searchParams.get("phone") ?? "";
+      const fromPath = url.pathname.split("/").find((part) => /^\+?[\d\s().-]+$/.test(part)) ?? "";
+      number = (fromQuery || fromPath).replace(/\D/g, "");
+    }
+  } catch {
+    // The phone field below can still provide a valid WhatsApp destination.
+  }
+
+  if (!number) number = (phone ?? "").replace(/\D/g, "");
+  if (number.length === 10 || number.length === 11) number = `55${number}`;
+  if (number.length < 10 || number.length > 15) return null;
+
+  const text = `Olá! Vim pelo autoatendimento de ${merchantName} e estou com uma dúvida. Poderia me ajudar?`;
+  return `https://wa.me/${number}?${new URLSearchParams({ text }).toString()}`;
+}
+
 export function CustomerMenuShell({
   qrToken,
   tableLabel,
@@ -90,6 +123,11 @@ export function CustomerMenuShell({
 
   const hasSupportContact = Boolean(
     supportContact.whatsappUrl || supportContact.hours || supportContact.email || supportContact.phone,
+  );
+  const whatsappLink = buildWhatsAppLink(
+    supportContact.whatsappUrl,
+    supportContact.phone,
+    branding.displayName,
   );
 
   return (
@@ -203,15 +241,19 @@ export function CustomerMenuShell({
               ) : null}
             </div>
 
-            {supportContact.whatsappUrl ? (
+            {whatsappLink ? (
               <a
-                href={supportContact.whatsappUrl}
+                href={whatsappLink}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                {tCustomer(lang, "whatsapp")}
+                Conversar com a loja no WhatsApp
               </a>
+            ) : supportContact.whatsappUrl ? (
+              <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                Para abrir uma conversa direta, a loja precisa cadastrar o número do WhatsApp com DDD.
+              </p>
             ) : null}
           </div>
         )}
