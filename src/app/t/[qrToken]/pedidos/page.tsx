@@ -1,26 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
 import { CustomerOrdersShell } from "@/app/t/[qrToken]/pedidos/CustomerOrdersShell";
 import { buildMerchantBranding } from "@/lib/merchant/branding";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
 import { CUSTOMER_PLACE_COOKIE } from "@/lib/customer/constants";
-
-type OrderRow = {
-  id: string;
-  order_number: number;
-  status:
-    | "pending"
-    | "confirmed"
-    | "preparing"
-    | "ready"
-    | "delivered"
-    | "completed"
-    | "cancelled";
-  created_at: string;
-  customer_notes: string | null;
-  total: number | null;
-};
 
 export default async function CustomerOrdersPage({
   params,
@@ -31,8 +14,6 @@ export default async function CustomerOrdersPage({
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("qerbie_session")?.value ?? "";
   const place = cookieStore.get(CUSTOMER_PLACE_COOKIE)?.value ?? "";
-
-  const supabase = await createClient();
 
   const { data: table } = await createAdminClient()
     .from("merchant_tables")
@@ -58,23 +39,13 @@ export default async function CustomerOrdersPage({
     ? buildMerchantBranding(merchant)
     : { displayName: "Qerbie", logoUrl: null as string | null, primaryColor: null as string | null };
 
-  const { data: orders } = sessionToken
-    ? await supabase
-        .from("orders")
-        .select("id, order_number, status, created_at, customer_notes, total")
-        .eq("merchant_id", table.merchant_id)
-        .order("created_at", { ascending: false })
-        .limit(20)
-    : { data: [] as OrderRow[] };
-
   return (
     <CustomerOrdersShell
       qrToken={qrToken}
       branding={{ displayName: branding.displayName, logoUrl: branding.logoUrl }}
       serviceLabel={place ? `${table.label} • ${place}` : table.label}
       sessionToken={sessionToken}
-      merchantId={table.merchant_id}
-      initialOrders={(orders ?? []) as OrderRow[]}
+      initialOrders={[]}
       paymentSettings={
         merchant
           ? {

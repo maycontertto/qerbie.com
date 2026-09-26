@@ -142,6 +142,17 @@ export function CustomerMenuShell({
           </div>
         )}
 
+        <Link
+          href={`/t/${encodeURIComponent(qrToken)}/pedidos`}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:hover:bg-emerald-950"
+        >
+          <span>
+            <span className="block text-sm font-bold text-emerald-950 dark:text-emerald-100">Meus pedidos</span>
+            <span className="mt-0.5 block text-xs text-emerald-800 dark:text-emerald-200">Acompanhe o preparo, consulte o total ou volte ao seu pedido</span>
+          </span>
+          <span aria-hidden="true" className="text-xl font-semibold text-emerald-700 dark:text-emerald-300">→</span>
+        </Link>
+
         <div className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
           {!menus.length || !activeMenuId ? (
             <>

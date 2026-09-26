@@ -33,6 +33,11 @@ type OrderRow = {
   created_at: string;
   customer_notes: string | null;
   total: number | null;
+  order_type: "dine_in" | "takeaway" | "delivery";
+  delivery_address: string | null;
+  delivery_fee: number | null;
+  delivery_eta_minutes: number | null;
+  items: Array<{ product_name: string; quantity: number; unit_price: number; line_total: number }>;
 };
 
 export function CustomerOrdersShell({
@@ -40,7 +45,6 @@ export function CustomerOrdersShell({
   branding,
   serviceLabel,
   sessionToken,
-  merchantId,
   initialOrders,
   paymentSettings,
 }: {
@@ -48,50 +52,10 @@ export function CustomerOrdersShell({
   branding: Branding;
   serviceLabel: string;
   sessionToken: string;
-  merchantId: string;
   initialOrders: OrderRow[];
   paymentSettings: PaymentSettings;
 }) {
   const { lang, setLang } = useCustomerLanguage();
-
-  const paymentMethods = (() => {
-    const methods: Array<
-      | { kind: "pix"; title: string; description: string; key: string }
-      | { kind: "link"; title: string; description: string; url: string }
-      | { kind: "cash"; title: string; description: string }
-    > = [];
-
-    const pixKey = (paymentSettings.pixKey ?? "").trim();
-    if (pixKey) {
-      methods.push({
-        kind: "pix",
-        title: "Pix",
-        description: paymentSettings.pixDescription?.trim() || "Use a chave abaixo para pagar via Pix.",
-        key: pixKey,
-      });
-    }
-
-    const cardUrl = (paymentSettings.cardUrl ?? "").trim();
-    if (cardUrl) {
-      methods.push({
-        kind: "link",
-        title: "Link (cartão/checkout)",
-        description: paymentSettings.cardDescription?.trim() || "Abra o link abaixo para pagar.",
-        url: cardUrl,
-      });
-    }
-
-    const cash = (paymentSettings.cashDescription ?? "").trim();
-    if (cash) {
-      methods.push({ kind: "cash", title: "Dinheiro", description: cash });
-    }
-
-    return methods;
-  })();
-
-  const paymentDisclaimer =
-    paymentSettings.disclaimer?.trim() ||
-    "A Qerbie não processa pagamentos. Combine o pagamento diretamente com o estabelecimento.";
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
@@ -138,51 +102,7 @@ export function CustomerOrdersShell({
               </div>
             </div>
           ) : (
-            <CustomerOrdersRealtime merchantId={merchantId} initialOrders={initialOrders} />
-          )}
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Pagamento</p>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{paymentDisclaimer}</p>
-
-          {paymentMethods.length ? (
-            <div className="mt-3 space-y-3">
-              {paymentMethods.map((m) => (
-                <div
-                  key={m.kind}
-                  className="rounded-xl border border-zinc-200 p-3 dark:border-zinc-800"
-                >
-                  <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    {m.title}
-                  </div>
-                  <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    {m.description}
-                  </div>
-
-                  {m.kind === "pix" ? (
-                    <div className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
-                      {m.key}
-                    </div>
-                  ) : null}
-
-                  {m.kind === "link" ? (
-                    <a
-                      href={m.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                    >
-                      Abrir link de pagamento
-                    </a>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
-              O estabelecimento ainda não configurou formas de pagamento por aqui.
-            </div>
+            <CustomerOrdersRealtime qrToken={qrToken} initialOrders={initialOrders} paymentSettings={paymentSettings} />
           )}
         </div>
 

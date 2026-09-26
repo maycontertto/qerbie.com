@@ -23,6 +23,57 @@ type DeliverySettingsRow = {
   delivery_eta_minutes: number | null;
 };
 
+export async function GET(
+  _req: Request,
+  ctx: { params: Promise<{ qrToken: string }> },
+) {
+  const { qrToken } = await ctx.params;
+  const sessionToken = (await cookies()).get("qerbie_session")?.value ?? "";
+  if (!sessionToken || sessionToken.length > 256) {
+    return NextResponse.json({ error: "missing_session" }, { status: 401, headers: { "Cache-Control": "no-store" } });
+  }
+
+  const admin = createAdminClient();
+  const { data: table } = await admin
+    .from("merchant_tables")
+    .select("merchant_id")
+    .eq("qr_token", qrToken)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!table) return NextResponse.json({ error: "invalid_qr" }, { status: 404, headers: { "Cache-Control": "no-store" } });
+
+  const { data: orders, error } = await admin
+    .from("orders")
+    .select("id, order_number, status, created_at, customer_notes, total, order_type, delivery_address, delivery_fee, delivery_eta_minutes")
+    .eq("merchant_id", table.merchant_id)
+    .eq("session_token", sessionToken)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) return NextResponse.json({ error: "orders_unavailable" }, { status: 500, headers: { "Cache-Control": "no-store" } });
+
+  const orderIds = (orders ?? []).map((order) => order.id);
+  const { data: items, error: itemsError } = orderIds.length
+    ? await admin
+        .from("order_items")
+        .select("order_id, product_name, quantity, unit_price, line_total")
+        .eq("merchant_id", table.merchant_id)
+        .in("order_id", orderIds)
+    : { data: [], error: null };
+  if (itemsError) return NextResponse.json({ error: "order_items_unavailable" }, { status: 500, headers: { "Cache-Control": "no-store" } });
+
+  const itemsByOrder = new Map<string, typeof items>();
+  for (const item of items ?? []) {
+    const list = itemsByOrder.get(item.order_id) ?? [];
+    list.push(item);
+    itemsByOrder.set(item.order_id, list);
+  }
+
+  return NextResponse.json(
+    { orders: (orders ?? []).map((order) => ({ ...order, items: itemsByOrder.get(order.id) ?? [] })) },
+    { headers: { "Cache-Control": "private, no-store" } },
+  );
+}
+
 function clampInt(value: unknown, min: number, max: number): number {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return min;
@@ -46,11 +97,51 @@ export async function POST(
     );
   }
 
-  let body: CreateOrderBody;
+  let body: CreateOrderBody & { action?: string; orderId?: string };
   try {
-    body = (await req.json()) as CreateOrderBody;
+    body = (await req.json()) as CreateOrderBody & { action?: string; orderId?: string };
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+  }
+
+  if (body.action === "cancel") {
+    const orderId = String(body.orderId ?? "");
+    if (!orderId) return NextResponse.json({ error: "order_not_found" }, { status: 400 });
+
+    const admin = createAdminClient();
+    const { data: table } = await admin
+      .from("merchant_tables")
+      .select("merchant_id")
+      .eq("qr_token", qrToken)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (!table) return NextResponse.json({ error: "invalid_qr" }, { status: 404 });
+
+    const { data: order, error: lookupError } = await admin
+      .from("orders")
+      .select("id, status")
+      .eq("id", orderId)
+      .eq("merchant_id", table.merchant_id)
+      .eq("session_token", sessionToken)
+      .maybeSingle();
+    if (lookupError || !order) return NextResponse.json({ error: "order_not_found" }, { status: 404 });
+    if (order.status !== "pending") {
+      return NextResponse.json({ error: "order_cannot_be_cancelled" }, { status: 409 });
+    }
+
+    const { data: cancelled, error: cancelError } = await admin
+      .from("orders")
+      .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancellation_reason: "Cancelado pelo cliente" })
+      .eq("id", orderId)
+      .eq("merchant_id", table.merchant_id)
+      .eq("session_token", sessionToken)
+      .eq("status", "pending")
+      .select("id")
+      .maybeSingle();
+    if (cancelError || !cancelled) {
+      return NextResponse.json({ error: "order_cannot_be_cancelled" }, { status: 409 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const rawItems = Array.isArray(body.items) ? body.items : [];

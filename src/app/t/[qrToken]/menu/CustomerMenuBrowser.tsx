@@ -59,6 +59,15 @@ function formatBRL(value: number, lang: string): string {
   return new Intl.NumberFormat(locale, { style: "currency", currency: "BRL" }).format(value);
 }
 
+function safePaymentUrl(value: string | null | undefined): string | null {
+  try {
+    const url = new URL((value ?? "").trim());
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function cartStorageKey(qrToken: string, menuId: string): string {
   return `qerbie_cart:${qrToken}:${menuId}`;
 }
@@ -387,7 +396,7 @@ export function CustomerMenuBrowser({
       });
     }
 
-    const cardUrl = (paymentSettings.cardUrl ?? "").trim();
+    const cardUrl = safePaymentUrl(paymentSettings.cardUrl);
     if (cardUrl) {
       methods.push({
         kind: "link",
@@ -681,7 +690,15 @@ export function CustomerMenuBrowser({
       </div>
 
       {success ? (
-        <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/50">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Pedido enviado ao estabelecimento</p>
+          <p className="mt-1 text-2xl font-bold text-emerald-950 dark:text-emerald-50">Pedido #{success.orderNumber}</p>
+          <p className="mt-1 text-sm text-emerald-900 dark:text-emerald-100">{success.table} · Total {formatBRL(success.total, lang)}</p>
+          <p className="mt-2 text-sm text-emerald-900/80 dark:text-emerald-100/80">Você pode sair da vitrine e voltar quando quiser. O pedido e o andamento ficam em “Meus pedidos”.</p>
+          <a href={`/t/${encodeURIComponent(qrToken)}/pedidos`} className="mt-4 inline-flex rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600">
+            Acompanhar meu pedido
+          </a>
+          <div className="mt-5 border-t border-emerald-200 pt-4 dark:border-emerald-900">
           <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
             Pagamento
           </p>
@@ -727,6 +744,7 @@ export function CustomerMenuBrowser({
               O estabelecimento ainda não configurou formas de pagamento por aqui.
             </div>
           )}
+          </div>
         </div>
       ) : null}
 
