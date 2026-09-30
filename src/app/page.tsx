@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { BILLING_PLAN, formatBrlFromCents } from "@/lib/billing/constants";
 
 function FeatureIcon({ children }: { children: React.ReactNode }) {
   return (
@@ -333,6 +334,15 @@ export default async function HomePage() {
         <p className="mt-6 text-sm text-zinc-500 dark:text-zinc-400">
           30 dias gratuitos. Sem cartão. Sem contrato. Sem risco.
         </p>
+
+        <section className="mx-auto mt-8 max-w-xl rounded-2xl border border-brand/20 bg-white/80 p-5 text-left shadow-sm dark:bg-zinc-900/70">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Depois do período gratuito</p>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <strong className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">{formatBrlFromCents(BILLING_PLAN.amountCents)}</strong>
+            <span className="text-sm text-zinc-600 dark:text-zinc-300">por mês</span>
+          </div>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Teste a Qerbie por 30 dias grátis. O plano mensal começa depois do teste, com cobrança informada antes da contratação.</p>
+        </section>
 
         {/* Segments */}
         <div className="mt-14 text-center">

@@ -65,8 +65,7 @@ export default function AulasPage() {
               Vídeos práticos para começar rápido e usar a plataforma com mais segurança.
             </h1>
             <p className="mt-4 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300 sm:text-base">
-              Aqui você concentra suas aulas em um só lugar. Como você já tem os links individuais, a melhor estratégia agora é
-              organizar os vídeos um por um dentro da Qerbie e, quando tiver o link oficial da playlist completa, adicionar também.
+              Aprenda os principais recursos da plataforma com vídeos curtos e organizados por assunto. Escolha uma aula e acompanhe no seu ritmo.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -88,41 +87,41 @@ export default function AulasPage() {
 
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Melhor para conversão</p>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Primeiros passos</p>
                 <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
-                  A home continua com vídeo comercial curto e as aulas ficam organizadas aqui.
+                  Conheça a plataforma e prepare sua conta para a rotina do negócio.
                 </p>
               </div>
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Melhor para aprender</p>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Aulas por assunto</p>
                 <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
-                  Cada aula fica separada por assunto, sem obrigar o usuário a procurar tudo dentro do YouTube.
+                  Encontre demonstrações de marca, atendimento, equipe e estoque em um só lugar.
                 </p>
               </div>
               <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-950/60">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Melhor para manter</p>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">No seu ritmo</p>
                 <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">
-                  Você pode continuar usando o YouTube e só atualizar os links quando publicar novas aulas ou a playlist final.
+                  Assista novamente quando precisar rever uma etapa ou conhecer um recurso.
                 </p>
               </div>
             </div>
           </section>
 
           <aside className="rounded-3xl border border-zinc-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/70">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Recomendação</h2>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">Como aproveitar as aulas</h2>
             <ul className="mt-4 space-y-3 text-sm text-zinc-600 dark:text-zinc-300">
-              <li>• Neste momento, use os vídeos individuais dentro da Qerbie.</li>
-              <li>• Quando tiver o link oficial da playlist, adicione um botão extra para maratona.</li>
-              <li>• Use um vídeo em destaque e os demais em lista por tema.</li>
-              <li>• Depois do cadastro, aponte o usuário para esta página.</li>
+              <li>• Comece pela aula de visão geral.</li>
+              <li>• Depois escolha o assunto que você quer configurar.</li>
+              <li>• Deixe o painel aberto e acompanhe cada etapa no seu próprio negócio.</li>
+              <li>• Volte a esta página sempre que quiser rever um recurso.</li>
             </ul>
 
             <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/40">
               <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                Estrutura ideal
+                Dica
               </p>
               <p className="mt-2 text-xs text-blue-800 dark:text-blue-200">
-                Agora: vídeos individuais por assunto. Depois: botão com a playlist completa para quem quiser ver tudo em sequência.
+                As aulas são independentes: você pode assistir na ordem ou ir direto ao tema que precisa.
               </p>
             </div>
           </aside>
@@ -135,7 +134,7 @@ export default function AulasPage() {
                 Aula em destaque
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                Assista sem sair da Qerbie
+                Comece por esta aula
               </h2>
             </div>
             <a
@@ -169,11 +168,11 @@ export default function AulasPage() {
                 Biblioteca de aulas
               </p>
               <h2 className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">
-                Organize os vídeos um por um
+                Escolha uma aula
               </h2>
             </div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              Seus 5 vídeos já ficam organizados por tema. Depois eu posso adicionar mais, reordenar ou incluir a playlist completa.
+              Aulas rápidas para conhecer os recursos mais usados da Qerbie.
             </p>
           </div>
 

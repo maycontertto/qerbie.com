@@ -123,6 +123,9 @@ export default async function PagamentoPage({
   const now = new Date();
   const isTrial = (sub?.status ?? "trialing") === "trialing" && now < trialEndsAt;
   const isActive = sub?.status === "active" && now < periodEnd;
+  const isLifetimeDemo = Boolean(
+    sub?.status === "active" && periodEnd.getTime() > addDays(now, 365 * 50).getTime(),
+  );
   const isPastDue = sub?.status === "past_due" || (sub?.status !== "active" && now >= periodEnd);
 
   const { data: invoices } = await supabase
@@ -147,7 +150,9 @@ export default async function PagamentoPage({
         ? { kind: "error" as const, message: "Não foi possível gerar o link de pagamento agora." }
         : error === "invoice_create_failed"
           ? { kind: "error" as const, message: "Não foi possível criar a cobrança agora." }
-          : error === "no_pending_invoice"
+          : error === "demo_access_no_charge"
+            ? { kind: "success" as const, message: "Esta conta tem acesso de demonstração ativo e não precisa gerar cobrança." }
+            : error === "no_pending_invoice"
             ? { kind: "error" as const, message: "Nenhuma cobrança pendente foi encontrada para confirmar manualmente." }              : error === "demo_access_denied"
                 ? { kind: "error" as const, message: "Esta conta não tem permissão para liberar acesso de demonstração." }            : recheck === "applied"
               ? {
@@ -236,7 +241,7 @@ export default async function PagamentoPage({
             </div>
           )}
 
-          {mode === "fallback" ? (
+          {mode === "fallback" && !isLifetimeDemo ? (
             <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm text-zinc-700 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
               Você está usando um link fixo do Mercado Pago. Ele funciona para o cliente escolher Pix/cartão/boleto,
               mas não libera automaticamente no sistema. Para liberar automático, configure
@@ -247,7 +252,9 @@ export default async function PagamentoPage({
 
           {(() => {
             const statusKey = sub?.status ?? "trialing";
-            const statusInfo = SUBSCRIPTION_STATUS_LABEL[statusKey] ?? SUBSCRIPTION_STATUS_LABEL.trialing;
+            const statusInfo = isLifetimeDemo
+              ? { ...SUBSCRIPTION_STATUS_LABEL.active, label: "Acesso de demonstração" }
+              : SUBSCRIPTION_STATUS_LABEL[statusKey] ?? SUBSCRIPTION_STATUS_LABEL.trialing;
             return (
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
@@ -260,7 +267,7 @@ export default async function PagamentoPage({
                 </div>
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 dark:border-zinc-800 dark:bg-zinc-950">
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {isTrial ? "Fim do teste grátis" : "Vencimento"}
+                    {isLifetimeDemo ? "Acesso liberado até" : isTrial ? "Fim do teste grátis" : "Vencimento"}
                   </p>
                   <p className="mt-2 text-base font-semibold text-zinc-900 dark:text-zinc-50">
                     {formatDatePtBr(isTrial ? trialEndsAt : periodEnd)}
@@ -279,7 +286,7 @@ export default async function PagamentoPage({
           <div className="mt-3 space-y-2.5 rounded-xl border border-zinc-200 bg-zinc-50 p-5 text-sm dark:border-zinc-800 dark:bg-zinc-950">
             <div className="flex items-center justify-between gap-3">
               <span className="text-zinc-600 dark:text-zinc-300">Carência</span>
-              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{isActive ? "não aplicável" : `até ${formatDatePtBr(graceUntil)}`}</span>
+              <span className="font-semibold text-zinc-900 dark:text-zinc-50">{isLifetimeDemo || isActive ? "não aplicável" : `até ${formatDatePtBr(graceUntil)}`}</span>
             </div>
             {lastPaidInvoice ? (
               <div className="flex items-center justify-between gap-3">
@@ -289,7 +296,11 @@ export default async function PagamentoPage({
                 </span>
               </div>
             ) : null}
-            {isTrial ? (
+            {isLifetimeDemo ? (
+              <p className="pt-2 text-sm text-zinc-500 dark:text-zinc-400">
+                Esta conta de demonstração tem acesso liberado até {formatDatePtBr(periodEnd)}. Nenhuma cobrança mensal é necessária durante esse período.
+              </p>
+            ) : isTrial ? (
               <p className="pt-2 text-sm text-zinc-500 dark:text-zinc-400">
                 Você está no teste grátis. O pagamento só é exigido após {formatDatePtBr(trialEndsAt)}.
               </p>
@@ -309,7 +320,7 @@ export default async function PagamentoPage({
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            {pay ? (
+            {pay && !isLifetimeDemo ? (
               <a
                 href={pay}
                 target="_blank"
@@ -320,7 +331,7 @@ export default async function PagamentoPage({
               </a>
             ) : null}
 
-            {isOwner ? (
+            {isOwner && !isLifetimeDemo ? (
               <>
                 <form action={createOrGetMonthlyInvoice}>
                   <button
@@ -364,14 +375,14 @@ export default async function PagamentoPage({
                   </>
                 ) : null}
               </>
-            ) : (
+            ) : !isOwner ? (
               <span className="text-sm text-zinc-500 dark:text-zinc-400">
                 Apenas o proprietário pode gerar a cobrança.
               </span>
-            )}
+            ) : null}
           </div>
 
-          {!isActive ? (
+          {!isActive && !isLifetimeDemo ? (
             <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
               Se o pagamento já foi feito antes desta correção, use <span className="font-semibold">Já paguei, atualizar agora</span>.
               <br />
@@ -379,10 +390,10 @@ export default async function PagamentoPage({
             </p>
           ) : null}
 
-          <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+          {!isLifetimeDemo && <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
             Se você já tem um link fixo do Mercado Pago, ele pode ser usado como fallback em
             <span className="font-semibold"> NEXT_PUBLIC_BILLING_FALLBACK_PAYMENT_URL</span>.
-          </p>
+          </p>}
         </div>
 
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white/70 p-8 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">

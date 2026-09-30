@@ -35,6 +35,15 @@ export async function createOrGetMonthlyInvoice(): Promise<void> {
     .maybeSingle();
 
   const amountCents = Number(sub?.plan_amount_cents ?? BILLING_PLAN.amountCents);
+  const currentPeriodEnd = sub?.current_period_end ? new Date(sub.current_period_end) : null;
+  if (
+    isPlatformDemoUser(user.email) &&
+    sub?.status === "active" &&
+    currentPeriodEnd &&
+    currentPeriodEnd.getTime() > addDays(new Date(), 365 * 50).getTime()
+  ) {
+    redirect("/dashboard/pagamento?error=demo_access_no_charge");
+  }
 
   const { data: existing } = await supabase
     .from("billing_invoices")
@@ -264,11 +273,18 @@ export async function grantLifetimeDemoAccess(): Promise<void> {
       current_period_start: now.toISOString(),
       current_period_end: farFuture.toISOString(),
       grace_until: null,
-      last_payment_at: now.toISOString(),
       last_notice_stage: null,
       last_notice_at: null,
     })
     .eq("merchant_id", merchant.id);
+
+  // A no-charge demo grant supersedes invoices that were generated while the
+  // account was on a paid plan. Keep them in history as cancelled, not due.
+  await admin
+    .from("billing_invoices")
+    .update({ status: "cancelled" })
+    .eq("merchant_id", merchant.id)
+    .eq("status", "pending");
 
   redirect("/dashboard/pagamento?manual_payment=success");
 }

@@ -2790,6 +2790,59 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["cash_register_movements"]["Insert"]>;
         Relationships: [];
       };
+      coupons: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          code: string;
+          description: string | null;
+          discount_type: string;
+          discount_value: number;
+          minimum_subtotal: number;
+          valid_from: string | null;
+          valid_until: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          code: string;
+          description?: string | null;
+          discount_type: string;
+          discount_value: number;
+          minimum_subtotal?: number;
+          valid_from?: string | null;
+          valid_until?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          code?: string;
+          description?: string | null;
+          discount_type?: string;
+          discount_value?: number;
+          minimum_subtotal?: number;
+          valid_from?: string | null;
+          valid_until?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "coupons_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       orders: {
         Row: {
           id: string;
@@ -2804,6 +2857,7 @@ export interface Database {
           subtotal: number;
           discount: number;
           total: number;
+          coupon_code: string | null;
           payment_method: string | null;
           payment_notes: string | null;
           delivery_address: string | null;
@@ -2841,6 +2895,7 @@ export interface Database {
           subtotal?: number;
           discount?: number;
           total?: number;
+          coupon_code?: string | null;
           payment_method?: string | null;
           payment_notes?: string | null;
           delivery_address?: string | null;
@@ -2878,6 +2933,7 @@ export interface Database {
           subtotal?: number;
           discount?: number;
           total?: number;
+          coupon_code?: string | null;
           payment_method?: string | null;
           payment_notes?: string | null;
           delivery_address?: string | null;

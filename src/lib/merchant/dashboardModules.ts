@@ -228,8 +228,8 @@ const RESTAURANTE_BASE: DashboardModules = {
       PURCHASES_CARD,
       {
         title: "Opcionais",
-        description: "Borda, tamanho, adicionais",
-        hint: "Em breve",
+        description: "Configure tamanhos, bordas e adicionais por produto",
+        hint: "Agora",
         href: "/dashboard/modulos/opcionais",
         ctaLabel: "Abrir",
       },

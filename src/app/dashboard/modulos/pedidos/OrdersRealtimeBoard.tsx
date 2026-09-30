@@ -107,7 +107,8 @@ function typeLabel(order: OrderRow, tableLabelById: Record<string, string>): str
   if (order.order_type === "takeaway") return "Retirada";
   if (order.order_type === "delivery") return "Entrega";
   const label = order.table_id ? tableLabelById[order.table_id] : null;
-  return label ? `Mesa ${label}` : "Mesa";
+  if (!label) return "Mesa";
+  return /^mesa\b/i.test(label.trim()) ? label : `Mesa ${label}`;
 }
 
 function fmtTime(iso: string): string {

@@ -237,6 +237,10 @@ export function CustomerMenuBrowser({
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [customerNotes, setCustomerNotes] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  const [couponMessage, setCouponMessage] = useState<string | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount: number; subtotal: number } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orderType, setOrderType] = useState<"dine_in" | "delivery">("dine_in");
@@ -370,9 +374,19 @@ export function CustomerMenuBrowser({
   }, [deliverySettings.fee]);
 
   const cartTotal = useMemo(() => {
-    if (orderType !== "delivery") return cartSubtotal;
-    return Math.round((cartSubtotal + deliveryFee) * 100) / 100;
-  }, [cartSubtotal, deliveryFee, orderType]);
+    const fee = orderType === "delivery" ? deliveryFee : 0;
+    const discount = appliedCoupon?.subtotal === cartSubtotal ? appliedCoupon.discount : 0;
+    return Math.max(0, Math.round((cartSubtotal + fee - discount) * 100) / 100);
+  }, [appliedCoupon, cartSubtotal, deliveryFee, orderType]);
+
+  const currentCouponDiscount = appliedCoupon?.subtotal === cartSubtotal ? appliedCoupon.discount : 0;
+
+  useEffect(() => {
+    if (appliedCoupon && appliedCoupon.subtotal !== cartSubtotal) {
+      setAppliedCoupon(null);
+      setCouponMessage("O carrinho mudou. Aplique o cupom novamente.");
+    }
+  }, [appliedCoupon, cartSubtotal]);
 
   const hasSpecialCareInCart = useMemo(
     () => cartItems.some((i) => i.requiresPrescription || i.requiresDocument),
@@ -518,6 +532,34 @@ export function CustomerMenuBrowser({
     setCartItems((prev) => prev.filter((i) => i.productId !== productId));
   }
 
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code || cartItems.length === 0) return;
+    setCouponBusy(true);
+    setCouponMessage(null);
+    try {
+      const response = await fetch(`/api/t/${encodeURIComponent(qrToken)}/coupons`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ code, menuId: activeMenuId, items: cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity })) }),
+      });
+      const result = await response.json() as { code?: string; subtotal?: number; discount?: number; error?: string };
+      if (!response.ok) {
+        const message = result.error === "coupons_unavailable" ? "Cupons ainda não estão configurados para esta loja." : "Cupom inválido, expirado ou não aplicável a este pedido.";
+        setAppliedCoupon(null);
+        setCouponMessage(message);
+        return;
+      }
+      setAppliedCoupon({ code: String(result.code ?? code), discount: Number(result.discount ?? 0), subtotal: Number(result.subtotal ?? cartSubtotal) });
+      setCouponInput(String(result.code ?? code));
+      setCouponMessage(`Cupom aplicado: ${formatBRL(Number(result.discount ?? 0), lang)} de desconto.`);
+    } catch {
+      setCouponMessage("Não foi possível verificar o cupom agora. Tente novamente.");
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
   async function submitOrder() {
     setSubmitError(null);
     setSubmitting(true);
@@ -546,6 +588,7 @@ export function CustomerMenuBrowser({
           orderType,
           deliveryAddress: orderType === "delivery" ? deliveryAddress.trim() : null,
           customerNotes: customerNotes.trim() || null,
+          couponCode: appliedCoupon?.subtotal === cartSubtotal ? appliedCoupon.code : null,
           items: cartItems.map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
@@ -565,8 +608,21 @@ export function CustomerMenuBrowser({
           setSubmitError(tCustomer(lang, "delivery_unavailable"));
         } else if (code === "delivery_address_missing") {
           setSubmitError(tCustomer(lang, "delivery_address_required"));
+        } else if (code === "invalid_product") {
+          setSubmitError("Um dos itens ficou indisponível ou mudou no cardápio. Atualize a página e confira o carrinho.");
+        } else if (code === "no_menu" || code === "products_fetch_failed") {
+          setSubmitError("Não foi possível carregar o cardápio agora. Atualize a página e tente novamente.");
+        } else if (code === "order_number_unavailable") {
+          setSubmitError("A loja está recebendo muitos pedidos agora. Seu carrinho foi mantido; tente enviar novamente em instantes.");
+        } else if (code === "order_items_insert_failed" || code === "order_create_failed") {
+          setSubmitError("Não conseguimos registrar o pedido. Seu carrinho foi mantido para você tentar novamente.");
+        } else if (code === "invalid_coupon") {
+          setAppliedCoupon(null);
+          setSubmitError("O cupom não é mais válido para este pedido. Confira o carrinho e tente novamente.");
+        } else if (code === "coupons_unavailable") {
+          setSubmitError("Os cupons desta loja ainda não estão disponíveis. Remova o cupom e tente novamente.");
         } else {
-          setSubmitError(tCustomer(lang, "could_not_continue"));
+          setSubmitError("Não foi possível registrar o pedido. Seu carrinho foi mantido; tente novamente em instantes.");
         }
         return;
       }
@@ -589,6 +645,9 @@ export function CustomerMenuBrowser({
         }
       }
       setCartItems([]);
+      setAppliedCoupon(null);
+      setCouponInput("");
+      setCouponMessage(null);
       setCustomerNotes("");
       setDeliveryAddress("");
       setSelectedSavedAddress("");
@@ -1176,6 +1235,15 @@ export function CustomerMenuBrowser({
                     )}
 
                     <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+                      <label htmlFor="customer-coupon" className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Cupom de desconto</label>
+                      <div className="mt-2 flex gap-2">
+                        <input id="customer-coupon" value={couponInput} onChange={(event) => setCouponInput(event.target.value.toUpperCase())} placeholder="Digite seu cupom" maxLength={32} className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800" />
+                        <button type="button" onClick={applyCoupon} disabled={couponBusy || !couponInput.trim()} className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900">{couponBusy ? "Verificando…" : "Aplicar"}</button>
+                      </div>
+                      {couponMessage && <p className={`mt-2 text-xs ${appliedCoupon ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-500 dark:text-zinc-400"}`}>{couponMessage}</p>}
+                    </div>
+
+                    <div className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
                       <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                         {ui.notes}
                       </label>
@@ -1191,9 +1259,10 @@ export function CustomerMenuBrowser({
                 )}
 
                 <div className="mt-4 flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                    {ui.total}: {formatBRL(cartTotal, lang)}
-                  </p>
+                  <div className="text-sm text-zinc-900 dark:text-zinc-50">
+                    {currentCouponDiscount > 0 && <p className="text-xs text-zinc-500">Subtotal {formatBRL(cartSubtotal, lang)} · Desconto −{formatBRL(currentCouponDiscount, lang)}</p>}
+                    <p className="font-semibold">{ui.total}: {formatBRL(cartTotal, lang)}</p>
+                  </div>
                   <button
                     type="button"
                     onClick={submitOrder}

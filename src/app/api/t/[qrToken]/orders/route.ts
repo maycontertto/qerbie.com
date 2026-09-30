@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { priceCoupon } from "@/lib/customer/couponPricing";
 
 type OrderItemInput = {
   productId: string;
@@ -14,6 +15,7 @@ type CreateOrderBody = {
   orderType?: "dine_in" | "takeaway" | "delivery" | null;
   deliveryAddress?: string | null;
   customerNotes?: string | null;
+  couponCode?: string | null;
   items: OrderItemInput[];
 };
 
@@ -237,7 +239,23 @@ export async function POST(
     }, 0),
   );
 
-  const discount = 0;
+  const couponCode = String(body.couponCode ?? "").trim().toUpperCase().replace(/\s+/g, "");
+  let discount = 0;
+  if (couponCode) {
+    const { data: coupon, error: couponError } = await merchantReader
+      .from("coupons")
+      .select("code, discount_type, discount_value, minimum_subtotal, valid_from, valid_until, is_active")
+      .eq("merchant_id", merchantId)
+      .eq("code", couponCode)
+      .maybeSingle();
+    if (couponError) {
+      console.error("customer coupon lookup failed", { merchantId, code: couponError.code });
+      return NextResponse.json({ error: "coupons_unavailable" }, { status: 503 });
+    }
+    const pricing = coupon ? priceCoupon(coupon, subtotal) : null;
+    if (!pricing) return NextResponse.json({ error: "invalid_coupon" }, { status: 400 });
+    discount = pricing.discount;
+  }
 
   const orderTypeRaw = String(body.orderType ?? "dine_in");
   const orderType =
@@ -274,14 +292,15 @@ export async function POST(
     deliveryEtaMinutes = Number.isFinite(eta) ? clampInt(eta, 1, 240) : null;
   }
 
-  const total = round2(subtotal + deliveryFee);
+  const total = round2(Math.max(0, subtotal + deliveryFee - discount));
 
   // order_number allocation with a small retry loop
   const todayUtc = new Date().toISOString().slice(0, 10);
-  let lastError: string | null = null;
-
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { data: last } = await supabase
+    // An anon customer can only see their own orders under RLS. Allocate
+    // the merchant-wide sequence with the service client so two customers
+    // cannot both pick #1 for the same day.
+    const { data: last, error: lastErrorRead } = await merchantReader
       .from("orders")
       .select("order_number")
       .eq("merchant_id", merchantId)
@@ -289,6 +308,11 @@ export async function POST(
       .order("order_number", { ascending: false })
       .limit(1)
       .maybeSingle();
+
+    if (lastErrorRead) {
+      console.error("customer order number lookup failed", { merchantId, code: lastErrorRead.code });
+      return NextResponse.json({ error: "order_number_unavailable" }, { status: 503 });
+    }
 
     const nextNumber = (last?.order_number ?? 0) + 1;
 
@@ -305,6 +329,7 @@ export async function POST(
         customer_notes: body.customerNotes ? String(body.customerNotes) : null,
         subtotal,
         discount,
+        coupon_code: couponCode || null,
         total,
         delivery_address: deliveryAddress,
         delivery_fee: deliveryFee || null,
@@ -314,7 +339,7 @@ export async function POST(
       .maybeSingle();
 
     if (orderError || !order) {
-      lastError = orderError?.message ?? "order_insert_failed";
+      console.error("customer order insert failed", { merchantId, code: orderError?.code });
       // Could be unique collision, retry.
       continue;
     }
@@ -342,8 +367,16 @@ export async function POST(
       .insert(orderItemsRows);
 
     if (itemsError) {
+      // Do not leave an empty pending order in the merchant's board.
+      await merchantReader
+        .from("orders")
+        .delete()
+        .eq("id", order.id)
+        .eq("merchant_id", merchantId)
+        .eq("session_token", sessionToken);
+      console.error("customer order items insert failed", { orderId: order.id, code: itemsError.code });
       return NextResponse.json(
-        { error: "order_items_insert_failed", detail: itemsError.message },
+        { error: "order_items_insert_failed" },
         { status: 500 },
       );
     }
@@ -358,7 +391,7 @@ export async function POST(
   }
 
   return NextResponse.json(
-    { error: "order_create_failed", detail: lastError },
+    { error: "order_create_failed" },
     { status: 500 },
   );
 }

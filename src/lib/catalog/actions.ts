@@ -39,8 +39,9 @@ function guessImageContentType(file: File): string {
   return "application/octet-stream";
 }
 
-function getRedirectBase(formData: FormData): "/dashboard/modulos/produtos" | "/dashboard/modulos/servicos" | "/dashboard/modulos/importacao_estoque" {
+function getRedirectBase(formData: FormData): "/dashboard/modulos/produtos" | "/dashboard/modulos/servicos" | "/dashboard/modulos/importacao_estoque" | "/dashboard/modulos/menus" {
   const raw = (formData.get("redirect_to") as string | null)?.trim() ?? "";
+  if (raw === "/dashboard/modulos/menus") return raw;
   if (raw === "/dashboard/modulos/servicos") return raw;
   if (raw === "/dashboard/modulos/importacao_estoque") return raw;
   return "/dashboard/modulos/produtos";
@@ -334,6 +335,10 @@ export async function createMenuCategory(formData: FormData): Promise<void> {
   if (!menuId || name.length < 2) {
     redirect(`${redirectBase}?error=invalid_category`);
   }
+
+  const { data: menu } = await supabase.from("menus").select("id")
+    .eq("merchant_id", merchant.id).eq("id", menuId).maybeSingle();
+  if (!menu) redirect(`${redirectBase}?error=invalid_menu`);
 
   const { data, error } = await supabase
     .from("menu_categories")

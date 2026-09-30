@@ -45,7 +45,7 @@ function safePaymentUrl(value: string | null | undefined): string | null {
 function statusLabel(lang: CustomerLanguage, status: OrderStatus): string {
   switch (status) {
     case "pending": return "Aguardando confirmação";
-    case "confirmed": return "Pedido confirmado";
+    case "confirmed": return "Recebido pela loja";
     case "preparing": return tCustomer(lang, "status_preparing");
     case "ready": return tCustomer(lang, "status_ready");
     case "delivered":
@@ -75,7 +75,7 @@ function OrderCard({
   const { lang } = useCustomerLanguage();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const steps = ["Recebido", "Confirmado", "Preparando", order.order_type === "delivery" ? "Saiu para entrega" : "Pronto"];
+  const steps = ["Enviado", "Recebido pela loja", "Preparando", order.order_type === "delivery" ? "Saiu para entrega" : "Pronto"];
   const current = progressIndex(order.status);
   const cardUrl = safePaymentUrl(paymentSettings.cardUrl);
 

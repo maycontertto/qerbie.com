@@ -46,6 +46,7 @@ export default async function ProdutosModulePage({
 }: {
   searchParams: Promise<{
     category?: string;
+    menu?: string;
     error?: string;
     q?: string;
     catq?: string;
@@ -90,16 +91,30 @@ export default async function ProdutosModulePage({
     );
   }
   const supabase = await createClient({}, { withAuth: true });
+  const params = await searchParams;
+  const requestedMenuId = (params.menu ?? "").trim();
 
-  // Ensure a primary menu exists (products require menu_id)
-  let { data: menu } = await supabase
+  // Products belong to one specific cardápio. Allow this screen to open a
+  // cardápio selected from the menu manager while keeping the old default.
+  let menuQuery = supabase
     .from("menus")
     .select("id, name, slug")
-    .eq("merchant_id", merchant.id)
+    .eq("merchant_id", merchant.id);
+  if (requestedMenuId) menuQuery = menuQuery.eq("id", requestedMenuId);
+  let { data: menu } = await menuQuery
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
+
+  if (!menu && requestedMenuId) redirect("/dashboard/modulos/menus?error=invalid_menu");
+
+  if (!menu) {
+    const { data: firstMenu } = await supabase.from("menus").select("id,name,slug")
+      .eq("merchant_id", merchant.id).order("display_order", { ascending: true })
+      .order("created_at", { ascending: true }).limit(1).maybeSingle();
+    menu = firstMenu ?? null;
+  }
 
   if (!menu) {
     const slug = DEFAULT_MENU_SLUG;
@@ -173,7 +188,7 @@ export default async function ProdutosModulePage({
     import_updated,
     import_skipped,
     removed,
-  } = await searchParams;
+  } = params;
 
   const presetKey = (preset ?? "").trim().toLowerCase();
   const presetCategoryName =
@@ -293,7 +308,7 @@ export default async function ProdutosModulePage({
         ? "Item removido."
         : null;
 
-  const returnTo = `/dashboard/modulos/produtos?category=${encodeURIComponent(String(selectedCategoryId ?? ""))}`
+  const returnTo = `/dashboard/modulos/produtos?menu=${encodeURIComponent(menu.id)}&category=${encodeURIComponent(String(selectedCategoryId ?? ""))}`
     + (itemQuery ? `&q=${encodeURIComponent(itemQuery)}` : "")
     + (categorySearch ? `&catq=${encodeURIComponent(categorySearch)}` : "");
 
