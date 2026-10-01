@@ -321,12 +321,14 @@ export default async function HomePage() {
             >
               Saiba mais (assista ao vídeo)
             </a>
-            <Link
-              href="/aulas"
+            <a
+              href="https://www.youtube.com/channel/UCD6JKpbwJr2sTR5RaLOII7g"
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-semibold text-zinc-700 underline-offset-4 hover:underline dark:text-zinc-200"
             >
               Ver aulas de uso
-            </Link>
+            </a>
           </div>
         </div>
 
@@ -477,9 +479,9 @@ export default async function HomePage() {
             Avisos
           </Link>
           <span className="mx-2 text-zinc-300 dark:text-zinc-700">·</span>
-          <Link href="/aulas" className="font-medium hover:underline">
+          <a href="https://www.youtube.com/channel/UCD6JKpbwJr2sTR5RaLOII7g" target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">
             Aulas
-          </Link>
+          </a>
         </div>
       </footer>
     </div>
