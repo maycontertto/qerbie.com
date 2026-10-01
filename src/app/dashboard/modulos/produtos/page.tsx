@@ -7,7 +7,7 @@ import {
   deleteProduct,
   createSuggestedMenuCategories,
 } from "@/lib/catalog/actions";
-import { DEFAULT_MENU_NAME, DEFAULT_MENU_SLUG } from "@/lib/catalog/templates";
+import { DEFAULT_MENU_NAME, DEFAULT_MENU_SLUG, getProductUnitOptions } from "@/lib/catalog/templates";
 import { BarcodeScannerField } from "./BarcodeScannerField";
 import { CategorySelect } from "./CategorySelect";
 import { ConfirmSubmitButton } from "./ConfirmSubmitButton";
@@ -27,19 +27,6 @@ function makeSlug(base: string): string {
   const suffix = Math.random().toString(36).slice(2, 8);
   return `${normalized || "menu"}-${suffix}`;
 }
-
-const UNIT_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: "un", label: "Unidade" },
-  { value: "kg", label: "Kg" },
-  { value: "g", label: "g" },
-  { value: "m", label: "Metro (m)" },
-  { value: "m2", label: "Metro² (m²)" },
-  { value: "m3", label: "Metro³ (m³)" },
-  { value: "l", label: "Litro (L)" },
-  { value: "saco", label: "Saco" },
-  { value: "caixa", label: "Caixa" },
-  { value: "pacote", label: "Pacote" },
-];
 
 export default async function ProdutosModulePage({
   searchParams,
@@ -462,6 +449,7 @@ export default async function ProdutosModulePage({
                 categories={(categories ?? []).map((c) => ({ id: c.id, name: c.name }))}
                 defaultCategoryId={selectedCategoryId}
                 isOwner={isOwner}
+                unitOptions={getProductUnitOptions(merchant.business_category)}
               />
             </div>
 
@@ -538,7 +526,7 @@ export default async function ProdutosModulePage({
                     defaultValue="un"
                     className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                   >
-                    {UNIT_OPTIONS.map((u) => (
+                    {getProductUnitOptions(merchant.business_category).map((u) => (
                       <option key={u.value} value={u.value}>
                         {u.label}
                       </option>

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { createQuickProduct } from "@/lib/catalog/actions";
 import { BarcodeScannerField } from "./BarcodeScannerField";
 import { CategorySelect } from "./CategorySelect";
+import type { ProductUnitOption } from "@/lib/catalog/templates";
 
 type Category = { id: string; name: string };
 type LookupProduct = { name: string; brand: string | null; quantity: string | null; category: string | null; imageUrl: string | null; source: string; productType: string };
@@ -18,12 +19,14 @@ export function QuickProductForm({
   categories,
   defaultCategoryId,
   isOwner,
+  unitOptions,
 }: {
   menuId: string;
   returnTo: string;
   categories: Category[];
   defaultCategoryId: string;
   isOwner: boolean;
+  unitOptions: ProductUnitOption[];
 }) {
   const [barcode, setBarcode] = useState("");
   const [name, setName] = useState("");
@@ -118,7 +121,7 @@ export function QuickProductForm({
       <div>
         <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Unidade</label>
         <select name="unit_label" value={unitLabel} onChange={(event) => setUnitLabel(event.target.value)} className={inputClass}>
-          <option value="un">Unidade</option><option value="kg">Kg</option><option value="g">g</option><option value="m">Metro (m)</option><option value="m2">Metro² (m²)</option><option value="m3">Metro³ (m³)</option><option value="l">Litro (L)</option><option value="saco">Saco</option><option value="caixa">Caixa</option><option value="pacote">Pacote</option>
+          {unitOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
       </div>
       <div>

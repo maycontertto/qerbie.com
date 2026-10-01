@@ -3,6 +3,50 @@ import type { BusinessCategoryKey } from "@/lib/merchant/businessCategories";
 export const DEFAULT_MENU_SLUG = "principal";
 export const DEFAULT_MENU_NAME = "Catálogo";
 
+export type ProductUnitOption = { value: string; label: string };
+
+const PRODUCT_UNITS: Record<string, ProductUnitOption[]> = {
+  material_construcao: [
+    { value: "un", label: "Unidade" }, { value: "kg", label: "Kg" }, { value: "g", label: "g" },
+    { value: "m", label: "Metro (m)" }, { value: "m2", label: "Metro² (m²)" }, { value: "m3", label: "Metro³ (m³)" },
+    { value: "l", label: "Litro (L)" }, { value: "saco", label: "Saco" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+  ],
+  casa_de_racao: [
+    { value: "un", label: "Unidade" }, { value: "kg", label: "Kg" }, { value: "g", label: "g" },
+    { value: "l", label: "Litro (L)" }, { value: "saco", label: "Saco" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+  ],
+  farmacia: [
+    { value: "un", label: "Unidade" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" }, { value: "blister", label: "Blister" }, { value: "frasco", label: "Frasco" },
+  ],
+  pet_shop: [
+    { value: "un", label: "Unidade" }, { value: "kg", label: "Kg" }, { value: "g", label: "g" },
+    { value: "l", label: "Litro (L)" }, { value: "saco", label: "Saco" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+  ],
+  mercado: [
+    { value: "un", label: "Unidade" }, { value: "kg", label: "Kg" }, { value: "g", label: "g" },
+    { value: "l", label: "Litro (L)" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+  ],
+  conveniencia: [
+    { value: "un", label: "Unidade" }, { value: "kg", label: "Kg" }, { value: "g", label: "g" },
+    { value: "l", label: "Litro (L)" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+  ],
+  loja_roupas: [
+    { value: "un", label: "Peça" }, { value: "par", label: "Par" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+  ],
+  loja_calcados: [
+    { value: "un", label: "Par" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+  ],
+};
+
+const GENERAL_PRODUCT_UNITS: ProductUnitOption[] = [
+  { value: "un", label: "Unidade" }, { value: "kg", label: "Kg" }, { value: "g", label: "g" },
+  { value: "l", label: "Litro (L)" }, { value: "caixa", label: "Caixa" }, { value: "pacote", label: "Pacote" },
+];
+
+export function getProductUnitOptions(category: BusinessCategoryKey | string | null | undefined): ProductUnitOption[] {
+  return PRODUCT_UNITS[category ?? ""] ?? GENERAL_PRODUCT_UNITS;
+}
+
 export function getSuggestedCategories(
   category: BusinessCategoryKey | string | null | undefined,
 ): string[] {
