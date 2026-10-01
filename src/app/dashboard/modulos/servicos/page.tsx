@@ -35,6 +35,7 @@ export default async function ServicosModulePage({
 }) {
   const { user, merchant, membership } = await getDashboardUserOrRedirect();
   const isOwner = user.id === merchant.owner_user_id;
+  const isConstruction = merchant.business_category === "material_construcao";
   const canProducts =
     isOwner ||
     (membership
@@ -221,10 +222,10 @@ export default async function ServicosModulePage({
             <section className="lg:col-span-4">
               <div className="rounded-2xl border border-zinc-200 bg-white/60 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/40">
                 <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                  Especialidades (categorias)
+                  {isConstruction ? "Tipos de serviço" : "Especialidades (categorias)"}
                 </h2>
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  Ex.: Odontologia, Ortopedia, Exames laboratoriais.
+                  {isConstruction ? "Ex.: Entrega, montagem, instalação." : "Ex.: Odontologia, Ortopedia, Exames laboratoriais."}
                 </p>
 
                 <form action={createSuggestedMenuCategories} className="mt-4">
@@ -251,7 +252,7 @@ export default async function ServicosModulePage({
                       type="text"
                       minLength={2}
                       required
-                      placeholder="Ex.: Odontologia"
+                      placeholder={isConstruction ? "Ex.: Entrega" : "Ex.: Odontologia"}
                       className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
                   </div>
@@ -263,7 +264,7 @@ export default async function ServicosModulePage({
                     <input
                       name="description"
                       type="text"
-                      placeholder="Ex.: Especialidades e procedimentos"
+                      placeholder={isConstruction ? "Ex.: Entrega de materiais" : "Ex.: Especialidades e procedimentos"}
                       className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
                   </div>
@@ -340,7 +341,7 @@ export default async function ServicosModulePage({
                       type="text"
                       required
                       minLength={2}
-                      placeholder="Ex.: Consulta (Clínico Geral)"
+                      placeholder={isConstruction ? "Ex.: Frete de material" : "Ex.: Consulta (Clínico Geral)"}
                       className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
                   </div>
@@ -378,7 +379,7 @@ export default async function ServicosModulePage({
                     <textarea
                       name="description"
                       rows={3}
-                      placeholder="Ex.: Inclui avaliação inicial e orientação."
+                      placeholder={isConstruction ? "Ex.: Entrega com descarga no local." : "Ex.: Inclui avaliação inicial e orientação."}
                       className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
                   </div>

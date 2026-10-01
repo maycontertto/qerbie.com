@@ -77,6 +77,8 @@ export function getSuggestedCategories(
     case "clinica":
     case "consultorio":
       return ["Consultas", "Exames", "Procedimentos", "Retornos"];
+    case "material_construcao":
+      return ["Entrega", "Montagem", "Instalação", "Orçamento técnico"];
     case "hoteis":
       return ["Acomodações", "Serviços", "Extras", "Promoções"];
     case "loja_roupas":
