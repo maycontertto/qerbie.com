@@ -1194,10 +1194,10 @@ const CLINICA_BASE: DashboardModules = {
       },
       {
         title: "Profissionais",
-        description: "Equipe e disponibilidade",
-        hint: "Em breve",
-        href: "/dashboard/modulos/profissionais",
-        ctaLabel: "Abrir",
+        description: "Cadastre e organize a equipe pela Recepção",
+        hint: "Agora",
+        href: "/dashboard/modulos/recepcao",
+        ctaLabel: "Gerenciar equipe",
       },
       {
         title: "Convênios",

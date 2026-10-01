@@ -1,5 +1,6 @@
 import { getMerchantOwnerOrRedirect } from "@/lib/auth/guard";
 import { getBusinessCategoryLabel } from "@/lib/merchant/helpers";
+import { redirect } from "next/navigation";
 
 export default async function ModulePlaceholderPage({
   params,
@@ -8,6 +9,13 @@ export default async function ModulePlaceholderPage({
 }) {
   const { merchant } = await getMerchantOwnerOrRedirect();
   const { module } = await params;
+
+  if (
+    module === "profissionais" &&
+    (merchant.business_category === "clinica" || merchant.business_category === "consultorio")
+  ) {
+    redirect("/dashboard/modulos/recepcao");
+  }
 
   const categoryLabel = getBusinessCategoryLabel(merchant.business_category);
 
