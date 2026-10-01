@@ -1,12 +1,26 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { CUSTOMER_SESSION_COOKIE } from "@/lib/customer/constants";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ qrToken: string; requestId: string }> },
 ) {
   const { qrToken, requestId } = await params;
-  const supabase = await createClient({ "x-beauty-qr-token": qrToken });
+  const sessionToken = (await cookies()).get(CUSTOMER_SESSION_COOKIE)?.value ?? "";
+  if (!sessionToken) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const { data: qr } = await createAdminClient()
+    .from("beauty_qr_tokens")
+    .select("merchant_id")
+    .eq("qr_token", qrToken)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!qr) return NextResponse.json({ error: "not_found" }, { status: 404 });
+
+  const supabase = await createClient({ "x-beauty-qr-token": qrToken, "x-session-token": sessionToken });
 
   const { data, error } = await supabase
     .from("merchant_appointment_requests")
@@ -14,6 +28,8 @@ export async function GET(
       "id, status, slot_starts_at, slot_ends_at, queue_id, beauty_service_id, customer_name, customer_contact, customer_notes",
     )
     .eq("id", requestId)
+    .eq("merchant_id", qr.merchant_id)
+    .eq("session_token", sessionToken)
     .maybeSingle();
 
   if (error || !data) {
