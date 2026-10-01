@@ -2539,6 +2539,53 @@ export interface Database {
         ];
       };
 
+      clinic_insurance_plans: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          provider_name: string;
+          plan_name: string;
+          registration_code: string | null;
+          contact: string | null;
+          notes: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          provider_name: string;
+          plan_name: string;
+          registration_code?: string | null;
+          contact?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          provider_name?: string;
+          plan_name?: string;
+          registration_code?: string | null;
+          contact?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "clinic_insurance_plans_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       merchant_queues: {
         Row: {
           id: string;

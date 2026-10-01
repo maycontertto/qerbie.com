@@ -1201,10 +1201,10 @@ const CLINICA_BASE: DashboardModules = {
       },
       {
         title: "Convênios",
-        description: "Tabelas e regras (opcional)",
-        hint: "Em breve",
+        description: "Cadastre operadoras, planos e observações de atendimento",
+        hint: "Agora",
         href: "/dashboard/modulos/convenios",
-        ctaLabel: "Abrir",
+        ctaLabel: "Gerenciar convênios",
       },
     ],
     atendimento: [
