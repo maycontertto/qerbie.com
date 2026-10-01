@@ -166,23 +166,35 @@ export default async function QuartosModulePage({
 
                   <form action={updateHotelRoomType} className="mt-4 grid gap-3 sm:grid-cols-2">
                     <input type="hidden" name="id" value={rt.id} />
-                    <input
-                      name="name"
-                      defaultValue={rt.name}
-                      className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
-                    <input
-                      name="capacity"
-                      inputMode="numeric"
-                      defaultValue={String(rt.capacity ?? 1)}
-                      className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
-                    <input
-                      name="base_price"
-                      inputMode="decimal"
-                      defaultValue={Number(rt.base_price ?? 0).toFixed(2).replace(".", ",")}
-                      className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nome do tipo
+                      <input
+                        name="name"
+                        required
+                        minLength={2}
+                        maxLength={120}
+                        defaultValue={rt.name}
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Capacidade de hóspedes
+                      <input
+                        name="capacity"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={20}
+                        defaultValue={String(rt.capacity ?? 1)}
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </label>
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Preço base por noite (R$)
+                      <input
+                        name="base_price"
+                        inputMode="decimal"
+                        defaultValue={Number(rt.base_price ?? 0).toFixed(2).replace(".", ",")}
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </label>
                     <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
                       <span className="font-medium text-zinc-900 dark:text-zinc-50">Ativo</span>
                       <input
@@ -192,12 +204,16 @@ export default async function QuartosModulePage({
                         className="h-5 w-5 rounded border-zinc-300 dark:border-zinc-700"
                       />
                     </label>
-                    <input
-                      name="description"
-                      defaultValue={rt.description ?? ""}
-                      placeholder="Descrição (opcional)"
-                      className="sm:col-span-2 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
+                    <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300 sm:col-span-2">Descrição (opcional)
+                      <textarea
+                        name="description"
+                        rows={2}
+                        maxLength={500}
+                        defaultValue={rt.description ?? ""}
+                        placeholder="Detalhes do quarto, comodidades incluídas etc."
+                        className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                      />
+                    </label>
                     <div className="sm:col-span-2 flex justify-end">
                       <button
                         type="submit"
