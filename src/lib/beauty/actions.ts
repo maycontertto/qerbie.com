@@ -175,34 +175,52 @@ export async function updateBeautyProfessionalServices(formData: FormData): Prom
     redirect(`${returnTo}?error=invalid`);
   }
 
-  await supabase
+  if (uniqueServiceIds.some((id) => !/^[0-9a-f-]{36}$/i.test(id))) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { data: services, error: servicesError } = uniqueServiceIds.length
+    ? await supabase
+        .from("beauty_services")
+        .select("id")
+        .eq("merchant_id", merchant.id)
+        .in("id", uniqueServiceIds)
+    : { data: [], error: null };
+  const allowedIds = new Set((services ?? []).map((service) => service.id));
+  if (servicesError || allowedIds.size !== uniqueServiceIds.length) {
+    redirect(`${returnTo}?error=invalid`);
+  }
+
+  const { data: currentMappings, error: mappingsError } = await supabase
     .from("beauty_queue_services")
-    .delete()
+    .select("service_id")
     .eq("merchant_id", merchant.id)
     .eq("queue_id", queueId);
+  if (mappingsError) redirect(`${returnTo}?error=save_failed`);
 
-  if (uniqueServiceIds.length) {
-    const { data: services } = await supabase
-      .from("beauty_services")
-      .select("id")
+  const rows = uniqueServiceIds.map((serviceId) => ({
+    merchant_id: merchant.id,
+    queue_id: queueId,
+    service_id: serviceId,
+  }));
+  if (rows.length) {
+    const { error } = await supabase
+      .from("beauty_queue_services")
+      .upsert(rows, { onConflict: "queue_id,service_id", ignoreDuplicates: true });
+    if (error) redirect(`${returnTo}?error=save_failed`);
+  }
+
+  const removedServiceIds = (currentMappings ?? [])
+    .map((mapping) => mapping.service_id)
+    .filter((serviceId) => !allowedIds.has(serviceId));
+  for (const serviceId of removedServiceIds) {
+    const { error } = await supabase
+      .from("beauty_queue_services")
+      .delete()
       .eq("merchant_id", merchant.id)
-      .in("id", uniqueServiceIds);
-
-    const allowedIds = new Set((services ?? []).map((s) => s.id));
-    const rows = uniqueServiceIds
-      .filter((id) => allowedIds.has(id))
-      .map((serviceId) => ({
-        merchant_id: merchant.id,
-        queue_id: queueId,
-        service_id: serviceId,
-      }));
-
-    if (rows.length) {
-      const { error } = await supabase.from("beauty_queue_services").insert(rows);
-      if (error) {
-        redirect(`${returnTo}?error=save_failed`);
-      }
-    }
+      .eq("queue_id", queueId)
+      .eq("service_id", serviceId);
+    if (error) redirect(`${returnTo}?error=save_failed`);
   }
 
   redirect(`${returnTo}?saved=1`);
