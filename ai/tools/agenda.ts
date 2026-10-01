@@ -662,42 +662,51 @@ export const cancelAppointmentSlotTool: ToolDefinition<CancelAppointmentSlotArgs
   async buildPreview(ctx: AssistantContext, args: CancelAppointmentSlotArgs) {
     const { data: slot } = await ctx.supabase
       .from("merchant_appointment_slots")
-      .select("id, starts_at, ends_at, status, merchant_queues(name)")
+      .select("id, starts_at, ends_at, status, is_active, merchant_queues(name)")
       .eq("id", args.slotId)
       .eq("merchant_id", ctx.merchantId)
+      .eq("business_category", ctx.businessCategory ?? "")
       .maybeSingle();
 
-    if (!slot) {
+    if (!slot || !slot.is_active || slot.status === "cancelled") {
       throw new Error("Não encontrei esse horário.");
-    }
-    if (slot.status !== "available") {
-      throw new Error(
-        "Esse horário já tem uma solicitação de cliente associada (não está mais disponível) — não posso cancelar por aqui. Resolva a solicitação primeiro (confirm_appointment/decline_appointment).",
-      );
     }
 
     const queue = slot.merchant_queues as unknown as { name: string } | { name: string }[] | null;
     const queueLabel = Array.isArray(queue) ? queue[0]?.name : queue?.name;
-    return `Cancelar o horário disponível de ${formatDateTimeSp(slot.starts_at)} até ${formatDateTimeSp(slot.ends_at)}${
+    const { data: appointment } = await ctx.supabase
+      .from("merchant_appointment_requests")
+      .select("customer_name, status")
+      .eq("merchant_id", ctx.merchantId)
+      .eq("business_category", ctx.businessCategory ?? "")
+      .eq("slot_id", slot.id)
+      .in("status", ["pending", "confirmed"])
+      .maybeSingle();
+    const appointmentLabel = appointment
+      ? ` e o agendamento${appointment.customer_name ? ` de ${appointment.customer_name}` : " vinculado"}`
+      : "";
+    return `Cancelar o horário de ${formatDateTimeSp(slot.starts_at)} até ${formatDateTimeSp(slot.ends_at)}${appointmentLabel}${
       queueLabel ? ` (${queueLabel})` : ""
     }. Confirma?`;
   },
   async run(ctx: AssistantContext, args: CancelAppointmentSlotArgs) {
     const { data: slot } = await ctx.supabase
       .from("merchant_appointment_slots")
-      .select("id, status")
+      .select("id, status, is_active")
       .eq("id", args.slotId)
       .eq("merchant_id", ctx.merchantId)
+      .eq("business_category", ctx.businessCategory ?? "")
       .maybeSingle();
 
-    if (!slot) {
+    if (!slot || !slot.is_active || slot.status === "cancelled") {
       return { ok: false, error: "Horário não encontrado." };
     }
-    if (slot.status !== "available") {
-      return { ok: false, error: "Esse horário não está mais disponível — não foi cancelado." };
-    }
 
-    const result = await cancelAppointmentSlotCore(ctx.supabase, { merchantId: ctx.merchantId, slotId: args.slotId });
+    const result = await cancelAppointmentSlotCore(ctx.supabase, {
+      merchantId: ctx.merchantId,
+      businessCategory: ctx.businessCategory ?? "",
+      slotId: args.slotId,
+    });
 
     if (!result.ok) {
       return { ok: false, error: "Não foi possível cancelar agora. Tente novamente." };
