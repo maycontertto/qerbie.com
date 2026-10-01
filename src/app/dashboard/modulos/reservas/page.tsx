@@ -107,9 +107,11 @@ export default async function ReservasModulePage({
       ? { kind: "success" as const, message: "Salvo." }
       : error === "invalid"
         ? { kind: "error" as const, message: "Dados inválidos." }
-        : error === "save_failed"
-          ? { kind: "error" as const, message: "Não foi possível salvar agora. Tente novamente." }
-          : null;
+      : error === "save_failed"
+        ? { kind: "error" as const, message: "Não foi possível salvar agora. Tente novamente." }
+        : error === "housekeeping_failed"
+          ? { kind: "error" as const, message: "O check-out foi atualizado, mas a tarefa de limpeza não foi criada. Atualize o status novamente ou crie a tarefa em Housekeeping." }
+        : null;
 
   return (
     <div className="min-h-screen">

@@ -391,6 +391,21 @@ export async function updateHotelReservationStatus(formData: FormData): Promise<
     redirect("/dashboard/modulos/reservas?error=invalid");
   }
 
+  const { data: reservation, error: reservationError } = await supabase
+    .from("merchant_hotel_reservations")
+    .select("id, check_out_date")
+    .eq("merchant_id", merchant.id)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (reservationError || !reservation) {
+    console.error("updateHotelReservationStatus: reservation lookup failed", {
+      code: reservationError?.code,
+      message: reservationError?.message,
+    });
+    redirect("/dashboard/modulos/reservas?error=save_failed");
+  }
+
   const { error } = await supabase
     .from("merchant_hotel_reservations")
     .update({ status })
@@ -401,6 +416,48 @@ export async function updateHotelReservationStatus(formData: FormData): Promise<
     console.error("updateHotelReservationStatus failed", { code: error.code, message: error.message });
     redirect("/dashboard/modulos/reservas?error=save_failed");
   }
+
+  if (status === "checked_out") {
+    const automaticTaskNote = "Tarefa automática gerada ao concluir o check-out.";
+    const { data: existingTask, error: taskLookupError } = await supabase
+      .from("merchant_hotel_housekeeping_tasks")
+      .select("id")
+      .eq("merchant_id", merchant.id)
+      .eq("reservation_id", reservation.id)
+      .eq("notes", automaticTaskNote)
+      .limit(1)
+      .maybeSingle();
+
+    if (taskLookupError) {
+      console.error("updateHotelReservationStatus: housekeeping lookup failed", {
+        code: taskLookupError.code,
+        message: taskLookupError.message,
+      });
+      redirect("/dashboard/modulos/reservas?error=housekeeping_failed");
+    }
+
+    if (!existingTask) {
+      const { error: taskInsertError } = await supabase
+        .from("merchant_hotel_housekeeping_tasks")
+        .insert({
+          merchant_id: merchant.id,
+          reservation_id: reservation.id,
+          title: "Limpeza após check-out",
+          due_date: reservation.check_out_date,
+          status: "open",
+          notes: automaticTaskNote,
+        });
+
+      if (taskInsertError) {
+        console.error("updateHotelReservationStatus: housekeeping creation failed", {
+          code: taskInsertError.code,
+          message: taskInsertError.message,
+        });
+        redirect("/dashboard/modulos/reservas?error=housekeeping_failed");
+      }
+    }
+  }
+
   redirect("/dashboard/modulos/reservas?saved=1");
 }
 
