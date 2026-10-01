@@ -108,7 +108,8 @@ function typeLabel(order: OrderRow, tableLabelById: Record<string, string>): str
   if (order.order_type === "delivery") return "Entrega";
   const label = order.table_id ? tableLabelById[order.table_id] : null;
   if (!label) return "Mesa";
-  return /^mesa\b/i.test(label.trim()) ? label : `Mesa ${label}`;
+  const normalizedLabel = label.trim().replace(/^(?:mesa\s+)+/i, "Mesa ");
+  return /^mesa\b/i.test(normalizedLabel) ? normalizedLabel : `Mesa ${normalizedLabel}`;
 }
 
 function fmtTime(iso: string): string {

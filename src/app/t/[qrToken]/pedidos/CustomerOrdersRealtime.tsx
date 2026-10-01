@@ -184,6 +184,7 @@ export function CustomerOrdersRealtime({ qrToken, initialOrders, paymentSettings
   const { lang } = useCustomerLanguage();
   const [orders, setOrders] = useState<OrderRow[]>(initialOrders);
   const [refreshing, setRefreshing] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(initialOrders.length === 0);
   const [error, setError] = useState("");
 
   const refresh = useCallback(async (quiet = false) => {
@@ -197,6 +198,7 @@ export function CustomerOrdersRealtime({ qrToken, initialOrders, paymentSettings
     } catch {
       setError("Não foi possível atualizar agora. Confira sua conexão e tente novamente.");
     } finally {
+      setInitialLoading(false);
       if (!quiet) setRefreshing(false);
     }
   }, [qrToken]);
@@ -216,7 +218,9 @@ export function CustomerOrdersRealtime({ qrToken, initialOrders, paymentSettings
       <button type="button" disabled={refreshing} onClick={() => void refresh()} className="rounded-xl border border-zinc-200 px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">{refreshing ? "Atualizando…" : "Atualizar"}</button>
     </div>
     {error && <p role="status" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">{error}</p>}
-    {orders.length === 0 ? <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">{tCustomer(lang, "no_orders_yet")}</div> : <>
+    {orders.length === 0 && initialLoading ? <div role="status" className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">Carregando seus pedidos…</div> : null}
+    {orders.length === 0 && !initialLoading && !error ? <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">{tCustomer(lang, "no_orders_yet")}</div> : null}
+    {orders.length > 0 && <>
       {activeOrders.map((order) => <OrderCard key={order.id} order={order} qrToken={qrToken} paymentSettings={paymentSettings} onCancelled={(id) => setOrders((prev) => prev.map((item) => item.id === id ? { ...item, status: "cancelled" } : item))} />)}
       {pastOrders.length > 0 && <details className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <summary className="cursor-pointer text-sm font-semibold text-zinc-800 dark:text-zinc-100">Pedidos anteriores ({pastOrders.length})</summary>
