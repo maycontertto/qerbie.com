@@ -99,6 +99,7 @@ export default async function AgendaModulePage({
     { data: aestheticServices },
     { data: beautyServices },
     { data: petServices },
+    { data: carwashServices },
   ] = await Promise.all([
     supabase
       .from("merchant_queues")
@@ -118,7 +119,7 @@ export default async function AgendaModulePage({
     supabase
       .from("merchant_appointment_requests")
       .select(
-        "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
+        "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, carwash_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
       )
       .eq("merchant_id", merchant.id)
       .eq("business_category", merchant.business_category ?? "")
@@ -127,7 +128,7 @@ export default async function AgendaModulePage({
     supabase
       .from("merchant_appointment_requests")
       .select(
-        "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
+        "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, carwash_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
       )
       .eq("merchant_id", merchant.id)
       .eq("business_category", merchant.business_category ?? "")
@@ -159,6 +160,12 @@ export default async function AgendaModulePage({
       .eq("merchant_id", merchant.id)
       .eq("is_active", true)
       .order("updated_at", { ascending: false }),
+    supabase
+      .from("carwash_services")
+      .select("id, name")
+      .eq("merchant_id", merchant.id)
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false }),
   ]);
 
   const queueNameById = new Map<string, string>();
@@ -175,6 +182,17 @@ export default async function AgendaModulePage({
 
   const petServiceNameById = new Map<string, string>();
   for (const s of petServices ?? []) petServiceNameById.set(s.id, s.name);
+
+  const carwashServiceNameById = new Map<string, string>();
+  for (const s of carwashServices ?? []) carwashServiceNameById.set(s.id, s.name);
+
+  const directBookingServices =
+    merchant.business_category === "barbearia" ? services ?? []
+      : merchant.business_category === "clinica_estetica" ? aestheticServices ?? []
+        : merchant.business_category === "salao_de_beleza" ? beautyServices ?? []
+          : merchant.business_category === "pet_shop" ? petServices ?? []
+            : merchant.business_category === "lava_jato" ? carwashServices ?? []
+              : [];
 
   const banner =
       error === "invalid_slot"
@@ -348,6 +366,24 @@ export default async function AgendaModulePage({
                     </select>
                   </div>
 
+                  {directBookingServices.length > 0 ? (
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                        Serviço
+                      </label>
+                      <select
+                        name="service_id"
+                        defaultValue=""
+                        className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+                      >
+                        <option value="">(Sem serviço específico)</option>
+                        {directBookingServices.map((service) => (
+                          <option key={service.id} value={service.id}>{service.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
                   <div>
                     <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
                       Início
@@ -415,12 +451,15 @@ export default async function AgendaModulePage({
                       const aestheticServiceId = (r as { aesthetic_service_id?: string | null }).aesthetic_service_id ?? null;
                       const beautyServiceId = (r as { beauty_service_id?: string | null }).beauty_service_id ?? null;
                       const petServiceId = (r as { pet_service_id?: string | null }).pet_service_id ?? null;
+                      const carwashServiceId = (r as { carwash_service_id?: string | null }).carwash_service_id ?? null;
                       const serviceName = aestheticServiceId
                         ? aestheticServiceNameById.get(String(aestheticServiceId)) ?? ""
                         : beautyServiceId
                           ? beautyServiceNameById.get(String(beautyServiceId)) ?? ""
                         : petServiceId
                           ? petServiceNameById.get(String(petServiceId)) ?? ""
+                        : carwashServiceId
+                          ? carwashServiceNameById.get(String(carwashServiceId)) ?? ""
                         : serviceId
                           ? serviceNameById.get(String(serviceId)) ?? ""
                           : "";

@@ -151,9 +151,11 @@ export async function createAppointmentSlotCore(
 
 export interface BookAppointmentForCustomerInput {
   merchantId: string;
+  businessCategory?: string | null;
   /** Usado para compor um session_token sintético (não há sessão real de cliente aqui). */
   staffUserId: string;
   queueId?: string | null;
+  serviceId?: string | null;
   startsAtIso: string;
   durationMin: number;
   customerName: string;
@@ -200,21 +202,33 @@ export async function bookAppointmentForCustomerCore(
   const startsAt = new Date(input.startsAtIso);
   const endsAt = new Date(startsAt.getTime() + input.durationMin * 60 * 1000);
 
+  const requestInsert: Database["public"]["Tables"]["merchant_appointment_requests"]["Insert"] = {
+    merchant_id: input.merchantId,
+    slot_id: slotResult.slotId,
+    session_token: `staff:${input.staffUserId}`,
+    customer_name: customerName,
+    customer_contact: input.customerContact?.trim() || null,
+    customer_notes: input.customerNotes?.trim() || null,
+    status: "pending",
+    // Sobrescritos pela trigger handle_appointment_request_insert a partir do slot,
+    // mas obrigatórios no tipo de Insert.
+    slot_starts_at: startsAt.toISOString(),
+    slot_ends_at: endsAt.toISOString(),
+  };
+
+  if (input.serviceId) {
+    switch (input.businessCategory) {
+      case "barbearia": requestInsert.service_id = input.serviceId; break;
+      case "clinica_estetica": requestInsert.aesthetic_service_id = input.serviceId; break;
+      case "salao_de_beleza": requestInsert.beauty_service_id = input.serviceId; break;
+      case "pet_shop": requestInsert.pet_service_id = input.serviceId; break;
+      case "lava_jato": requestInsert.carwash_service_id = input.serviceId; break;
+    }
+  }
+
   const { data: reqRow, error: reqError } = await supabase
     .from("merchant_appointment_requests")
-    .insert({
-      merchant_id: input.merchantId,
-      slot_id: slotResult.slotId,
-      session_token: `staff:${input.staffUserId}`,
-      customer_name: customerName,
-      customer_contact: input.customerContact?.trim() || null,
-      customer_notes: input.customerNotes?.trim() || null,
-      status: "pending",
-      // Sobrescritos pela trigger handle_appointment_request_insert a partir do slot,
-      // mas obrigatórios no tipo de Insert.
-      slot_starts_at: startsAt.toISOString(),
-      slot_ends_at: endsAt.toISOString(),
-    })
+    .insert(requestInsert)
     .select("id")
     .single();
 
@@ -454,6 +468,7 @@ export async function bookAppointmentForCustomer(formData: FormData) {
   const startsAtLocal = String(formData.get("starts_at") ?? "");
   const durationMin = Number(formData.get("duration_min") ?? 0);
   const customerName = String(formData.get("customer_name") ?? "").trim();
+  const serviceId = String(formData.get("service_id") ?? "").trim() || null;
   const customerContact = String(formData.get("customer_contact") ?? "").trim() || null;
   const customerNotes = String(formData.get("customer_notes") ?? "").trim() || null;
 
@@ -464,10 +479,44 @@ export async function bookAppointmentForCustomer(formData: FormData) {
 
   const { merchant, user, supabase } = await requireAgendaPermission();
 
+  if (serviceId) {
+    let serviceExists = false;
+    switch (merchant.business_category) {
+      case "barbearia": {
+        const { data } = await supabase.from("barbershop_services").select("id").eq("merchant_id", merchant.id).eq("id", serviceId).eq("is_active", true).maybeSingle();
+        serviceExists = Boolean(data);
+        break;
+      }
+      case "clinica_estetica": {
+        const { data } = await supabase.from("aesthetic_services").select("id").eq("merchant_id", merchant.id).eq("id", serviceId).eq("is_active", true).maybeSingle();
+        serviceExists = Boolean(data);
+        break;
+      }
+      case "salao_de_beleza": {
+        const { data } = await supabase.from("beauty_services").select("id").eq("merchant_id", merchant.id).eq("id", serviceId).eq("is_active", true).maybeSingle();
+        serviceExists = Boolean(data);
+        break;
+      }
+      case "pet_shop": {
+        const { data } = await supabase.from("pet_services").select("id").eq("merchant_id", merchant.id).eq("id", serviceId).eq("is_active", true).maybeSingle();
+        serviceExists = Boolean(data);
+        break;
+      }
+      case "lava_jato": {
+        const { data } = await supabase.from("carwash_services").select("id").eq("merchant_id", merchant.id).eq("id", serviceId).eq("is_active", true).maybeSingle();
+        serviceExists = Boolean(data);
+        break;
+      }
+    }
+    if (!serviceExists) redirect("/dashboard/modulos/agenda?error=invalid_booking");
+  }
+
   const result = await bookAppointmentForCustomerCore(supabase, {
     merchantId: merchant.id,
+    businessCategory: merchant.business_category,
     staffUserId: user.id,
     queueId,
+    serviceId,
     startsAtIso,
     durationMin,
     customerName,
