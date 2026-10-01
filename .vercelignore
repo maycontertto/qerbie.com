@@ -1,2 +1,4 @@
 .codex-remote-attachments/
 .gradle/
+.env*
+!.env.example
