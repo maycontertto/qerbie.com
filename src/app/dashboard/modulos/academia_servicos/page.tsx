@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
 import { createGymAdditionalService, updateGymAdditionalService } from "@/lib/gym/actions";
+import { CurrencyCentsInput } from "../_components/CurrencyCentsInput";
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -89,14 +90,7 @@ export default async function AcademiaServicosPage({
                 placeholder="Ex: Avaliação"
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
-              <input
-                name="price_cents"
-                type="number"
-                min={0}
-                step={1}
-                placeholder="Preço em centavos (opcional)"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-              />
+              <CurrencyCentsInput label="Preço (opcional)" />
               <button
                 type="submit"
                 className="w-full rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -139,14 +133,7 @@ export default async function AcademiaServicosPage({
                       defaultValue={s.name}
                       className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
-                    <input
-                      name="price_cents"
-                      type="number"
-                      min={0}
-                      step={1}
-                      defaultValue={String(Number(s.price_cents ?? 0))}
-                      className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
+                    <CurrencyCentsInput label="Preço" defaultCents={Number(s.price_cents ?? 0)} />
                     <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
                       <span className="font-medium text-zinc-900 dark:text-zinc-50">Ativo</span>
                       <input

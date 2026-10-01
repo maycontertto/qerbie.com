@@ -24,6 +24,12 @@ function initials(name: string): string {
   return (parts[0]?.[0] ?? "") + (parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "");
 }
 
+function formatDatePtBr(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString("pt-BR");
+}
+
 function isOverdue(nextDueAt: string | null | undefined): boolean {
   if (!nextDueAt) return false;
   const due = new Date(`${nextDueAt}T00:00:00`);
@@ -313,7 +319,7 @@ export default async function AcademiaAlunosPage({
                             </h3>
                             <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
                               {p ? `Plano: ${p.name} (${formatBrlCents(Number(p.price_cents ?? 0))})` : "Sem plano"}
-                              {m?.next_due_at ? ` • Vence: ${m.next_due_at}` : ""}
+                              {m?.next_due_at ? ` • Vence: ${formatDatePtBr(m.next_due_at)}` : ""}
                               {lastCheckinByStudent.get(s.id) ? ` • Último check-in: ${lastCheckinByStudent.get(s.id)}` : ""}
                             </p>
                           </div>

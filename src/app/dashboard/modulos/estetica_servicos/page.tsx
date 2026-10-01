@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getDashboardUserOrRedirect, hasMemberPermission } from "@/lib/auth/guard";
 import { createClient } from "@/lib/supabase/server";
 import { createAestheticService, updateAestheticService } from "@/lib/aesthetic/actions";
+import { CurrencyCentsInput } from "../_components/CurrencyCentsInput";
 
 function formatBrlCents(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((cents ?? 0) / 100);
@@ -103,14 +104,7 @@ export default async function EsteticaServicosPage({
                 className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
               <div className="grid gap-3 sm:grid-cols-2">
-                <input
-                  name="price_cents"
-                  type="number"
-                  min={0}
-                  step={1}
-                  placeholder="Preço (centavos)"
-                  className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                />
+                <CurrencyCentsInput label="Preço" />
                 <input
                   name="duration_min"
                   type="number"
@@ -173,14 +167,7 @@ export default async function EsteticaServicosPage({
                       defaultValue={s.name}
                       className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
-                    <input
-                      name="price_cents"
-                      type="number"
-                      min={0}
-                      step={1}
-                      defaultValue={String(Number(s.price_cents ?? 0))}
-                      className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                    />
+                    <CurrencyCentsInput label="Preço" defaultCents={Number(s.price_cents ?? 0)} />
                     <textarea
                       name="description"
                       defaultValue={s.description ?? ""}
