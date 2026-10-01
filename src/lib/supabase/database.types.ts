@@ -2156,6 +2156,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string | null;
           name: string;
           description: string | null;
           slug: string;
@@ -2167,6 +2168,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string | null;
           name: string;
           description?: string | null;
           slug: string;
@@ -2178,6 +2180,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string | null;
           name?: string;
           description?: string | null;
           slug?: string;
@@ -2201,6 +2204,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string | null;
           menu_id: string;
           name: string;
           description: string | null;
@@ -2212,6 +2216,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string | null;
           menu_id: string;
           name: string;
           description?: string | null;
@@ -2223,6 +2228,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string | null;
           menu_id?: string;
           name?: string;
           description?: string | null;
@@ -2253,6 +2259,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string | null;
           menu_id: string;
           category_id: string | null;
           internal_code: string | null;
@@ -2281,6 +2288,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string | null;
           menu_id: string;
           category_id?: string | null;
           internal_code?: string | null;
@@ -2309,6 +2317,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string | null;
           menu_id?: string;
           category_id?: string | null;
           internal_code?: string | null;

@@ -14,14 +14,19 @@ export interface PopularMenuItem {
  * partir do qrToken, nunca de dado enviado pelo cliente, e só devolvemos
  * nome do produto + contagem (nunca receita ou dado de outro cliente).
  */
-export async function getPopularMenuItemsCore(merchantId: string, limit = 5): Promise<PopularMenuItem[]> {
+export async function getPopularMenuItemsCore(
+  merchantId: string,
+  businessCategory: string,
+  limit = 5,
+): Promise<PopularMenuItem[]> {
   const supabase = createAdminClient();
   const fromIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = (await supabase
     .from("order_items")
-    .select("product_name,quantity,orders!inner(completed_at,status)")
+    .select("product_id,product_name,quantity,products!inner(business_category),orders!inner(completed_at,status)")
     .eq("merchant_id", merchantId)
+    .eq("products.business_category", businessCategory)
     .eq("orders.status", "completed")
     .gte("orders.completed_at", fromIso)) as unknown as {
     data: Array<{ product_name: string; quantity: number }> | null;

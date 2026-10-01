@@ -69,10 +69,16 @@ export default async function ChooseSegmentPage({
             painel já com as seções certas para o seu dia a dia.
           </p>
           {selectedLabel && (
-            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-              Selecionado atualmente: <strong>{selectedLabel}</strong>. Escolher outra
-              opção abaixo troca o painel.
-            </p>
+            <div className="mt-2 max-w-xl text-xs text-zinc-500 dark:text-zinc-400">
+              <p>
+                Selecionado atualmente: <strong>{selectedLabel}</strong>. Escolher outra
+                opção abaixo troca o painel e abre o catálogo daquele segmento.
+              </p>
+              <p className="mt-1">
+                Produtos, categorias e variações ficam separados por segmento. Os cadastros
+                atuais não são apagados; eles continuam disponíveis ao voltar para este segmento.
+              </p>
+            </div>
           )}
         </div>
 

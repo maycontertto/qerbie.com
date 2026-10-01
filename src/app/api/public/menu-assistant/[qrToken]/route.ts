@@ -76,9 +76,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ qrToken
       .from("products")
       .select("name, description, price")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .eq("is_active", true)
       .limit(60),
-    getPopularMenuItemsCore(merchant.id),
+    getPopularMenuItemsCore(merchant.id, merchant.business_category ?? ""),
   ]);
 
   const menuText = (menuProducts ?? [])

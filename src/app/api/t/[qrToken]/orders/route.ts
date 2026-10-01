@@ -174,6 +174,15 @@ export async function POST(
 
   const merchantId = table.merchant_id;
   const merchantReader = createAdminClient();
+  const { data: merchant } = await merchantReader
+    .from("merchants")
+    .select("business_category")
+    .eq("id", merchantId)
+    .maybeSingle();
+  if (!merchant?.business_category) {
+    return NextResponse.json({ error: "catalog_unavailable" }, { status: 503 });
+  }
+  const businessCategory = merchant.business_category;
 
   // Resolve menu
   let menuId = (body.menuId ?? "").trim();
@@ -182,6 +191,7 @@ export async function POST(
       .from("menus")
       .select("id")
       .eq("merchant_id", merchantId)
+      .eq("business_category", businessCategory)
       .eq("is_active", true)
       .eq("id", menuId)
       .maybeSingle();
@@ -193,6 +203,7 @@ export async function POST(
       .from("menus")
       .select("id")
       .eq("merchant_id", merchantId)
+      .eq("business_category", businessCategory)
       .eq("is_active", true)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true })
@@ -212,6 +223,7 @@ export async function POST(
     .from("products")
     .select("id, name, price, is_active, requires_prescription, requires_document")
     .eq("merchant_id", merchantId)
+    .eq("business_category", businessCategory)
     .eq("menu_id", menuId)
     .in("id", productIds);
 

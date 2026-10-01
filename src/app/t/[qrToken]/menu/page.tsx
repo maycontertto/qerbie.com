@@ -39,6 +39,7 @@ export default async function CustomerMenuPage({
   const branding = merchant
     ? buildMerchantBranding(merchant)
     : { displayName: "Qerbie", logoUrl: null, primaryColor: null };
+  const businessCategory = merchant?.business_category ?? "";
 
   const deliverySettings = merchant
     ? {
@@ -62,6 +63,7 @@ export default async function CustomerMenuPage({
     .from("menus")
     .select("id, name, description, slug")
     .eq("merchant_id", table.merchant_id)
+    .eq("business_category", businessCategory)
     .eq("is_active", true)
     .order("display_order", { ascending: true });
 
@@ -75,6 +77,7 @@ export default async function CustomerMenuPage({
         .from("menu_categories")
         .select("id, name, description")
         .eq("merchant_id", table.merchant_id)
+        .eq("business_category", businessCategory)
         .eq("menu_id", activeMenuId)
         .eq("is_active", true)
         .order("display_order", { ascending: true })
@@ -89,6 +92,7 @@ export default async function CustomerMenuPage({
           "id, category_id, name, description, price, image_url, is_featured, requires_prescription, requires_document",
         )
         .eq("merchant_id", table.merchant_id)
+        .eq("business_category", businessCategory)
         .eq("menu_id", activeMenuId)
         .eq("is_active", true)
         .order("display_order", { ascending: true })

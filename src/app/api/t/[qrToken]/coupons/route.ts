@@ -17,7 +17,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ qrToken: strin
   const admin = createAdminClient();
   const { data: table } = await admin.from("merchant_tables").select("merchant_id").eq("qr_token", qrToken).eq("is_active", true).maybeSingle();
   if (!table) return NextResponse.json({ error: "invalid_qr" }, { status: 404 });
-  const { data: menu } = await admin.from("menus").select("id").eq("id", menuId).eq("merchant_id", table.merchant_id).eq("is_active", true).maybeSingle();
+  const { data: merchant } = await admin.from("merchants").select("business_category").eq("id", table.merchant_id).maybeSingle();
+  if (!merchant?.business_category) return NextResponse.json({ error: "catalog_unavailable" }, { status: 503 });
+  const { data: menu } = await admin.from("menus").select("id").eq("id", menuId).eq("merchant_id", table.merchant_id).eq("business_category", merchant.business_category).eq("is_active", true).maybeSingle();
   if (!menu) return NextResponse.json({ error: "invalid_coupon" }, { status: 400 });
 
   const quantities = new Map<string, number>();
@@ -27,7 +29,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ qrToken: strin
     if (!id || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     quantities.set(id, Math.min(99, (quantities.get(id) ?? 0) + quantity));
   }
-  const { data: products, error: productsError } = await admin.from("products").select("id, price, is_active").eq("merchant_id", table.merchant_id).eq("menu_id", menuId).in("id", [...quantities.keys()]);
+  const { data: products, error: productsError } = await admin.from("products").select("id, price, is_active").eq("merchant_id", table.merchant_id).eq("business_category", merchant.business_category).eq("menu_id", menuId).in("id", [...quantities.keys()]);
   if (productsError) return NextResponse.json({ error: "products_unavailable" }, { status: 503 });
   if (!products || products.length !== quantities.size || products.some((product) => !product.is_active)) return NextResponse.json({ error: "invalid_coupon" }, { status: 400 });
   const subtotal = Math.round(products.reduce((sum, product) => sum + Number(product.price ?? 0) * (quantities.get(product.id) ?? 0), 0) * 100) / 100;
