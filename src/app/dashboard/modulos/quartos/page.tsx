@@ -93,31 +93,39 @@ export default async function QuartosModulePage({
           <aside className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Novo tipo</h2>
             <form action={createHotelRoomType} className="mt-4 space-y-3">
+              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nome do tipo
               <input
                 name="name"
                 required
                 minLength={2}
                 placeholder="Ex: Standard Casal"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Capacidade de hóspedes
               <input
                 name="capacity"
                 inputMode="numeric"
                 placeholder="Capacidade (ex: 2)"
                 defaultValue="2"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Preço base por noite (R$)
               <input
                 name="base_price"
                 inputMode="decimal"
                 placeholder="Preço base (ex: 199,90)"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
+              </label>
+              <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Descrição
               <input
                 name="description"
-                placeholder="Opcional"
-                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                placeholder="Descrição opcional"
+                className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
               />
+              </label>
               <button
                 type="submit"
                 className="w-full rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -172,7 +180,7 @@ export default async function QuartosModulePage({
                     <input
                       name="base_price"
                       inputMode="decimal"
-                      defaultValue={String(rt.base_price ?? 0).replace(".", ",")}
+                      defaultValue={Number(rt.base_price ?? 0).toFixed(2).replace(".", ",")}
                       className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                     />
                     <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">

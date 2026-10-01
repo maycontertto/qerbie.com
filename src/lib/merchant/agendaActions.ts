@@ -106,7 +106,7 @@ export interface CreateAppointmentSlotInput {
 export interface CreateAppointmentSlotResult {
   ok: boolean;
   slotId?: string;
-  error?: "invalid_slot" | "save_failed";
+  error?: "invalid_slot" | "overlap" | "save_failed";
 }
 
 /** Mutação central reaproveitada por `createAppointmentSlot` (Server Action) e `create_appointment_slot` (ai/tools/agenda.ts). */
@@ -139,6 +139,9 @@ export async function createAppointmentSlotCore(
     .select("id")
     .single();
 
+  if (error?.message.includes("appointment_overlap")) {
+    return { ok: false, error: "overlap" };
+  }
   if (error || !data) {
     return { ok: false, error: "save_failed" };
   }
@@ -162,7 +165,7 @@ export interface BookAppointmentForCustomerResult {
   ok: boolean;
   slotId?: string;
   requestId?: string;
-  error?: "invalid_slot" | "invalid_customer_name" | "slot_save_failed" | "request_save_failed" | "confirm_failed";
+  error?: "invalid_slot" | "overlap" | "invalid_customer_name" | "slot_save_failed" | "request_save_failed" | "confirm_failed";
 }
 
 /**
@@ -191,7 +194,7 @@ export async function bookAppointmentForCustomerCore(
   });
 
   if (!slotResult.ok || !slotResult.slotId) {
-    return { ok: false, error: slotResult.error === "invalid_slot" ? "invalid_slot" : "slot_save_failed" };
+    return { ok: false, error: slotResult.error === "invalid_slot" ? "invalid_slot" : slotResult.error === "overlap" ? "overlap" : "slot_save_failed" };
   }
 
   const startsAt = new Date(input.startsAtIso);
@@ -359,9 +362,11 @@ export async function createAppointmentSlot(formData: FormData) {
 
   if (!result.ok) {
     redirect(
-      result.error === "invalid_slot"
-        ? "/dashboard/modulos/agenda?error=invalid_slot"
-        : "/dashboard/modulos/agenda?error=slot_create_failed",
+    result.error === "invalid_slot"
+      ? "/dashboard/modulos/agenda?error=invalid_slot"
+      : result.error === "overlap"
+        ? "/dashboard/modulos/agenda?error=overlap"
+      : "/dashboard/modulos/agenda?error=slot_create_failed",
     );
   }
 
@@ -453,8 +458,10 @@ export async function bookAppointmentForCustomer(formData: FormData) {
 
   if (!result.ok) {
     redirect(
-      result.error === "invalid_customer_name" || result.error === "invalid_slot"
-        ? "/dashboard/modulos/agenda?error=invalid_booking"
+      result.error === "overlap"
+        ? "/dashboard/modulos/agenda?error=overlap"
+        : result.error === "invalid_customer_name" || result.error === "invalid_slot"
+          ? "/dashboard/modulos/agenda?error=invalid_booking"
         : "/dashboard/modulos/agenda?error=booking_failed",
     );
   }

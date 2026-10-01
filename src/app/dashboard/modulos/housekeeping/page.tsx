@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createHousekeepingTask, updateHousekeepingTaskStatus } from "@/lib/merchant/hotelActions";
 import type { HousekeepingTaskStatus } from "@/lib/supabase/database.types";
 
+function formatDatePtBr(value: string | null): string {
+  if (!value) return "—";
+  const [year, month, day] = value.slice(0, 10).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
 function statusLabel(s: HousekeepingTaskStatus): string {
   switch (s) {
     case "open":
@@ -134,7 +140,7 @@ export default async function HousekeepingModulePage({
                 <option value="">Sem vínculo</option>
                 {(reservations ?? []).map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.check_in_date} → {r.check_out_date}
+                    {formatDatePtBr(r.check_in_date)} → {formatDatePtBr(r.check_out_date)}
                   </option>
                 ))}
               </select>
@@ -176,7 +182,7 @@ export default async function HousekeepingModulePage({
                     <div>
                       <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t.title}</h3>
                       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        {t.due_date ? `Prazo: ${t.due_date}` : "Sem prazo"}
+                        {t.due_date ? `Prazo: ${formatDatePtBr(t.due_date)}` : "Sem prazo"}
                         {t.reservation_id ? " • Vínculo com reserva" : ""}
                       </p>
                       {t.notes ? (

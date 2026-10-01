@@ -1,7 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
 import { CUSTOMER_SESSION_COOKIE } from "@/lib/customer/constants";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
 import { CustomerAestheticAgendaBrowser } from "@/app/e/[qrToken]/agenda/CustomerAestheticAgendaBrowser";
@@ -15,7 +14,7 @@ export default async function EsteticaAgendaPage({
   const cookieStore = await cookies();
   const hasSession = Boolean(cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value);
 
-  const supabase = await createClient({ "x-aesthetic-qr-token": qrToken });
+  const supabase = createAdminClient();
 
   const { data: token } = await createAdminClient()
     .from("aesthetic_qr_tokens")

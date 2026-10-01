@@ -44,7 +44,7 @@ export async function createProductOptionGroup(formData: FormData): Promise<void
   const minSel = clampInt(formData.get("min_selections"), 0, 50) ?? 0;
   const maxSel = clampInt(formData.get("max_selections"), 1, 50) ?? 1;
 
-  if (!productId || !name) redirect("/dashboard/modulos/variacoes?error=invalid");
+  if (!productId || !name || (isRequired && minSel < 1)) redirect("/dashboard/modulos/variacoes?error=invalid");
 
   const { data: product } = await supabase
     .from("products")
@@ -84,7 +84,7 @@ export async function updateProductOptionGroup(formData: FormData): Promise<void
   const minSel = clampInt(formData.get("min_selections"), 0, 50);
   const maxSel = clampInt(formData.get("max_selections"), 1, 50);
 
-  if (!id || !productId) redirect("/dashboard/modulos/variacoes?error=invalid");
+  if (!id || !productId || (isRequired && minSel !== null && minSel < 1)) redirect("/dashboard/modulos/variacoes?error=invalid");
 
   const update: {
     name?: string;

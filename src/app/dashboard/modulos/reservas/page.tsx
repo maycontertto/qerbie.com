@@ -7,6 +7,12 @@ import {
 } from "@/lib/merchant/hotelActions";
 import type { HotelReservationStatus } from "@/lib/supabase/database.types";
 
+function formatDatePtBr(value: string | null): string {
+  if (!value) return "—";
+  const [year, month, day] = value.slice(0, 10).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
+}
+
 function statusLabel(s: HotelReservationStatus): string {
   switch (s) {
     case "pending":
@@ -243,7 +249,7 @@ export default async function ReservasModulePage({
                         {guestNameById.get(r.guest_id) ?? "Hóspede"} • {roomNameById.get(r.room_type_id) ?? "Quarto"}
                       </h3>
                       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        {r.check_in_date} → {r.check_out_date}
+                        {formatDatePtBr(r.check_in_date)} → {formatDatePtBr(r.check_out_date)}
                         {r.rate_plan_id ? ` • ${planNameById.get(r.rate_plan_id) ?? "Plano"}` : ""}
                       </p>
                       {r.notes ? (

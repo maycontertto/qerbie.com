@@ -84,7 +84,7 @@ export function QuickProductForm({
 
       <div className="sm:col-span-2 xl:col-span-2">
         <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-300">Nome do item</label>
-        <input name="name" type="text" required minLength={2} value={name} onChange={(event) => setName(event.target.value)} placeholder="Ex: Leite integral 1 L" className={inputClass} />
+        <input name="name" type="text" required minLength={2} value={name} onChange={(event) => setName(event.target.value)} placeholder="Digite o nome do produto" className={inputClass} />
       </div>
 
       <BarcodeScannerField

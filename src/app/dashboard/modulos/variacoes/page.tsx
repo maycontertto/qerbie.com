@@ -183,20 +183,24 @@ export default async function VariacoesModulePage({
                   />
                 </label>
                 <div className="grid grid-cols-2 gap-3">
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                    Mínimo (use 1 ou mais se obrigatório)
                   <input
                     name="min_selections"
                     inputMode="numeric"
                     defaultValue="0"
-                    placeholder="Mín"
                     className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                   />
+                  </label>
+                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                    Máximo
                   <input
                     name="max_selections"
                     inputMode="numeric"
                     defaultValue="1"
-                    placeholder="Máx"
                     className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                   />
+                  </label>
                 </div>
                 <button
                   type="submit"
@@ -253,20 +257,25 @@ export default async function VariacoesModulePage({
                         />
                       </label>
                       <div className="grid grid-cols-2 gap-3">
+                        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                          Mínimo
                         <input
                           name="min_selections"
                           inputMode="numeric"
                           defaultValue={String(g.min_selections ?? 0)}
-                          placeholder="Mín"
+                          min={g.is_required ? 1 : 0}
                           className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                         />
+                        </label>
+                        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
+                          Máximo
                         <input
                           name="max_selections"
                           inputMode="numeric"
                           defaultValue={String(g.max_selections ?? 1)}
-                          placeholder="Máx"
                           className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                         />
+                        </label>
                       </div>
                       <div className="sm:col-span-2 flex justify-end">
                         <button
@@ -283,15 +292,15 @@ export default async function VariacoesModulePage({
                         Opções
                       </h4>
 
-                      <form action={createProductOption} className="mt-3 grid gap-3 sm:grid-cols-[1fr_160px_120px]">
+                      <form action={createProductOption} className="mt-3 grid gap-3 sm:grid-cols-[minmax(220px,1fr)_160px_120px]">
                         <input type="hidden" name="product_id" value={selectedProductId} />
                         <input type="hidden" name="option_group_id" value={g.id} />
                         <input
                           name="name"
                           required
                           minLength={1}
-                          placeholder="Ex: 38"
-                          className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                          placeholder="Ex.: P, M, G ou 38"
+                          className="min-w-0 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                         />
                         <input
                           name="price_modifier"

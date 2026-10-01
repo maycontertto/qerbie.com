@@ -173,8 +173,10 @@ export default async function AgendaModulePage({
   for (const s of petServices ?? []) petServiceNameById.set(s.id, s.name);
 
   const banner =
-    error === "invalid_slot"
+      error === "invalid_slot"
       ? { kind: "error" as const, message: "Horário inválido." }
+      : error === "overlap"
+        ? { kind: "error" as const, message: "Esse profissional já tem um horário nesse período. Escolha outro horário." }
       : error === "slot_create_failed"
         ? { kind: "error" as const, message: "Não foi possível criar o horário." }
         : error === "invalid_request"
@@ -231,7 +233,7 @@ export default async function AgendaModulePage({
                   Publicar horário
                 </h2>
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  A clínica define horários disponíveis. O cliente solicita e você confirma.
+                  Publique os horários disponíveis para o cliente solicitar; depois, confirme cada atendimento.
                 </p>
 
                 <form action={createAppointmentSlot} className="mt-4 space-y-3">
