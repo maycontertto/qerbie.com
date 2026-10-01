@@ -84,7 +84,9 @@ export async function updateProductOptionGroup(formData: FormData): Promise<void
   const minSel = clampInt(formData.get("min_selections"), 0, 50);
   const maxSel = clampInt(formData.get("max_selections"), 1, 50);
 
-  if (!id || !productId || (isRequired && minSel !== null && minSel < 1)) redirect("/dashboard/modulos/variacoes?error=invalid");
+  if (!id || !productId || maxSel === null || minSel === null || (isRequired && minSel < 1)) {
+    redirect(`/dashboard/modulos/variacoes?productId=${encodeURIComponent(productId)}&error=invalid`);
+  }
 
   const update: {
     name?: string;
@@ -98,8 +100,8 @@ export async function updateProductOptionGroup(formData: FormData): Promise<void
   };
 
   if (name) update.name = name.slice(0, 120);
-  if (minSel != null) update.min_selections = minSel;
-  if (maxSel != null) update.max_selections = maxSel;
+  update.min_selections = minSel;
+  update.max_selections = Math.max(maxSel, minSel);
 
   const { error } = await supabase
     .from("product_option_groups")

@@ -8,6 +8,7 @@ import {
   updateProductOptionGroup,
 } from "@/lib/catalog/variationsActions";
 import type { OptionGroupSelectionType } from "@/lib/supabase/database.types";
+import { RequiredMinimumFields } from "./RequiredMinimumFields";
 
 function selectionLabel(t: OptionGroupSelectionType): string {
   return t === "multiple" ? "Múltipla" : "Única";
@@ -112,7 +113,7 @@ export default async function VariacoesModulePage({
             </Link>
             <h1 className="mt-3 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Variações</h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Configure tamanhos e cores por produto.
+              Configure tamanhos, sabores, complementos, cores ou numerações por produto.
             </p>
           </div>
           <div className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -132,7 +133,7 @@ export default async function VariacoesModulePage({
           </div>
         )}
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-[420px_1fr]">
+        <div className="mt-8 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
           <aside className="rounded-2xl border border-zinc-200 bg-white/70 p-5 shadow-sm backdrop-blur dark:border-zinc-800 dark:bg-zinc-900/60">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Produto</h2>
             <form method="get" className="mt-4 space-y-3">
@@ -174,31 +175,20 @@ export default async function VariacoesModulePage({
                   <option value="single">Seleção única</option>
                   <option value="multiple">Seleção múltipla</option>
                 </select>
-                <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
-                  <span className="font-medium text-zinc-900 dark:text-zinc-50">Obrigatório</span>
-                  <input
-                    type="checkbox"
-                    name="is_required"
-                    className="h-5 w-5 rounded border-zinc-300 dark:border-zinc-700"
-                  />
-                </label>
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                    Mínimo (use 1 ou mais se obrigatório)
-                  <input
-                    name="min_selections"
-                    inputMode="numeric"
-                    defaultValue="0"
-                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                  />
-                  </label>
+                  <RequiredMinimumFields requiredByDefault={false} minByDefault={0} />
                   <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
                     Máximo
                   <input
                     name="max_selections"
                     inputMode="numeric"
+                    type="number"
+                    required
+                    min="1"
+                    max="50"
+                    step="1"
                     defaultValue="1"
-                    className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                    className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                   />
                   </label>
                 </div>
@@ -247,33 +237,20 @@ export default async function VariacoesModulePage({
                         <option value="single">Seleção única</option>
                         <option value="multiple">Seleção múltipla</option>
                       </select>
-                      <label className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-50">Obrigatório</span>
-                        <input
-                          type="checkbox"
-                          name="is_required"
-                          defaultChecked={Boolean(g.is_required)}
-                          className="h-5 w-5 rounded border-zinc-300 dark:border-zinc-700"
-                        />
-                      </label>
                       <div className="grid grid-cols-2 gap-3">
-                        <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
-                          Mínimo
-                        <input
-                          name="min_selections"
-                          inputMode="numeric"
-                          defaultValue={String(g.min_selections ?? 0)}
-                          min={g.is_required ? 1 : 0}
-                          className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
-                        />
-                        </label>
+                        <RequiredMinimumFields requiredByDefault={Boolean(g.is_required)} minByDefault={g.min_selections ?? 0} />
                         <label className="text-xs font-medium text-zinc-600 dark:text-zinc-300">
                           Máximo
                         <input
                           name="max_selections"
                           inputMode="numeric"
+                          type="number"
+                          required
+                          min="1"
+                          max="50"
+                          step="1"
                           defaultValue={String(g.max_selections ?? 1)}
-                          className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                          className="mt-1 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                         />
                         </label>
                       </div>
@@ -292,7 +269,7 @@ export default async function VariacoesModulePage({
                         Opções
                       </h4>
 
-                      <form action={createProductOption} className="mt-3 grid gap-3 sm:grid-cols-[minmax(220px,1fr)_160px_120px]">
+                      <form action={createProductOption} className="mt-3 grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_160px_120px]">
                         <input type="hidden" name="product_id" value={selectedProductId} />
                         <input type="hidden" name="option_group_id" value={g.id} />
                         <input
@@ -322,14 +299,14 @@ export default async function VariacoesModulePage({
                             <form
                               key={o.id}
                               action={updateProductOption}
-                              className="grid items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-[1fr_160px_140px_120px] dark:border-zinc-800 dark:bg-zinc-950"
+                              className="grid min-w-0 items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_160px_140px_120px] dark:border-zinc-800 dark:bg-zinc-950"
                             >
                               <input type="hidden" name="id" value={o.id} />
                               <input type="hidden" name="product_id" value={selectedProductId} />
                               <input
                                 name="name"
                                 defaultValue={o.name}
-                                className="w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                                className="min-w-0 w-full rounded-xl border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
                               />
                               <input
                                 name="price_modifier"
