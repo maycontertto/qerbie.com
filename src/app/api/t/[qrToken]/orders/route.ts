@@ -3,11 +3,13 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { priceCoupon } from "@/lib/customer/couponPricing";
+import { resolveMenuOptions } from "@/lib/customer/resolveMenuOptions";
 
 type OrderItemInput = {
   productId: string;
   quantity: number;
   notes?: string | null;
+  optionIds?: string[];
 };
 
 type CreateOrderBody = {
@@ -57,16 +59,33 @@ export async function GET(
   const { data: items, error: itemsError } = orderIds.length
     ? await admin
         .from("order_items")
-        .select("order_id, product_name, quantity, unit_price, line_total")
+        .select("id, order_id, product_name, quantity, unit_price, line_total")
         .eq("merchant_id", table.merchant_id)
         .in("order_id", orderIds)
     : { data: [], error: null };
   if (itemsError) return NextResponse.json({ error: "order_items_unavailable" }, { status: 500, headers: { "Cache-Control": "no-store" } });
 
-  const itemsByOrder = new Map<string, typeof items>();
+  const itemIds = (items ?? []).map((item) => item.id);
+  const { data: itemOptions, error: itemOptionsError } = itemIds.length
+    ? await admin.from("order_item_options")
+        .select("order_item_id, option_group_name, option_name, price_modifier")
+        .eq("merchant_id", table.merchant_id)
+        .in("order_item_id", itemIds)
+    : { data: [], error: null };
+  if (itemOptionsError) return NextResponse.json({ error: "order_items_unavailable" }, { status: 500, headers: { "Cache-Control": "no-store" } });
+
+  const optionsByItem = new Map<string, typeof itemOptions>();
+  for (const option of itemOptions ?? []) {
+    const list = optionsByItem.get(option.order_item_id) ?? [];
+    list.push(option);
+    optionsByItem.set(option.order_item_id, list);
+  }
+
+  type ItemWithOptions = NonNullable<typeof items>[number] & { options: NonNullable<typeof itemOptions> };
+  const itemsByOrder = new Map<string, ItemWithOptions[]>();
   for (const item of items ?? []) {
     const list = itemsByOrder.get(item.order_id) ?? [];
-    list.push(item);
+    list.push({ ...item, options: optionsByItem.get(item.id) ?? [] });
     itemsByOrder.set(item.order_id, list);
   }
 
@@ -152,6 +171,9 @@ export async function POST(
       productId: String(i.productId ?? ""),
       quantity: clampInt(i.quantity, 1, 99),
       notes: i.notes ? String(i.notes) : null,
+      optionIds: Array.isArray(i.optionIds)
+        ? Array.from(new Set(i.optionIds.filter((optionId): optionId is string => typeof optionId === "string").map((optionId) => optionId.trim()).filter(Boolean))).slice(0, 100)
+        : [],
     }))
     .filter((i) => i.productId);
 
@@ -239,15 +261,25 @@ export async function POST(
     }
   }
 
+  const { snapshots: selectedOptions, error: optionsError } = await resolveMenuOptions(
+    merchantReader,
+    merchantId,
+    businessCategory,
+    items.map((item) => ({ productId: item.productId, optionIds: item.optionIds ?? [] })),
+  );
+  if (optionsError === "invalid_options") return NextResponse.json({ error: "invalid_options" }, { status: 400 });
+  if (optionsError || !selectedOptions) return NextResponse.json({ error: "options_unavailable" }, { status: 503 });
+
   function round2(n: number): number {
     return Math.round(n * 100) / 100;
   }
 
   const subtotal = round2(
-    items.reduce((sum, i) => {
+    items.reduce((sum, i, index) => {
       const p = productById.get(i.productId);
       const price = Number(p?.price ?? 0);
-      return sum + price * i.quantity;
+      const optionsTotal = (selectedOptions[index] ?? []).reduce((optionSum, option) => optionSum + option.priceModifier, 0);
+      return sum + (price + optionsTotal) * i.quantity;
     }, 0),
   );
 
@@ -356,19 +388,22 @@ export async function POST(
       continue;
     }
 
-    const orderItemsRows = items.map((i) => {
+    const orderItemsRows = items.map((i, index) => {
       const p = productById.get(i.productId)!;
       const unitPrice = round2(Number(p.price ?? 0));
-      const lineTotal = round2(unitPrice * i.quantity);
+      const itemOptions = selectedOptions[index] ?? [];
+      const optionsTotal = round2(itemOptions.reduce((sum, option) => sum + option.priceModifier, 0));
+      const lineTotal = round2((unitPrice + optionsTotal) * i.quantity);
 
       return {
+        id: crypto.randomUUID(),
         merchant_id: merchantId,
         order_id: order.id,
         product_id: p.id,
         product_name: p.name,
         quantity: i.quantity,
         unit_price: unitPrice,
-        options_total: 0,
+        options_total: optionsTotal,
         line_total: lineTotal,
         notes: i.notes ?? null,
       };
@@ -391,6 +426,23 @@ export async function POST(
         { error: "order_items_insert_failed" },
         { status: 500 },
       );
+    }
+
+    const optionRows = orderItemsRows.flatMap((orderItem, index) => (selectedOptions[index] ?? []).map((option) => ({
+      merchant_id: merchantId,
+      order_item_id: orderItem.id,
+      option_id: option.optionId,
+      option_group_name: option.groupName,
+      option_name: option.optionName,
+      price_modifier: option.priceModifier,
+    })));
+    if (optionRows.length) {
+      const { error: optionInsertError } = await merchantReader.from("order_item_options").insert(optionRows);
+      if (optionInsertError) {
+        await merchantReader.from("orders").delete().eq("id", order.id).eq("merchant_id", merchantId).eq("session_token", sessionToken);
+        console.error("customer order options insert failed", { orderId: order.id, code: optionInsertError.code });
+        return NextResponse.json({ error: "order_items_insert_failed" }, { status: 500 });
+      }
     }
 
     return NextResponse.json({

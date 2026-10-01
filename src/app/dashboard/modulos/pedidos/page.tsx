@@ -106,9 +106,24 @@ export default async function PedidosModulePage() {
       notes: string | null;
       }> };
 
+  const itemIds = (orderItems ?? []).map((item) => item.id);
+  const { data: itemOptions } = itemIds.length
+    ? await supabase
+        .from("order_item_options")
+        .select("order_item_id, option_group_name, option_name")
+        .eq("merchant_id", merchant.id)
+        .in("order_item_id", itemIds)
+    : { data: [] as Array<{ order_item_id: string; option_group_name: string; option_name: string }> };
+  const optionsByItem = new Map<string, string[]>();
+  for (const option of itemOptions ?? []) {
+    const labels = optionsByItem.get(option.order_item_id) ?? [];
+    labels.push(`${option.option_group_name}: ${option.option_name}`);
+    optionsByItem.set(option.order_item_id, labels);
+  }
+
   const itemsByOrderId: Record<
     string,
-    { id: string; order_id: string; product_name: string; quantity: number; notes: string | null }[]
+    { id: string; order_id: string; product_name: string; quantity: number; notes: string | null; optionsSummary: string | null }[]
   > = {};
 
   for (const it of orderItems ?? []) {
@@ -120,6 +135,7 @@ export default async function PedidosModulePage() {
       product_name: String(it.product_name ?? ""),
       quantity: Number(it.quantity ?? 1),
       notes: it.notes ?? null,
+      optionsSummary: optionsByItem.get(it.id)?.join(" · ") ?? null,
     });
   }
 

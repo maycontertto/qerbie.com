@@ -5,6 +5,7 @@ import { CustomerLanguagePicker, useCustomerLanguage } from "@/app/t/CustomerLan
 import { tCustomer } from "@/lib/customer/i18n";
 import { CustomerMenuBrowser } from "@/app/t/[qrToken]/menu/CustomerMenuBrowser";
 import { CustomerMenuAssistant } from "@/app/t/[qrToken]/menu/CustomerMenuAssistant";
+import type { MenuOptionGroup } from "@/lib/customer/menuOptions";
 
 type Menu = {
   id: string;
@@ -28,6 +29,7 @@ type Product = {
   is_featured: boolean;
   requires_prescription: boolean;
   requires_document: boolean;
+  optionGroups: MenuOptionGroup[];
 };
 
 type DeliverySettings = {

@@ -59,6 +59,7 @@ type OrderItemRow = {
   product_name: string;
   quantity: number;
   notes: string | null;
+  optionsSummary?: string | null;
 };
 
 type Props = {
@@ -261,6 +262,7 @@ export function OrdersRealtimeBoard({
             product_name: String(row.product_name ?? ""),
             quantity: Number(row.quantity ?? 1),
             notes: normalizeOptionalText(row.notes),
+            optionsSummary: null,
           };
 
           setItemsByOrderId((prev) => {
@@ -269,6 +271,36 @@ export function OrdersRealtimeBoard({
             const idx = current.findIndex((x) => x.id === normalized.id);
             const next = idx === -1 ? [...current, normalized] : current.map((x) => (x.id === normalized.id ? { ...x, ...normalized } : x));
             return { ...prev, [orderId]: next };
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "order_item_options",
+          filter: `merchant_id=eq.${merchantId}`,
+        },
+        (payload) => {
+          const row = (payload.new ?? null) as Record<string, unknown> | null;
+          if (!row?.order_item_id || !row.option_name) return;
+          const itemId = String(row.order_item_id);
+          const label = `${String(row.option_group_name ?? "Opção")}: ${String(row.option_name)}`;
+          setItemsByOrderId((prev) => {
+            let changed = false;
+            const next = { ...prev };
+            for (const [orderId, items] of Object.entries(prev)) {
+              const index = items.findIndex((item) => item.id === itemId);
+              if (index < 0) continue;
+              const current = items[index].optionsSummary?.split(" · ") ?? [];
+              if (current.includes(label)) return prev;
+              const updated = [...items];
+              updated[index] = { ...updated[index], optionsSummary: [...current, label].join(" · ") };
+              next[orderId] = updated;
+              changed = true;
+            }
+            return changed ? next : prev;
           });
         },
       )
@@ -351,6 +383,9 @@ export function OrdersRealtimeBoard({
                               <span className="font-semibold">{it.quantity}x</span> {it.product_name}
                               {it.notes ? (
                                 <span className="text-xs text-zinc-500 dark:text-zinc-400"> — {it.notes}</span>
+                              ) : null}
+                              {it.optionsSummary ? (
+                                <span className="block text-xs text-zinc-600 dark:text-zinc-300">Opções: {it.optionsSummary}</span>
                               ) : null}
                             </li>
                           ))}

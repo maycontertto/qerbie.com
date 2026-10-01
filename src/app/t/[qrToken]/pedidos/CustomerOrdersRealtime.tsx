@@ -5,7 +5,7 @@ import { useCustomerLanguage } from "@/app/t/CustomerLanguagePicker";
 import { CustomerLanguage, tCustomer } from "@/lib/customer/i18n";
 
 type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "delivered" | "completed" | "cancelled";
-type OrderItem = { product_name: string; quantity: number; unit_price: number; line_total: number };
+type OrderItem = { product_name: string; quantity: number; unit_price: number; line_total: number; options: Array<{ option_group_name: string; option_name: string; price_modifier: number }> };
 type OrderRow = {
   id: string;
   order_number: number;
@@ -145,7 +145,7 @@ function OrderCard({
       <div className="space-y-4 p-5">
         {order.items.length > 0 && <ul className="space-y-2">
           {order.items.map((item, index) => <li key={`${item.product_name}-${index}`} className="flex justify-between gap-3 text-sm">
-            <span className="text-zinc-700 dark:text-zinc-200">{item.quantity}× {item.product_name}</span>
+            <span className="text-zinc-700 dark:text-zinc-200">{item.quantity}× {item.product_name}{item.options.length ? <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">{item.options.map((option) => `${option.option_group_name}: ${option.option_name}`).join(" · ")}</span> : null}</span>
             <span className="shrink-0 font-medium text-zinc-900 dark:text-zinc-50">{formatMoney(Number(item.line_total), lang)}</span>
           </li>)}
         </ul>}

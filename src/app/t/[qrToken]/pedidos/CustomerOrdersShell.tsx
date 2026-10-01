@@ -37,7 +37,7 @@ type OrderRow = {
   delivery_address: string | null;
   delivery_fee: number | null;
   delivery_eta_minutes: number | null;
-  items: Array<{ product_name: string; quantity: number; unit_price: number; line_total: number }>;
+  items: Array<{ product_name: string; quantity: number; unit_price: number; line_total: number; options: Array<{ option_group_name: string; option_name: string; price_modifier: number }> }>;
 };
 
 export function CustomerOrdersShell({

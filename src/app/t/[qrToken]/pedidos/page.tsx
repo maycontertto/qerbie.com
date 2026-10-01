@@ -6,7 +6,7 @@ import { buildMerchantBranding } from "@/lib/merchant/branding";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
 import { CUSTOMER_PLACE_COOKIE } from "@/lib/customer/constants";
 
-type OrderItem = { product_name: string; quantity: number; unit_price: number; line_total: number };
+type OrderItem = { product_name: string; quantity: number; unit_price: number; line_total: number; options: Array<{ option_group_name: string; option_name: string; price_modifier: number }> };
 type CustomerOrderRow = {
   id: string;
   order_number: number;
@@ -70,10 +70,24 @@ export default async function CustomerOrdersPage({
   const { data: orderItems } = orderIds.length
     ? await supabase
         .from("order_items")
-        .select("order_id, product_name, quantity, unit_price, line_total")
+        .select("id, order_id, product_name, quantity, unit_price, line_total")
         .eq("merchant_id", table.merchant_id)
         .in("order_id", orderIds)
     : { data: [] };
+  const orderItemIds = (orderItems ?? []).map((item) => item.id);
+  const { data: orderItemOptions } = orderItemIds.length
+    ? await merchantReader
+        .from("order_item_options")
+        .select("order_item_id, option_group_name, option_name, price_modifier")
+        .eq("merchant_id", table.merchant_id)
+        .in("order_item_id", orderItemIds)
+    : { data: [] };
+  const optionsByItemId = new Map<string, Array<{ order_item_id: string; option_group_name: string; option_name: string; price_modifier: number }>>();
+  for (const option of orderItemOptions ?? []) {
+    const options = optionsByItemId.get(option.order_item_id) ?? [];
+    options.push(option);
+    optionsByItemId.set(option.order_item_id, options);
+  }
   const itemsByOrderId = new Map<string, OrderItem[]>();
   for (const item of orderItems ?? []) {
     const items = itemsByOrderId.get(item.order_id) ?? [];
@@ -82,6 +96,11 @@ export default async function CustomerOrdersPage({
       quantity: Number(item.quantity),
       unit_price: Number(item.unit_price),
       line_total: Number(item.line_total),
+      options: (optionsByItemId.get(item.id) ?? []).map((option) => ({
+        option_group_name: option.option_group_name,
+        option_name: option.option_name,
+        price_modifier: Number(option.price_modifier),
+      })),
     });
     itemsByOrderId.set(item.order_id, items);
   }

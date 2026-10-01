@@ -32,6 +32,7 @@ export default async function SalaoFilaPage({
       .from("merchant_queues")
       .select("id, name, avg_service_min")
       .eq("merchant_id", token.merchant_id)
+      .eq("business_category", "salao_de_beleza")
       .eq("is_active", true)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true }),

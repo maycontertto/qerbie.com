@@ -32,6 +32,7 @@ export default async function LavaJatoAgendaPage({
       .from("merchant_queues")
       .select("id, name")
       .eq("merchant_id", token.merchant_id)
+      .eq("business_category", "lava_jato")
       .eq("is_active", true)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true }),
@@ -39,6 +40,7 @@ export default async function LavaJatoAgendaPage({
       .from("merchant_appointment_slots")
       .select("id, queue_id, starts_at, ends_at")
       .eq("merchant_id", token.merchant_id)
+      .eq("business_category", "lava_jato")
       .eq("is_active", true)
       .eq("status", "available")
       .gte("starts_at", new Date().toISOString())

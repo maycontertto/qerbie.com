@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCustomerLanguage } from "@/app/t/CustomerLanguagePicker";
 import { tCustomer } from "@/lib/customer/i18n";
+import type { MenuOption, MenuOptionGroup } from "@/lib/customer/menuOptions";
 
 type Menu = {
   id: string;
@@ -26,9 +27,11 @@ type Product = {
   is_featured: boolean;
   requires_prescription: boolean;
   requires_document: boolean;
+  optionGroups: MenuOptionGroup[];
 };
 
 type CartItem = {
+  lineKey: string;
   productId: string;
   name: string;
   price: number;
@@ -36,6 +39,7 @@ type CartItem = {
   quantity: number;
   requiresPrescription: boolean;
   requiresDocument: boolean;
+  options: Array<MenuOption & { groupName: string }>;
 };
 
 type DeliverySettings = {
@@ -87,10 +91,22 @@ function safeParseCart(raw: string | null): { items: CartItem[]; notes: string }
         const requiresPrescription = Boolean(obj.requiresPrescription ?? false);
         const requiresDocument = Boolean(obj.requiresDocument ?? false);
         const quantity = Number(obj.quantity ?? 0);
+        const options = Array.isArray(obj.options)
+          ? obj.options.map((rawOption) => {
+              const option = rawOption as Record<string, unknown>;
+              const id = String(option.id ?? "");
+              const optionName = String(option.name ?? "");
+              const groupName = String(option.groupName ?? "");
+              const priceModifier = Number(option.price_modifier ?? 0);
+              if (!id || !optionName || !groupName || !Number.isFinite(priceModifier)) return null;
+              return { id, name: optionName, groupName, price_modifier: priceModifier };
+            }).filter((option): option is MenuOption & { groupName: string } => option !== null)
+          : [];
         if (!productId || !name) return null;
         if (!Number.isFinite(price) || price < 0) return null;
         if (!Number.isFinite(quantity) || quantity < 1) return null;
         return {
+          lineKey: typeof obj.lineKey === "string" ? obj.lineKey : `${productId}:`,
           productId,
           name,
           price,
@@ -98,6 +114,7 @@ function safeParseCart(raw: string | null): { items: CartItem[]; notes: string }
           quantity: Math.min(99, Math.trunc(quantity)),
           requiresPrescription,
           requiresDocument,
+          options,
         } satisfies CartItem;
       })
       .filter(Boolean) as CartItem[];
@@ -198,7 +215,7 @@ function ProductCard({
             onClick={onAdd}
             className="shrink-0 rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brandHover"
           >
-            {addLabel}
+            {product.optionGroups.length ? "Escolher opções" : addLabel}
           </button>
         </div>
       </div>
@@ -236,6 +253,9 @@ export function CustomerMenuBrowser({
   const [hasSession, setHasSession] = useState<boolean>(true);
   const [cartOpen, setCartOpen] = useState(false);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [configuringProduct, setConfiguringProduct] = useState<Product | null>(null);
+  const [optionSelections, setOptionSelections] = useState<Record<string, string[]>>({});
+  const [optionError, setOptionError] = useState<string | null>(null);
   const [customerNotes, setCustomerNotes] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
@@ -363,7 +383,10 @@ export function CustomerMenuBrowser({
   );
 
   const cartSubtotal = useMemo(() => {
-    const total = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const total = cartItems.reduce((sum, i) => {
+      const optionsTotal = i.options.reduce((optionSum, option) => optionSum + option.price_modifier, 0);
+      return sum + (i.price + optionsTotal) * i.quantity;
+    }, 0);
     return Math.round(total * 100) / 100;
   }, [cartItems]);
 
@@ -483,12 +506,27 @@ export function CustomerMenuBrowser({
     const price = Number(p.price ?? 0);
     if (!Number.isFinite(price) || price < 0) return;
 
+    if (p.optionGroups.length) {
+      setOptionSelections(Object.fromEntries(p.optionGroups.map((group) => [group.id, []])));
+      setOptionError(null);
+      setConfiguringProduct(p);
+      return;
+    }
+
+    addCartLine(p, []);
+  }
+
+  function addCartLine(p: Product, selectedOptions: Array<MenuOption & { groupName: string }>) {
+    const price = Number(p.price ?? 0);
+    const lineKey = `${p.id}:${selectedOptions.map((option) => option.id).sort().join(",")}`;
+
     setCartItems((prev) => {
-      const idx = prev.findIndex((x) => x.productId === p.id);
+      const idx = prev.findIndex((x) => x.lineKey === lineKey);
       if (idx === -1) {
         return [
           ...prev,
           {
+            lineKey,
             productId: p.id,
             name: p.name,
             price,
@@ -496,6 +534,7 @@ export function CustomerMenuBrowser({
             quantity: 1,
             requiresPrescription: Boolean(p.requires_prescription),
             requiresDocument: Boolean(p.requires_document),
+            options: selectedOptions,
           },
         ];
       }
@@ -507,29 +546,46 @@ export function CustomerMenuBrowser({
     setCartOpen(true);
   }
 
-  function inc(productId: string) {
+  function confirmProductOptions() {
+    if (!configuringProduct) return;
+    const chosen: Array<MenuOption & { groupName: string }> = [];
+    for (const group of configuringProduct.optionGroups) {
+      const groupOptions = group.options.filter((option) => (optionSelections[group.id] ?? []).includes(option.id));
+      const minimum = Math.max(group.min_selections, group.is_required ? 1 : 0);
+      if (groupOptions.length < minimum || groupOptions.length > group.max_selections) {
+        setOptionError(`Escolha entre ${minimum} e ${group.max_selections} opção(ões) em “${group.name}”.`);
+        return;
+      }
+      chosen.push(...groupOptions.map((option) => ({ ...option, groupName: group.name })));
+    }
+    addCartLine(configuringProduct, chosen);
+    setConfiguringProduct(null);
+    setOptionError(null);
+  }
+
+  function inc(lineKey: string) {
     setCartItems((prev) =>
       prev.map((i) =>
-        i.productId === productId
+        i.lineKey === lineKey
           ? { ...i, quantity: Math.min(99, i.quantity + 1) }
           : i,
       ),
     );
   }
 
-  function dec(productId: string) {
+  function dec(lineKey: string) {
     setCartItems((prev) => {
-      const item = prev.find((i) => i.productId === productId);
+      const item = prev.find((i) => i.lineKey === lineKey);
       if (!item) return prev;
-      if (item.quantity <= 1) return prev.filter((i) => i.productId !== productId);
+      if (item.quantity <= 1) return prev.filter((i) => i.lineKey !== lineKey);
       return prev.map((i) =>
-        i.productId === productId ? { ...i, quantity: i.quantity - 1 } : i,
+        i.lineKey === lineKey ? { ...i, quantity: i.quantity - 1 } : i,
       );
     });
   }
 
-  function remove(productId: string) {
-    setCartItems((prev) => prev.filter((i) => i.productId !== productId));
+  function remove(lineKey: string) {
+    setCartItems((prev) => prev.filter((i) => i.lineKey !== lineKey));
   }
 
   async function applyCoupon() {
@@ -541,7 +597,7 @@ export function CustomerMenuBrowser({
       const response = await fetch(`/api/t/${encodeURIComponent(qrToken)}/coupons`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code, menuId: activeMenuId, items: cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity })) }),
+        body: JSON.stringify({ code, menuId: activeMenuId, items: cartItems.map((item) => ({ productId: item.productId, quantity: item.quantity, optionIds: item.options.map((option) => option.id) })) }),
       });
       const result = await response.json() as { code?: string; subtotal?: number; discount?: number; error?: string };
       if (!response.ok) {
@@ -592,6 +648,7 @@ export function CustomerMenuBrowser({
           items: cartItems.map((i) => ({
             productId: i.productId,
             quantity: i.quantity,
+            optionIds: i.options.map((option) => option.id),
           })),
         }),
       });
@@ -610,6 +667,10 @@ export function CustomerMenuBrowser({
           setSubmitError(tCustomer(lang, "delivery_address_required"));
         } else if (code === "invalid_product") {
           setSubmitError("Um dos itens ficou indisponível ou mudou no cardápio. Atualize a página e confira o carrinho.");
+        } else if (code === "invalid_options") {
+          setSubmitError("Uma das opções escolhidas mudou. Confira as opções do produto e tente novamente.");
+        } else if (code === "options_unavailable") {
+          setSubmitError("Não foi possível validar as opções do pedido agora. Seu carrinho foi mantido; tente novamente em instantes.");
         } else if (code === "no_menu" || code === "products_fetch_failed") {
           setSubmitError("Não foi possível carregar o cardápio agora. Atualize a página e tente novamente.");
         } else if (code === "order_number_unavailable") {
@@ -1153,7 +1214,7 @@ export function CustomerMenuBrowser({
                     <ul className="space-y-3">
                       {cartItems.map((i) => (
                         <li
-                          key={i.productId}
+                          key={i.lineKey}
                           className="rounded-2xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -1162,8 +1223,15 @@ export function CustomerMenuBrowser({
                                 {i.name}
                               </p>
                               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                {formatBRL(i.price, lang)}
+                                {formatBRL(i.price + i.options.reduce((sum, option) => sum + option.price_modifier, 0), lang)}
                               </p>
+                              {i.options.length ? (
+                                <ul className="mt-1 space-y-0.5 text-xs text-zinc-600 dark:text-zinc-300">
+                                  {i.options.map((option) => (
+                                    <li key={option.id}>{option.groupName}: {option.name}{option.price_modifier ? ` (+${formatBRL(option.price_modifier, lang)})` : ""}</li>
+                                  ))}
+                                </ul>
+                              ) : null}
                               {(i.requiresPrescription || i.requiresDocument) && (
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   {i.requiresPrescription && (
@@ -1194,7 +1262,7 @@ export function CustomerMenuBrowser({
                             <div className="inline-flex items-center overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
                               <button
                                 type="button"
-                                onClick={() => dec(i.productId)}
+                                onClick={() => dec(i.lineKey)}
                                 className="px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
                               >
                                 −
@@ -1204,7 +1272,7 @@ export function CustomerMenuBrowser({
                               </span>
                               <button
                                 type="button"
-                                onClick={() => inc(i.productId)}
+                                onClick={() => inc(i.lineKey)}
                                 className="px-3 py-2 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-800"
                               >
                                 +
@@ -1213,7 +1281,7 @@ export function CustomerMenuBrowser({
 
                             <button
                               type="button"
-                              onClick={() => remove(i.productId)}
+                              onClick={() => remove(i.lineKey)}
                               className="text-xs font-semibold text-zinc-500 hover:underline dark:text-zinc-400"
                             >
                               {tCustomer(lang, "remove")}
@@ -1278,6 +1346,67 @@ export function CustomerMenuBrowser({
           </div>
         </div>
       )}
+
+      {configuringProduct ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4"
+          role="presentation"
+          onClick={(event) => { if (event.target === event.currentTarget) setConfiguringProduct(null); }}
+        >
+          <section role="dialog" aria-modal="true" aria-labelledby="product-options-title" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-zinc-900 sm:rounded-3xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="product-options-title" className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Personalize {configuringProduct.name}</h2>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Escolha as opções antes de adicionar ao pedido.</p>
+              </div>
+              <button type="button" onClick={() => setConfiguringProduct(null)} aria-label="Fechar" className="rounded-full px-3 py-1 text-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">×</button>
+            </div>
+            <div className="mt-4 space-y-4">
+              {configuringProduct.optionGroups.map((group) => (
+                <fieldset key={group.id} className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-700">
+                  <legend className="px-1 text-sm font-semibold text-zinc-900 dark:text-zinc-50">{group.name} {group.is_required ? <span className="text-xs text-rose-600">Obrigatório</span> : <span className="text-xs font-normal text-zinc-500">Opcional</span>}</legend>
+                  <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">Selecione {Math.max(group.min_selections, group.is_required ? 1 : 0)} a {group.max_selections} opção(ões).</p>
+                  {!group.options.length ? <p className="text-sm text-zinc-500">Nenhuma opção ativa cadastrada.</p> : (
+                    <div className="space-y-2">
+                      {group.options.map((option) => {
+                        const selected = (optionSelections[group.id] ?? []).includes(option.id);
+                        return (
+                          <label key={option.id} className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-zinc-200 px-3 py-2.5 text-sm hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800">
+                            <span>{option.name}{option.price_modifier ? <span className="ml-2 text-xs text-zinc-500">+{formatBRL(option.price_modifier, lang)}</span> : null}</span>
+                            <input
+                              type={group.selection_type === "single" ? "radio" : "checkbox"}
+                              name={`option-group-${group.id}`}
+                              checked={selected}
+                              onChange={(event) => setOptionSelections((current) => {
+                                const selectedIds = current[group.id] ?? [];
+                                if (event.target.checked) {
+                                  const nextIds = group.selection_type === "single"
+                                    ? [option.id]
+                                    : selectedIds.length < group.max_selections
+                                      ? [...selectedIds, option.id]
+                                      : selectedIds;
+                                  return { ...current, [group.id]: nextIds };
+                                }
+                                return { ...current, [group.id]: selectedIds.filter((id) => id !== option.id) };
+                              })}
+                              className="h-4 w-4 accent-zinc-900"
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </fieldset>
+              ))}
+            </div>
+            {optionError ? <p role="alert" className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-700 dark:bg-rose-950 dark:text-rose-200">{optionError}</p> : null}
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <button type="button" onClick={() => setConfiguringProduct(null)} className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:text-zinc-100">Cancelar</button>
+              <button type="button" onClick={confirmProductOptions} className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900">Adicionar ao pedido</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

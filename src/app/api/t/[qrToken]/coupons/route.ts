@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { priceCoupon } from "@/lib/customer/couponPricing";
+import { resolveMenuOptions } from "@/lib/customer/resolveMenuOptions";
 
 export async function POST(req: Request, ctx: { params: Promise<{ qrToken: string }> }) {
   const { qrToken } = await ctx.params;
@@ -11,7 +12,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ qrToken: strin
   try { body = await req.json(); } catch { return NextResponse.json({ error: "invalid_request" }, { status: 400 }); }
   const code = String(body.code ?? "").trim().toUpperCase().replace(/\s+/g, "");
   const menuId = String(body.menuId ?? "");
-  const items = Array.isArray(body.items) ? body.items as Array<{ productId?: unknown; quantity?: unknown }> : [];
+  const items = Array.isArray(body.items) ? body.items as Array<{ productId?: unknown; quantity?: unknown; optionIds?: unknown }> : [];
   if (!/^[A-Z0-9_-]{3,32}$/.test(code) || items.length < 1 || items.length > 100) return NextResponse.json({ error: "invalid_coupon" }, { status: 400 });
 
   const admin = createAdminClient();
@@ -23,16 +24,34 @@ export async function POST(req: Request, ctx: { params: Promise<{ qrToken: strin
   if (!menu) return NextResponse.json({ error: "invalid_coupon" }, { status: 400 });
 
   const quantities = new Map<string, number>();
+  const normalizedItems: Array<{ productId: string; quantity: number; optionIds: string[] }> = [];
   for (const item of items) {
     const id = String(item.productId ?? "");
     const quantity = Number(item.quantity);
     if (!id || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) return NextResponse.json({ error: "invalid_request" }, { status: 400 });
     quantities.set(id, Math.min(99, (quantities.get(id) ?? 0) + quantity));
+    const optionIds = Array.isArray(item.optionIds)
+      ? Array.from(new Set(item.optionIds.filter((optionId): optionId is string => typeof optionId === "string").map((optionId) => optionId.trim()).filter(Boolean))).slice(0, 100)
+      : [];
+    normalizedItems.push({ productId: id, quantity, optionIds });
   }
   const { data: products, error: productsError } = await admin.from("products").select("id, price, is_active").eq("merchant_id", table.merchant_id).eq("business_category", merchant.business_category).eq("menu_id", menuId).in("id", [...quantities.keys()]);
   if (productsError) return NextResponse.json({ error: "products_unavailable" }, { status: 503 });
   if (!products || products.length !== quantities.size || products.some((product) => !product.is_active)) return NextResponse.json({ error: "invalid_coupon" }, { status: 400 });
-  const subtotal = Math.round(products.reduce((sum, product) => sum + Number(product.price ?? 0) * (quantities.get(product.id) ?? 0), 0) * 100) / 100;
+  const { snapshots, error: optionError } = await resolveMenuOptions(
+    admin,
+    table.merchant_id,
+    merchant.business_category,
+    normalizedItems,
+  );
+  if (optionError === "invalid_options") return NextResponse.json({ error: "invalid_coupon" }, { status: 400 });
+  if (optionError || !snapshots) return NextResponse.json({ error: "options_unavailable" }, { status: 503 });
+  const productById = new Map(products.map((product) => [product.id, product] as const));
+  const subtotal = Math.round(normalizedItems.reduce((sum, item, index) => {
+    const basePrice = Number(productById.get(item.productId)?.price ?? 0);
+    const optionsTotal = (snapshots[index] ?? []).reduce((optionSum, option) => optionSum + option.priceModifier, 0);
+    return sum + (basePrice + optionsTotal) * item.quantity;
+  }, 0) * 100) / 100;
   const { data: coupon, error: couponError } = await admin.from("coupons").select("code, discount_type, discount_value, minimum_subtotal, valid_from, valid_until, is_active").eq("merchant_id", table.merchant_id).eq("code", code).maybeSingle();
   if (couponError) return NextResponse.json({ error: "coupons_unavailable" }, { status: 503 });
   const pricing = coupon ? priceCoupon(coupon, subtotal) : null;

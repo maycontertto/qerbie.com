@@ -4,6 +4,7 @@ import { CustomerMenuShell } from "@/app/t/[qrToken]/menu/CustomerMenuShell";
 import { cookies } from "next/headers";
 import { CUSTOMER_PLACE_COOKIE, CUSTOMER_SESSION_COOKIE } from "@/lib/customer/constants";
 import { CustomerInvalidQr } from "@/app/t/CustomerInvalidQr";
+import type { MenuOptionGroup } from "@/lib/customer/menuOptions";
 
 export default async function CustomerMenuPage({
   params,
@@ -111,6 +112,56 @@ export default async function CustomerMenuPage({
         }>,
       };
 
+  const productIds = (products ?? []).map((product) => product.id);
+  const { data: optionGroups } = productIds.length
+    ? await merchantReader
+        .from("product_option_groups")
+        .select("id, product_id, name, selection_type, is_required, min_selections, max_selections, display_order")
+        .eq("merchant_id", table.merchant_id)
+        .eq("business_category", businessCategory)
+        .in("product_id", productIds)
+        .order("display_order", { ascending: true })
+    : { data: [] };
+  const optionGroupIds = (optionGroups ?? []).map((group) => group.id);
+  const { data: optionRows } = optionGroupIds.length
+    ? await merchantReader
+        .from("product_options")
+        .select("id, option_group_id, name, price_modifier")
+        .eq("merchant_id", table.merchant_id)
+        .eq("business_category", businessCategory)
+        .eq("is_active", true)
+        .in("option_group_id", optionGroupIds)
+        .order("display_order", { ascending: true })
+    : { data: [] };
+  const optionsByGroup = new Map<string, Array<{ id: string; option_group_id: string; name: string; price_modifier: number }>>();
+  for (const option of optionRows ?? []) {
+    const list = optionsByGroup.get(option.option_group_id) ?? [];
+    list.push(option);
+    optionsByGroup.set(option.option_group_id, list);
+  }
+  const groupsByProduct = new Map<string, MenuOptionGroup[]>();
+  for (const group of optionGroups ?? []) {
+    const list = groupsByProduct.get(group.product_id) ?? [];
+    list.push({
+      id: group.id,
+      name: group.name,
+      selection_type: group.selection_type,
+      is_required: group.is_required,
+      min_selections: group.min_selections,
+      max_selections: group.max_selections,
+      options: (optionsByGroup.get(group.id) ?? []).map((option) => ({
+        id: option.id,
+        name: option.name,
+        price_modifier: Number(option.price_modifier ?? 0),
+      })),
+    });
+    groupsByProduct.set(group.product_id, list);
+  }
+  const productsWithOptions = (products ?? []).map((product) => ({
+    ...product,
+    optionGroups: groupsByProduct.get(product.id) ?? [],
+  }));
+
   return (
     <CustomerMenuShell
       qrToken={qrToken}
@@ -125,7 +176,7 @@ export default async function CustomerMenuPage({
       }))}
       activeMenuId={activeMenuId}
       categories={categories ?? []}
-      products={products ?? []}
+      products={productsWithOptions}
       deliverySettings={deliverySettings}
       supportContact={supportContact}
       paymentSettings={
