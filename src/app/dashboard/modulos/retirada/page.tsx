@@ -70,6 +70,7 @@ export default async function RetiradaModulePage() {
       "id, order_number, status, order_type, created_at, customer_name, customer_notes, table_id, total, payment_method, payment_notes, delivery_address, delivery_fee",
     )
     .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "")
     .eq("order_type", "takeaway")
     .order("created_at", { ascending: false })
     .limit(80);
@@ -141,6 +142,7 @@ export default async function RetiradaModulePage() {
         <div className="mt-8">
           <OrdersRealtimeBoard
             merchantId={merchant.id}
+            businessCategory={merchant.business_category ?? "mercado"}
             initialOrders={initialOrders}
             initialItemsByOrderId={itemsByOrderId}
             tableLabelById={tableLabelById}

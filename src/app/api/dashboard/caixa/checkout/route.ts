@@ -105,6 +105,7 @@ export async function POST(req: Request) {
     .from("orders")
     .select("id,order_number,total")
     .eq("merchant_id", ctx.merchant.id)
+    .eq("business_category", ctx.merchant.business_category ?? "mercado")
     .eq("client_sale_id", clientSaleId)
     .maybeSingle();
   if (duplicateSale) return NextResponse.json({ ok: true, orderId: duplicateSale.id, orderNumber: duplicateSale.order_number, total: duplicateSale.total, duplicate: true });
@@ -198,6 +199,7 @@ export async function POST(req: Request) {
       .from("orders")
       .select("order_number")
       .eq("merchant_id", ctx.merchant.id)
+      .eq("business_category", ctx.merchant.business_category ?? "mercado")
       .eq("created_day", todayUtc)
       .order("order_number", { ascending: false })
       .limit(1)

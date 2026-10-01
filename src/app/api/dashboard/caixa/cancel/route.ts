@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     .select("id,status")
     .eq("id", orderId)
     .eq("merchant_id", ctx.merchant.id)
+    .eq("business_category", ctx.merchant.business_category ?? "mercado")
     .maybeSingle();
   if (!order) return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (order.status === "cancelled") return NextResponse.json({ error: "already_cancelled" }, { status: 409 });
@@ -32,7 +33,8 @@ export async function POST(req: Request) {
     .from("orders")
     .update({ status: "cancelled", cancellation_reason: reason, cancelled_at: new Date().toISOString() })
     .eq("id", order.id)
-    .eq("merchant_id", ctx.merchant.id);
+    .eq("merchant_id", ctx.merchant.id)
+    .eq("business_category", ctx.merchant.business_category ?? "mercado");
   if (error) return NextResponse.json({ error: "cancel_failed", detail: error.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });

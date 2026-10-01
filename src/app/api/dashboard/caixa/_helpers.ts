@@ -4,7 +4,7 @@ import { hasMemberPermission } from "@/lib/auth/guard";
 type ApiDashboardContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
   user: { id: string };
-  merchant: { id: string; owner_user_id: string };
+  merchant: { id: string; owner_user_id: string; business_category: string | null };
   isOwner: boolean;
   canSales: boolean;
   canManage: boolean;
@@ -22,7 +22,7 @@ export async function getDashboardContextForApi(): Promise<ApiDashboardContext |
 
   const { data: ownedMerchant } = await supabase
     .from("merchants")
-    .select("id, owner_user_id")
+    .select("id, owner_user_id, business_category")
     .eq("owner_user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -55,7 +55,7 @@ export async function getDashboardContextForApi(): Promise<ApiDashboardContext |
 
   const { data: merchant } = await supabase
     .from("merchants")
-    .select("id, owner_user_id")
+    .select("id, owner_user_id, business_category")
     .eq("id", merchantId)
     .maybeSingle();
 

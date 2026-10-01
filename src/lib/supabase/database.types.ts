@@ -2868,6 +2868,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string;
           table_id: string | null;
           order_number: number;
           session_token: string;
@@ -2906,6 +2907,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string;
           table_id?: string | null;
           order_number: number;
           session_token: string;
@@ -2944,6 +2946,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string;
           table_id?: string | null;
           order_number?: number;
           session_token?: string;
@@ -3091,6 +3094,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string;
           order_id: string | null;
           customer_name: string | null;
           contact: string | null;
@@ -3103,6 +3107,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string;
           order_id?: string | null;
           customer_name?: string | null;
           contact?: string | null;
@@ -3115,6 +3120,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string;
           order_id?: string | null;
           customer_name?: string | null;
           contact?: string | null;

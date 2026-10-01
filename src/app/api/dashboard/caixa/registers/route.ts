@@ -24,6 +24,7 @@ export async function GET() {
     const { data, error } = await ctx.supabase.from("orders")
       .select("id,order_number,total,created_at,cash_register_device_id,cashier_user_id,completed_by_user_id,offline_synced_at,status")
       .eq("merchant_id", ctx.merchant.id)
+      .eq("business_category", ctx.merchant.business_category ?? "mercado")
       .eq("order_type", "takeaway")
       .not("completed_by_user_id", "is", null)
       .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())

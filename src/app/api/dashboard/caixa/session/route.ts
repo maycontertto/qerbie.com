@@ -62,11 +62,13 @@ async function getSessionSummary(ctx: NonNullable<Awaited<ReturnType<typeof getD
       .from("orders")
       .select("total,payment_method")
       .eq("cash_session_id", session.id)
+      .eq("business_category", ctx.merchant.business_category ?? "mercado")
       .neq("status", "cancelled"),
     ctx.supabase
       .from("orders")
       .select("id", { count: "exact", head: true })
       .eq("cash_session_id", session.id)
+      .eq("business_category", ctx.merchant.business_category ?? "mercado")
       .neq("status", "cancelled"),
   ]);
 

@@ -51,7 +51,8 @@ export async function setOrderStatus(formData: FormData): Promise<void> {
     .from("orders")
     .update(patch)
     .eq("id", orderId)
-    .eq("merchant_id", merchant.id);
+    .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "");
 
   revalidatePath("/dashboard/modulos/pedidos");
   revalidatePath("/atendente/pedidos");

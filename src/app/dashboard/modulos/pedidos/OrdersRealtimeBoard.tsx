@@ -28,6 +28,7 @@ type OrderRow = {
 
 type RealtimeOrderRow = {
   id: unknown;
+  business_category?: unknown;
   order_number?: unknown;
   status?: unknown;
   order_type?: unknown;
@@ -62,6 +63,7 @@ type OrderItemRow = {
 
 type Props = {
   merchantId: string;
+  businessCategory: string;
   initialOrders: OrderRow[];
   initialItemsByOrderId: Record<string, OrderItemRow[]>;
   tableLabelById: Record<string, string>;
@@ -125,6 +127,7 @@ function fmtTime(iso: string): string {
 
 export function OrdersRealtimeBoard({
   merchantId,
+  businessCategory,
   initialOrders,
   initialItemsByOrderId,
   tableLabelById,
@@ -168,6 +171,11 @@ export function OrdersRealtimeBoard({
           }
 
             const row = (payload.new ?? null) as RealtimeOrderRow | null;
+            if (row?.business_category !== businessCategory) {
+              const id = String(row?.id ?? "");
+              if (id) setOrders((prev) => prev.filter((o) => o.id !== id));
+              return;
+            }
             const normalized: OrderRow | null = row?.id
             ? {
                   id: String(row.id),
@@ -269,7 +277,7 @@ export function OrdersRealtimeBoard({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [merchantId, orderTypeFilter]);
+  }, [merchantId, businessCategory, orderTypeFilter]);
 
   const active = useMemo(
     () => orders.filter((o) => o.status !== "completed" && o.status !== "cancelled"),

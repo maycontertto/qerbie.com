@@ -9,6 +9,7 @@ const EXCHANGE_STATUSES: ExchangeRequestStatus[] = ["open", "in_progress", "done
 
 export interface UpdateExchangeStatusInput {
   merchantId: string;
+  businessCategory: string;
   exchangeRequestId: string;
   status: ExchangeRequestStatus;
 }
@@ -35,6 +36,7 @@ export async function updateExchangeStatusCore(
     .from("merchant_exchange_requests")
     .update({ status: input.status })
     .eq("merchant_id", input.merchantId)
+    .eq("business_category", input.businessCategory)
     .eq("id", input.exchangeRequestId)
     .select("id")
     .maybeSingle();
@@ -84,6 +86,7 @@ export async function createExchangeRequest(formData: FormData): Promise<void> {
       .from("orders")
       .select("id")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .eq("id", orderId)
       .maybeSingle();
     safeOrderId = order?.id ?? null;
@@ -115,6 +118,7 @@ export async function updateExchangeStatus(formData: FormData): Promise<void> {
 
   const result = await updateExchangeStatusCore(supabase, {
     merchantId: merchant.id,
+    businessCategory: merchant.business_category ?? "mercado",
     exchangeRequestId: id,
     status,
   });

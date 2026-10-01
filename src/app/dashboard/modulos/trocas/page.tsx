@@ -59,12 +59,14 @@ export default async function TrocasModulePage({
       .from("merchant_exchange_requests")
       .select("id, order_id, customer_name, contact, reason, notes, status, created_at")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .order("created_at", { ascending: false })
       .limit(200),
     supabase
       .from("orders")
       .select("id, order_number, status, created_at")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .order("created_at", { ascending: false })
       .limit(80),
   ]);

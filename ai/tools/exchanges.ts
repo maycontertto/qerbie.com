@@ -137,6 +137,7 @@ export const updateExchangeStatusTool: ToolDefinition<UpdateExchangeStatusArgs, 
 
     const result = await updateExchangeStatusCore(ctx.supabase, {
       merchantId: ctx.merchantId,
+      businessCategory: ctx.businessCategory ?? "mercado",
       exchangeRequestId: args.exchangeRequestId,
       status: args.status,
     });

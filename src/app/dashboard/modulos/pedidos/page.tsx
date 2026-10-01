@@ -69,6 +69,7 @@ export default async function PedidosModulePage() {
       "id, order_number, status, order_type, created_at, customer_name, customer_notes, table_id, total, payment_method, payment_notes, delivery_address, delivery_fee",
     )
     .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "")
     .order("created_at", { ascending: false })
     .limit(80);
 
@@ -145,6 +146,7 @@ export default async function PedidosModulePage() {
         <div className="mt-8">
           <OrdersRealtimeBoard
             merchantId={merchant.id}
+            businessCategory={merchant.business_category ?? "mercado"}
             initialOrders={initialOrders}
             initialItemsByOrderId={itemsByOrderId}
             tableLabelById={tableLabelById}

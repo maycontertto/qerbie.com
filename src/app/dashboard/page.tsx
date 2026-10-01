@@ -88,6 +88,7 @@ export default async function DashboardPage({
               .from("orders")
               .select("id,total,completed_by_user_id")
               .eq("merchant_id", merchant.id)
+              .eq("business_category", merchant.business_category ?? "")
               .eq("status", "completed")
               .gte("completed_at", fromIso)
               .lt("completed_at", toIso),
@@ -95,6 +96,7 @@ export default async function DashboardPage({
               .from("order_items")
               .select("product_name,quantity,orders!inner(completed_at,status)")
               .eq("merchant_id", merchant.id)
+              .eq("orders.business_category", merchant.business_category ?? "")
               .eq("orders.status", "completed")
               .gte("orders.completed_at", fromIso)
               .lt("orders.completed_at", toIso) as unknown) as Promise<{

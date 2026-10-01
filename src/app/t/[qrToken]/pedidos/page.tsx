@@ -30,7 +30,7 @@ export default async function CustomerOrdersPage({
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("qerbie_session")?.value ?? "";
   const place = cookieStore.get(CUSTOMER_PLACE_COOKIE)?.value ?? "";
-  const supabase = await createClient();
+  const supabase = await createClient({ "x-session-token": sessionToken });
 
   const { data: table } = await createAdminClient()
     .from("merchant_tables")
@@ -47,7 +47,7 @@ export default async function CustomerOrdersPage({
   const { data: merchant } = await merchantReader
     .from("merchants")
     .select(
-      "name, brand_display_name, brand_logo_url, brand_primary_color, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer",
+      "name, business_category, brand_display_name, brand_logo_url, brand_primary_color, payment_pix_key, payment_pix_description, payment_card_url, payment_card_description, payment_cash_description, payment_disclaimer",
     )
     .eq("id", table.merchant_id)
     .maybeSingle();
@@ -61,6 +61,8 @@ export default async function CustomerOrdersPage({
         .from("orders")
         .select("id, order_number, status, created_at, customer_notes, total, order_type, delivery_address, delivery_fee, delivery_eta_minutes")
         .eq("merchant_id", table.merchant_id)
+        .eq("session_token", sessionToken)
+        .eq("business_category", merchant?.business_category ?? "")
         .order("created_at", { ascending: false })
         .limit(20)
     : { data: [] };
