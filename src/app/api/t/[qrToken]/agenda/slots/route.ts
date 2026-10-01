@@ -24,6 +24,7 @@ export async function GET(
     .from("merchant_appointment_slots")
     .select("id, queue_id, starts_at, ends_at")
     .eq("merchant_id", table.merchant_id)
+    .eq("business_category", "restaurante")
     .eq("is_active", true)
     .eq("status", "available")
     .gte("starts_at", new Date().toISOString())

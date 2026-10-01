@@ -25,6 +25,7 @@ export async function GET(
     .from("merchant_queues")
     .select("id, name, avg_service_min")
     .eq("merchant_id", table.merchant_id)
+    .eq("business_category", "restaurante")
     .eq("is_active", true)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });

@@ -29,6 +29,7 @@ export async function GET(
     )
     .eq("id", requestId)
     .eq("merchant_id", qr.merchant_id)
+    .eq("business_category", "salao_de_beleza")
     .eq("session_token", sessionToken)
     .maybeSingle();
 

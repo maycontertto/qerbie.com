@@ -1666,6 +1666,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string;
           queue_id: string | null;
           starts_at: string;
           ends_at: string;
@@ -1677,6 +1678,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string;
           queue_id?: string | null;
           starts_at: string;
           ends_at: string;
@@ -1688,6 +1690,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string;
           queue_id?: string | null;
           starts_at?: string;
           ends_at?: string;
@@ -1718,6 +1721,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string;
           slot_id: string;
           queue_id: string | null;
           service_id: string | null;
@@ -1743,6 +1747,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string;
           slot_id: string;
           queue_id?: string | null;
           service_id?: string | null;
@@ -1768,6 +1773,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string;
           slot_id?: string;
           queue_id?: string | null;
           service_id?: string | null;
@@ -2537,6 +2543,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string;
           name: string;
           status: QueueStatus;
           is_active: boolean;
@@ -2548,6 +2555,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string;
           name: string;
           status?: QueueStatus;
           is_active?: boolean;
@@ -2559,6 +2567,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string;
           name?: string;
           status?: QueueStatus;
           is_active?: boolean;
@@ -2582,6 +2591,7 @@ export interface Database {
         Row: {
           id: string;
           merchant_id: string;
+          business_category: string;
           queue_id: string;
           ticket_number: number;
           status: QueueTicketStatus;
@@ -2603,6 +2613,7 @@ export interface Database {
         Insert: {
           id?: string;
           merchant_id: string;
+          business_category?: string;
           queue_id: string;
           ticket_number: number;
           status?: QueueTicketStatus;
@@ -2624,6 +2635,7 @@ export interface Database {
         Update: {
           id?: string;
           merchant_id?: string;
+          business_category?: string;
           queue_id?: string;
           ticket_number?: number;
           status?: QueueTicketStatus;

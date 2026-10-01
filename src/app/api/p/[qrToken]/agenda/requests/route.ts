@@ -69,6 +69,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ qrToken
     .select("id, queue_id, merchant_id, starts_at, ends_at, status, is_active")
     .eq("id", slotId)
     .eq("merchant_id", token.merchant_id)
+    .eq("business_category", "pet_shop" )
     .maybeSingle();
 
   if (!slot || !slot.is_active || slot.status !== "available") {

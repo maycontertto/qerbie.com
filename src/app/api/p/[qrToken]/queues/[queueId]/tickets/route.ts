@@ -56,6 +56,7 @@ export async function POST(
     .select("id, merchant_id")
     .eq("id", queueId)
     .eq("merchant_id", token.merchant_id)
+    .eq("business_category", "pet_shop" )
     .maybeSingle();
 
   if (!queue) {

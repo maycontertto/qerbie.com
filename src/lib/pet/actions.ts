@@ -169,6 +169,7 @@ export async function updatePetProfessionalServices(formData: FormData): Promise
     .select("id")
     .eq("id", queueId)
     .eq("merchant_id", merchant.id)
+    .eq("business_category", "pet_shop")
     .maybeSingle();
 
   if (!queue) {

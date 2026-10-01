@@ -169,6 +169,7 @@ export async function updateBeautyProfessionalServices(formData: FormData): Prom
     .select("id")
     .eq("id", queueId)
     .eq("merchant_id", merchant.id)
+    .eq("business_category", "salao_de_beleza")
     .maybeSingle();
 
   if (!queue) {

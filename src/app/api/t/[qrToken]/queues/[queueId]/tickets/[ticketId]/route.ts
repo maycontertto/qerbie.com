@@ -27,6 +27,7 @@ export async function GET(
     .select("id, merchant_id, avg_service_min")
     .eq("id", queueId)
     .eq("merchant_id", table.merchant_id)
+    .eq("business_category", "restaurante")
     .maybeSingle();
 
   if (!queue) {

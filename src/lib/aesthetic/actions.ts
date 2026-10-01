@@ -169,6 +169,7 @@ export async function updateAestheticProfessionalServices(formData: FormData): P
     .select("id")
     .eq("id", queueId)
     .eq("merchant_id", merchant.id)
+    .eq("business_category", "clinica_estetica")
     .maybeSingle();
 
   if (!queue) {

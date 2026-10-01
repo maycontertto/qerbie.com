@@ -44,6 +44,7 @@ export default async function SalaoProfissionaisPage({
       .from("merchant_queues")
       .select("id, name, status, is_active")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", "salao_de_beleza")
       .eq("is_active", true)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true }),

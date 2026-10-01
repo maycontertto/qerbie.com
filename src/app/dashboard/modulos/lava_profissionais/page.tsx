@@ -42,6 +42,7 @@ export default async function LavaProfissionaisPage({
       .from("merchant_queues")
       .select("id, name, status, is_active")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", "lava_jato")
       .eq("is_active", true)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true }),

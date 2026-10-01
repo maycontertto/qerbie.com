@@ -104,6 +104,7 @@ export default async function AgendaModulePage({
       .from("merchant_queues")
       .select("id, name")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .eq("is_active", true)
       .order("display_order", { ascending: true })
       .order("created_at", { ascending: true }),
@@ -111,6 +112,7 @@ export default async function AgendaModulePage({
       .from("merchant_appointment_slots")
       .select("id, queue_id, starts_at, ends_at, status, is_active")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .order("starts_at", { ascending: true })
       .limit(200),
     supabase
@@ -119,6 +121,7 @@ export default async function AgendaModulePage({
         "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
       )
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .eq("status", "pending")
       .order("created_at", { ascending: true }),
     supabase
@@ -127,6 +130,7 @@ export default async function AgendaModulePage({
         "id, queue_id, service_id, aesthetic_service_id, beauty_service_id, pet_service_id, pet_name, customer_name, customer_contact, customer_notes, status, slot_starts_at, slot_ends_at, created_at",
       )
       .eq("merchant_id", merchant.id)
+      .eq("business_category", merchant.business_category ?? "")
       .eq("status", "confirmed")
       .gte("slot_starts_at", nowIso)
       .order("slot_starts_at", { ascending: true })

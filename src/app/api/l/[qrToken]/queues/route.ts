@@ -21,6 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ qrT
     .from("merchant_queues")
     .select("id, name, avg_service_min")
     .eq("merchant_id", token.merchant_id)
+    .eq("business_category", "lava_jato" )
     .eq("is_active", true)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });

@@ -21,6 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ qrToken
     .from("merchant_appointment_slots")
     .select("id, queue_id, starts_at, ends_at")
     .eq("merchant_id", token.merchant_id)
+    .eq("business_category", "pet_shop" )
     .eq("is_active", true)
     .eq("status", "available")
     .gte("starts_at", new Date().toISOString())

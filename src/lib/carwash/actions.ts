@@ -167,6 +167,7 @@ export async function updateCarwashProfessionalServices(formData: FormData): Pro
     .select("id")
     .eq("id", queueId)
     .eq("merchant_id", merchant.id)
+    .eq("business_category", "lava_jato")
     .maybeSingle();
 
   if (!queue) {

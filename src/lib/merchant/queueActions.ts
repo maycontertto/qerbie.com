@@ -73,7 +73,8 @@ export async function updateMerchantQueue(formData: FormData): Promise<void> {
     .from("merchant_queues")
     .update({ status: safeStatus, is_active: isActive, avg_service_min: avg })
     .eq("id", queueId)
-    .eq("merchant_id", merchant.id);
+    .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "");
 
   if (error) {
     redirect(`/dashboard/modulos/recepcao?queue=${encodeURIComponent(queueId)}&error=save_failed`);
@@ -95,6 +96,7 @@ export async function callNextTicket(formData: FormData): Promise<void> {
     .from("queue_tickets")
     .select("id")
     .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "")
     .eq("queue_id", queueId)
     .eq("status", "waiting")
     .order("ticket_number", { ascending: true })
@@ -109,7 +111,8 @@ export async function callNextTicket(formData: FormData): Promise<void> {
     .from("queue_tickets")
     .update({ status: "called", called_at: new Date().toISOString() })
     .eq("id", nextTicket.id)
-    .eq("merchant_id", merchant.id);
+    .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "");
 
   if (error) {
     redirect(`/dashboard/modulos/recepcao?queue=${encodeURIComponent(queueId)}&error=save_failed`);
@@ -142,6 +145,7 @@ export async function setTicketStatus(formData: FormData): Promise<void> {
     .update(patch)
     .eq("id", ticketId)
     .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "")
     .eq("queue_id", queueId);
 
   if (error) {

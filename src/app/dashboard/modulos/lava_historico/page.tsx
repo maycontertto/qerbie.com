@@ -88,6 +88,7 @@ export default async function LavaJatoHistoricoModulePage({
       .from("queue_tickets")
       .select("id, ticket_number, status, vehicle_label, carwash_service_id, created_at")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", "lava_jato")
       .not("carwash_service_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(100),
@@ -95,6 +96,7 @@ export default async function LavaJatoHistoricoModulePage({
       .from("merchant_appointment_requests")
       .select("id, vehicle_label, carwash_service_id, status, slot_starts_at, customer_contact")
       .eq("merchant_id", merchant.id)
+      .eq("business_category", "lava_jato")
       .not("carwash_service_id", "is", null)
       .order("slot_starts_at", { ascending: false })
       .limit(100),

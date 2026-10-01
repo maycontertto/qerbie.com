@@ -85,6 +85,7 @@ export default async function RecepcaoModulePage({
     .from("merchant_queues")
     .select("id, name, status, is_active, avg_service_min")
     .eq("merchant_id", merchant.id)
+    .eq("business_category", merchant.business_category ?? "")
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
 
@@ -139,6 +140,7 @@ export default async function RecepcaoModulePage({
           "id, ticket_number, status, customer_name, pet_name, created_at, service_id, aesthetic_service_id, beauty_service_id, pet_service_id",
         )
         .eq("merchant_id", merchant.id)
+        .eq("business_category", merchant.business_category ?? "")
         .eq("queue_id", selectedQueueId)
         .in("status", ["waiting", "called", "serving"])
         .order("ticket_number", { ascending: true })

@@ -42,6 +42,7 @@ export async function POST(
     .select("id, merchant_id")
     .eq("id", queueId)
     .eq("merchant_id", table.merchant_id)
+    .eq("business_category", "restaurante")
     .maybeSingle();
 
   if (!queue) {
