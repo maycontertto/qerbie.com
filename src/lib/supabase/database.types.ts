@@ -2586,6 +2586,50 @@ export interface Database {
           },
         ];
       };
+      clinic_patient_records: {
+        Row: {
+          id: string;
+          merchant_id: string;
+          patient_name: string;
+          patient_contact: string | null;
+          visit_date: string;
+          reason: string | null;
+          record_notes: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          merchant_id: string;
+          patient_name: string;
+          patient_contact?: string | null;
+          visit_date?: string;
+          reason?: string | null;
+          record_notes: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          merchant_id?: string;
+          patient_name?: string;
+          patient_contact?: string | null;
+          visit_date?: string;
+          reason?: string | null;
+          record_notes?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "clinic_patient_records_merchant_id_fkey";
+            columns: ["merchant_id"];
+            isOneToOne: false;
+            referencedRelation: "merchants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       merchant_queues: {
         Row: {
           id: string;

@@ -1231,8 +1231,8 @@ const CLINICA_BASE: DashboardModules = {
       },
       {
         title: "Prontuário",
-        description: "Registro por paciente (opcional)",
-        hint: "Em breve",
+        description: "Anotações internas dos atendimentos por paciente",
+        hint: "Agora",
         href: "/dashboard/modulos/prontuario",
         ctaLabel: "Abrir",
       },
