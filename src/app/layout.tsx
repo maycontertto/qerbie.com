@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./themes.css";
 import { PwaInstallPrompt, PwaServiceWorkerRegister } from "./PwaClient";
 
 const SITE_URL = (process.env.APP_URL ?? "https://www.qerbie.com").replace(/\/+$/, "");
@@ -160,3 +161,4 @@ export default function RootLayout({
     </html>
   );
 }
+
