@@ -9,8 +9,8 @@
 }
 
 .qerbie-dashboard[data-themed="true"] {
-  --qb-overlay: linear-gradient(180deg, rgb(3 10 9 / 72%) 0%, rgb(3 10 9 / 88%) 100%);
-  --qb-glass: rgb(8 18 17 / 70%);
+  --qb-overlay: linear-gradient(180deg, rgb(3 10 9 / 42%) 0%, rgb(3 10 9 / 70%) 100%);
+  --qb-glass: rgb(8 18 17 / 58%);
   --qb-glass-border: rgb(255 255 255 / 11%);
   --qb-text: #f1f5f4;
   --qb-muted: #a7b8b4;
@@ -41,7 +41,7 @@
   inset: -20px;
   z-index: -2;
   background: var(--qb-bg, none) center / cover no-repeat;
-  filter: blur(7px) saturate(1.1);
+  filter: blur(5px) saturate(1.15) brightness(1.05);
 }
 .qerbie-dashboard[data-themed="true"]::after {
   content: "";
