@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 import { signOut } from "@/lib/auth/actions";
 
+// Segmentos com fundo de foto + camada escura (ver themes.css). Para adicionar outro,
+// inclua a chave aqui e defina as variáveis --qb-bg-<tela> em themes.css.
+const THEMED_SEGMENTS = new Set(["hoteis"]);
+
 export type DashboardSection = "catalogo" | "atendimento" | "vendas" | "historico";
 
 // Shell compartilhado (cabeçalho + navegação superior) usado na home e em todas
@@ -36,7 +40,11 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   return (
-    <div className="qerbie-dashboard relative min-h-screen overflow-hidden bg-linear-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
+    <div
+      data-segment={selectedKey ?? undefined}
+      data-themed={selectedKey && THEMED_SEGMENTS.has(selectedKey) ? "true" : undefined}
+      data-section={activeSection ?? "marca"}
+      className="qerbie-dashboard relative min-h-screen overflow-hidden bg-linear-to-b from-zinc-50 to-white dark:from-zinc-950 dark:to-zinc-900">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-emerald-200/35 blur-3xl dark:bg-emerald-900/20"
@@ -147,3 +155,4 @@ export function DashboardShell({
     </div>
   );
 }
+
