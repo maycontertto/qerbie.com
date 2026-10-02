@@ -1,0 +1,180 @@
+/* Qerbie photo themes: fundo de imagem tratado + camada escura.
+   Cada segmento/tela pode ter seu fundo: defina --qb-bg-<tela> no bloco do segmento
+   e adicione a chave em THEMED_SEGMENTS (DashboardShell.tsx). Imagens em /public/themes. */
+
+.qerbie-dashboard[data-themed="true"] {
+  --qb-overlay: linear-gradient(180deg, rgb(3 10 9 / 72%) 0%, rgb(3 10 9 / 88%) 100%);
+  --qb-glass: rgb(8 18 17 / 70%);
+  --qb-glass-border: rgb(255 255 255 / 11%);
+  --qb-text: #f1f5f4;
+  --qb-muted: #a7b8b4;
+  --qb-accent: #4ade80;
+  position: relative;
+  isolation: isolate;
+  background: #050b0a;
+  color: var(--qb-text);
+  color-scheme: dark;
+}
+
+.qerbie-dashboard[data-segment="hoteis"] {
+  --qb-bg-catalogo: url("/themes/hoteis-catalogo.jpg");
+  --qb-bg-atendimento: url("/themes/hoteis-atendimento.jpg");
+  --qb-bg-vendas: url("/themes/hoteis-vendas.jpg");
+  --qb-bg-historico: url("/themes/hoteis-vendas.jpg");
+  --qb-bg-marca: url("/themes/hoteis-marca.jpg");
+}
+.qerbie-dashboard[data-section="catalogo"] { --qb-bg: var(--qb-bg-catalogo); }
+.qerbie-dashboard[data-section="atendimento"] { --qb-bg: var(--qb-bg-atendimento); }
+.qerbie-dashboard[data-section="vendas"] { --qb-bg: var(--qb-bg-vendas); }
+.qerbie-dashboard[data-section="historico"] { --qb-bg: var(--qb-bg-historico); }
+.qerbie-dashboard[data-section="marca"] { --qb-bg: var(--qb-bg-marca); }
+
+.qerbie-dashboard[data-themed="true"]::before {
+  content: "";
+  position: fixed;
+  inset: -20px;
+  z-index: -2;
+  background: var(--qb-bg, none) center / cover no-repeat;
+  filter: blur(7px) saturate(1.1);
+}
+.qerbie-dashboard[data-themed="true"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 15% 0%, rgb(34 197 94 / 16%), transparent 40rem),
+    var(--qb-overlay);
+}
+.qerbie-dashboard[data-themed="true"] > div[aria-hidden] { display: none; }
+
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__header {
+  background: rgb(5 12 11 / 62%);
+  border-color: var(--qb-glass-border);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 35%);
+}
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__nav {
+  background: var(--qb-glass);
+  border-color: var(--qb-glass-border);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 40px rgb(0 0 0 / 40%);
+}
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__section-link,
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__quick-link {
+  background: rgb(255 255 255 / 5%);
+  border-color: var(--qb-glass-border);
+  color: #dbe7e4;
+  box-shadow: none;
+}
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__section-link:hover,
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__quick-link:hover {
+  background: rgb(34 197 94 / 12%);
+  border-color: rgb(74 222 128 / 45%);
+  color: #fff;
+}
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__section-link.is-active {
+  background: linear-gradient(135deg, rgb(34 197 94 / 26%), rgb(34 197 94 / 10%));
+  border-color: #4ade80;
+  color: #fff;
+  box-shadow: 0 0 0 1px rgb(74 222 128 / 30%), 0 0 24px rgb(34 197 94 / 22%);
+}
+.qerbie-dashboard[data-themed="true"] .qerbie-dashboard__section-icon {
+  background: rgb(255 255 255 / 8%);
+  color: #cfe0dc;
+}
+.qerbie-dashboard[data-themed="true"] .is-active .qerbie-dashboard__section-icon {
+  background: #22c55e;
+  color: #04130a;
+}
+
+/* Texto */
+.qerbie-dashboard[data-themed="true"] :is(.text-zinc-950, .text-zinc-900, .text-zinc-800, .text-zinc-700, .text-black, .dark\:text-zinc-50, .dark\:text-zinc-100) { color: var(--qb-text); }
+.qerbie-dashboard[data-themed="true"] :is(.text-zinc-600, .text-zinc-500, .text-zinc-400, .dark\:text-zinc-400, .dark\:text-zinc-300) { color: var(--qb-muted); }
+.qerbie-dashboard[data-themed="true"] :is(.text-emerald-700, .text-emerald-800, .text-emerald-900, .text-green-700, .text-green-800) { color: #86efac; }
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(h1, h2, h3) { color: #fff; }
+.qerbie-dashboard[data-themed="true"] .dashboard-content p { color: #c3d2ce; }
+
+/* Cartões em vidro escuro */
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(section, article, div, a, li, details)[class*="bg-white"],
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(section, article, div, a, li)[class*="bg-zinc-50"],
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(section, article, div, a, li)[class*="bg-zinc-100"] {
+  background-color: var(--qb-glass);
+  border-color: var(--qb-glass-border);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 30%);
+}
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(div, span, p, a)[class*="bg-emerald-50"],
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(div, span, p, a)[class*="bg-green-50"] {
+  background-color: rgb(34 197 94 / 14%);
+  border-color: rgb(74 222 128 / 30%);
+}
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(div, section)[class*="border-zinc-"] { border-color: var(--qb-glass-border); }
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(input, select, textarea) {
+  background-color: rgb(255 255 255 / 7%);
+  border-color: rgb(255 255 255 / 18%);
+  color: #fff;
+}
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(input, textarea)::placeholder { color: #7f918d; }
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(button, a)[class*="bg-zinc-900"],
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(button, a)[class*="bg-brand"] {
+  background-color: #22c55e;
+  color: #04130a;
+}
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(button, a)[class*="bg-white"] { color: var(--qb-text); }
+.qerbie-dashboard[data-themed="true"] .dashboard-content :is(table, th, td) { border-color: var(--qb-glass-border); }
+
+/* ============ Páginas públicas do QR (celular do cliente) ============ */
+div[class*="from-brand/5"][class*="min-h-screen"] {
+  --qb-glass: rgb(8 18 17 / 72%);
+  --qb-glass-border: rgb(255 255 255 / 12%);
+  position: relative;
+  isolation: isolate;
+  background: #050b0a;
+  color-scheme: dark;
+}
+div[class*="from-brand/5"][class*="min-h-screen"]::before {
+  content: "";
+  position: fixed;
+  inset: -16px;
+  z-index: -2;
+  background: url("/themes/hoteis-marca.jpg") center / cover no-repeat;
+  filter: blur(6px) saturate(1.1);
+}
+div[class*="from-brand/5"][class*="min-h-screen"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgb(34 197 94 / 20%), transparent 28rem),
+    linear-gradient(180deg, rgb(3 10 9 / 70%), rgb(3 10 9 / 90%));
+}
+div[class*="from-brand/5"][class*="min-h-screen"] > div[aria-hidden] { display: none; }
+div[class*="from-brand/5"][class*="min-h-screen"] :is(.text-zinc-900, .text-zinc-800, .text-zinc-700, .dark\:text-zinc-50) { color: #f4f8f7; }
+div[class*="from-brand/5"][class*="min-h-screen"] :is(.text-zinc-600, .text-zinc-500, .dark\:text-zinc-400, .dark\:text-zinc-300) { color: #b4c4c0; }
+div[class*="from-brand/5"][class*="min-h-screen"] h1 { text-shadow: 0 2px 18px rgb(0 0 0 / 55%); }
+div[class*="from-brand/5"][class*="min-h-screen"] :is(div, section, form)[class*="bg-white"] {
+  background-color: var(--qb-glass);
+  border-color: var(--qb-glass-border);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 34px rgb(0 0 0 / 35%);
+}
+div[class*="from-brand/5"][class*="min-h-screen"] :is(input, select, textarea) {
+  background-color: rgb(255 255 255 / 8%);
+  border-color: rgb(255 255 255 / 22%);
+  color: #fff;
+  border-radius: 0.85rem;
+  padding-block: 0.7rem;
+}
+div[class*="from-brand/5"][class*="min-h-screen"] :is(input, textarea)::placeholder { color: #8a9c98; }
+div[class*="from-brand/5"][class*="min-h-screen"] button[type="submit"] {
+  padding-block: 0.85rem;
+  border-radius: 0.95rem;
+  box-shadow: 0 10px 26px rgb(34 197 94 / 30%);
+}
+div[class*="from-brand/5"][class*="min-h-screen"] img[class*="rounded-2xl"] {
+  height: 5rem;
+  width: 5rem;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 45%);
+}
