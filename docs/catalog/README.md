@@ -17,8 +17,11 @@
 1. Rodar `supabase/migrations/20261002000000_product_catalog.sql` (SQL editor do Supabase ou `supabase db push`).
 2. `SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/catalog/import-catalog.mjs all` (idempotente; `off` ou `cmed` para so uma fonte). Nunca commitar a service role key.
 
+## Formato dos dados
+`data/catalog/off_br/part-*.b64` e `data/catalog/cmed/part-*.b64`: CSV gzip em base64, dividido em partes de 300 KB (o script junta, decodifica e descomprime).
+
 ## Como atualizar
-- OFF: baixar o CSV novo, refiltrar (Brasil), substituir `data/catalog/off_br.csv.gz`, rodar o import.
+- OFF: baixar o CSV novo, refiltrar (Brasil), substituir as partes em `data/catalog/off_br/` (csv.gz em base64: `base64 -w0 off_br.csv.gz | split -b 300000 -d -a 2 - part-` e renomear para `part-NN.b64`), rodar o import.
 - CMED: baixar a nova lista PMC em https://www.gov.br/anvisa/pt-br/assuntos/medicamentos/cmed/precos, regerar `cmed.csv.gz` (colunas: ean, registro, substancia, produto, apresentacao, laboratorio, cnpj, classe_terapeutica, tipo_produto, regime_preco, tarja, pf_sem_impostos, pmc_sem_impostos, pmc_18), atualizar `CMED_DATE` no script e rodar o import.
 
 ## Limites
