@@ -34,6 +34,8 @@ const load = (name) => {
 const num = (v) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v));
 
 async function upsert(table, rows, onConflict) {
+  const keys = onConflict.split(",");
+  rows = [...new Map(rows.map((r) => [keys.map((k) => r[k]).join("|"), r])).values()]; // remove duplicadas pela chave
   for (let i = 0; i < rows.length; i += 1000) {
     const { error } = await sb.from(table).upsert(rows.slice(i, i + 1000), { onConflict });
     if (error) throw new Error(`${table} @${i}: ${error.message}`);
